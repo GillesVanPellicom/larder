@@ -9,6 +9,7 @@ import recipesRouter from './routes/recipes'
 import configRouter from './routes/config'
 import tagsRouter from './routes/tags'
 import conflictsRouter from './routes/conflicts'
+import templatesRouter from './routes/templates'
 
 const app = express()
 
@@ -21,6 +22,7 @@ app.use('/api/health', healthRouter)
 app.use('/api/config', configRouter)
 app.use('/api/tags', tagsRouter)
 app.use('/api/conflicts', conflictsRouter)
+app.use('/api/templates', templatesRouter)
 app.use('/api/recipes', recipesRouter)
 
 // In production or when client build exists, serve static React frontend

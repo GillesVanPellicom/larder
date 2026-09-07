@@ -1,6 +1,6 @@
 import { count, eq } from 'drizzle-orm';
 import { db, pool } from './index';
-import { metadataConfigTable, recipes, tagCategories } from './schema';
+import { metadataConfigTable, recipes, tagCategories, templates, templateVersions } from './schema';
 export async function migrateDb(retries = 5, delayMs = 2000) {
     let attempt = 0;
     while (attempt < retries) {
@@ -36,6 +36,40 @@ export async function migrateDb(retries = 5, delayMs = 2000) {
         ALTER TABLE recipes ADD COLUMN IF NOT EXISTS source_url TEXT NOT NULL DEFAULT '';
         ALTER TABLE recipes ADD COLUMN IF NOT EXISTS notes TEXT NOT NULL DEFAULT '';
         ALTER TABLE recipes ADD COLUMN IF NOT EXISTS tags JSONB NOT NULL DEFAULT '{}'::jsonb;
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS template_id VARCHAR(64) NOT NULL DEFAULT 'tpl_default';
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS template_version_id INTEGER NOT NULL DEFAULT 1;
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS field_values JSONB NOT NULL DEFAULT '{}'::jsonb;
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS archived_values JSONB NOT NULL DEFAULT '{}'::jsonb;
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+        CREATE TABLE IF NOT EXISTS templates (
+          id VARCHAR(64) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          is_default BOOLEAN NOT NULL DEFAULT FALSE,
+          current_version_id INTEGER NOT NULL DEFAULT 1,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          deleted_at TIMESTAMPTZ
+        );
+
+        CREATE TABLE IF NOT EXISTS template_versions (
+          id SERIAL PRIMARY KEY,
+          template_id VARCHAR(64) NOT NULL,
+          version INTEGER NOT NULL,
+          change_summary VARCHAR(255) NOT NULL DEFAULT '',
+          fields_schema JSONB NOT NULL DEFAULT '[]'::jsonb,
+          card_layout JSONB NOT NULL DEFAULT '{}'::jsonb,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS recipe_history (
+          id SERIAL PRIMARY KEY,
+          recipe_id INTEGER NOT NULL,
+          template_version_id INTEGER NOT NULL,
+          snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
+          saved_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
 
         CREATE TABLE IF NOT EXISTS tag_categories (
           id VARCHAR(100) PRIMARY KEY,
@@ -220,6 +254,154 @@ export async function migrateDb(retries = 5, delayMs = 2000) {
                 ]);
                 console.log('[Drizzle ORM] Initial recipes seeded successfully.');
             }
+            // Seed default template if not present
+            const existingTemplate = await db
+                .select()
+                .from(templates)
+                .where(eq(templates.id, 'tpl_default'));
+            if (existingTemplate.length === 0) {
+                console.log('[Drizzle ORM] Seeding default recipe template (tpl_default)...');
+                await db.insert(templates).values({
+                    id: 'tpl_default',
+                    name: 'Classic Recipe',
+                    description: 'Standard culinary recipe layout with culinary metrics, ingredients table, rich text method, and mobile-friendly card.',
+                    isDefault: true,
+                    currentVersionId: 1,
+                });
+                await db.insert(templateVersions).values({
+                    templateId: 'tpl_default',
+                    version: 1,
+                    changeSummary: 'Default system template',
+                    fieldsSchema: [
+                        {
+                            id: 'fld_title',
+                            name: 'Recipe Title',
+                            type: 'text',
+                            required: true,
+                            order: 1,
+                            config: { multiline: false, placeholder: 'e.g. Spaghetti Carbonara' },
+                        },
+                        {
+                            id: 'fld_description',
+                            name: 'Summary / Description',
+                            type: 'text',
+                            required: false,
+                            order: 2,
+                            config: { multiline: true, resizable: true, placeholder: 'Briefly describe this dish...' },
+                        },
+                        {
+                            id: 'fld_image',
+                            name: 'Cover Photo',
+                            type: 'image',
+                            required: false,
+                            order: 3,
+                            config: { placeholder: 'https://images.unsplash.com/...' },
+                        },
+                        {
+                            id: 'fld_yield',
+                            name: 'Yield / Portions',
+                            type: 'text',
+                            required: false,
+                            order: 4,
+                            config: { multiline: false, placeholder: 'e.g. 4 servings' },
+                        },
+                        {
+                            id: 'fld_prep_time',
+                            name: 'Prep Time',
+                            type: 'number',
+                            required: false,
+                            order: 5,
+                            config: { min: 0, step: 1, unit: 'min' },
+                        },
+                        {
+                            id: 'fld_cook_time',
+                            name: 'Cook Time',
+                            type: 'number',
+                            required: false,
+                            order: 6,
+                            config: { min: 0, step: 1, unit: 'min' },
+                        },
+                        {
+                            id: 'fld_total_time',
+                            name: 'Total Time',
+                            type: 'number',
+                            required: false,
+                            order: 7,
+                            config: { min: 0, step: 1, unit: 'min' },
+                        },
+                        {
+                            id: 'fld_tags',
+                            name: 'Tags & Taxonomy',
+                            type: 'tag_category',
+                            required: false,
+                            order: 8,
+                            config: {},
+                        },
+                        {
+                            id: 'fld_sep_content',
+                            name: 'Method & Ingredients',
+                            type: 'separator',
+                            required: false,
+                            order: 9,
+                            config: { separatorStyle: 'heading' },
+                        },
+                        {
+                            id: 'fld_ingredients',
+                            name: 'Ingredients Table',
+                            type: 'ingredient_table',
+                            required: true,
+                            order: 10,
+                            config: {},
+                        },
+                        {
+                            id: 'fld_instructions',
+                            name: 'Preparation Method',
+                            type: 'rich_text',
+                            required: true,
+                            order: 11,
+                            config: {},
+                        },
+                        {
+                            id: 'fld_notes',
+                            name: 'Cook Notes',
+                            type: 'text',
+                            required: false,
+                            order: 12,
+                            config: { multiline: true, resizable: true, placeholder: 'Storage instructions, pairing ideas...' },
+                        },
+                    ],
+                    cardLayout: {
+                        columns: 4,
+                        widgets: [
+                            { id: 'w_image', fieldId: 'fld_image', widgetType: 'image_banner', col: 1, row: 1, colSpan: 4, rowSpan: 2 },
+                            { id: 'w_title', fieldId: 'fld_title', widgetType: 'title_header', col: 1, row: 3, colSpan: 4, rowSpan: 1 },
+                            { id: 'w_prep', fieldId: 'fld_prep_time', widgetType: 'metric_chip', col: 1, row: 4, colSpan: 2, rowSpan: 1, options: { showLabel: true } },
+                            { id: 'w_cook', fieldId: 'fld_cook_time', widgetType: 'metric_chip', col: 3, row: 4, colSpan: 2, rowSpan: 1, options: { showLabel: true } },
+                            { id: 'w_tags', fieldId: 'fld_tags', widgetType: 'tag_chips', col: 1, row: 5, colSpan: 4, rowSpan: 1 },
+                        ],
+                    },
+                });
+            }
+            // Backfill existing recipes to populate fieldValues if empty
+            await pool.query(`
+        UPDATE recipes
+        SET field_values = jsonb_build_object(
+          'fld_title', title,
+          'fld_description', description,
+          'fld_yield', yield_amount,
+          'fld_prep_time', prep_time_minutes,
+          'fld_cook_time', cook_time_minutes,
+          'fld_total_time', total_time_minutes,
+          'fld_image', image_url,
+          'fld_ingredients', ingredients,
+          'fld_instructions', instructions,
+          'fld_tags', tags,
+          'fld_notes', notes
+        ),
+        template_id = 'tpl_default',
+        template_version_id = 1
+        WHERE field_values IS NULL OR field_values = '{}'::jsonb;
+      `);
             console.log('[Database] Schema migrations and Drizzle seeding completed.');
             return;
         }

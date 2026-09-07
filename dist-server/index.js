@@ -32,10 +32,32 @@ import { drizzle } from "drizzle-orm/node-postgres";
 var schema_exports = {};
 __export(schema_exports, {
   metadataConfigTable: () => metadataConfigTable,
+  recipeHistory: () => recipeHistory,
   recipes: () => recipes,
-  tagCategories: () => tagCategories
+  tagCategories: () => tagCategories,
+  templateVersions: () => templateVersions,
+  templates: () => templates
 });
 import { pgTable, serial, varchar, text, integer, jsonb, timestamp, boolean } from "drizzle-orm/pg-core";
+var templates = pgTable("templates", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description").default("").notNull(),
+  isDefault: boolean("is_default").default(false).notNull(),
+  currentVersionId: integer("current_version_id").default(1).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true })
+});
+var templateVersions = pgTable("template_versions", {
+  id: serial("id").primaryKey(),
+  templateId: varchar("template_id", { length: 64 }).notNull(),
+  version: integer("version").notNull(),
+  changeSummary: varchar("change_summary", { length: 255 }).default("").notNull(),
+  fieldsSchema: jsonb("fields_schema").$type().notNull(),
+  cardLayout: jsonb("card_layout").$type().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
 var recipes = pgTable("recipes", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
@@ -50,8 +72,21 @@ var recipes = pgTable("recipes", {
   ingredients: jsonb("ingredients").$type().default([]).notNull(),
   instructions: jsonb("instructions").$type().default("").notNull(),
   tags: jsonb("tags").$type().default({}).notNull(),
+  // Template & dynamic field values
+  templateId: varchar("template_id", { length: 64 }).default("tpl_default").notNull(),
+  templateVersionId: integer("template_version_id").default(1).notNull(),
+  fieldValues: jsonb("field_values").$type().default({}).notNull(),
+  archivedValues: jsonb("archived_values").$type().default({}).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true })
+});
+var recipeHistory = pgTable("recipe_history", {
+  id: serial("id").primaryKey(),
+  recipeId: integer("recipe_id").notNull(),
+  templateVersionId: integer("template_version_id").notNull(),
+  snapshot: jsonb("snapshot").$type().notNull(),
+  savedAt: timestamp("saved_at", { withTimezone: true }).defaultNow().notNull()
 });
 var tagCategories = pgTable("tag_categories", {
   id: varchar("id", { length: 100 }).primaryKey(),
@@ -131,6 +166,40 @@ async function migrateDb(retries = 5, delayMs = 2e3) {
         ALTER TABLE recipes ADD COLUMN IF NOT EXISTS source_url TEXT NOT NULL DEFAULT '';
         ALTER TABLE recipes ADD COLUMN IF NOT EXISTS notes TEXT NOT NULL DEFAULT '';
         ALTER TABLE recipes ADD COLUMN IF NOT EXISTS tags JSONB NOT NULL DEFAULT '{}'::jsonb;
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS template_id VARCHAR(64) NOT NULL DEFAULT 'tpl_default';
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS template_version_id INTEGER NOT NULL DEFAULT 1;
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS field_values JSONB NOT NULL DEFAULT '{}'::jsonb;
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS archived_values JSONB NOT NULL DEFAULT '{}'::jsonb;
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+        CREATE TABLE IF NOT EXISTS templates (
+          id VARCHAR(64) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          is_default BOOLEAN NOT NULL DEFAULT FALSE,
+          current_version_id INTEGER NOT NULL DEFAULT 1,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          deleted_at TIMESTAMPTZ
+        );
+
+        CREATE TABLE IF NOT EXISTS template_versions (
+          id SERIAL PRIMARY KEY,
+          template_id VARCHAR(64) NOT NULL,
+          version INTEGER NOT NULL,
+          change_summary VARCHAR(255) NOT NULL DEFAULT '',
+          fields_schema JSONB NOT NULL DEFAULT '[]'::jsonb,
+          card_layout JSONB NOT NULL DEFAULT '{}'::jsonb,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS recipe_history (
+          id SERIAL PRIMARY KEY,
+          recipe_id INTEGER NOT NULL,
+          template_version_id INTEGER NOT NULL,
+          snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
+          saved_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
 
         CREATE TABLE IF NOT EXISTS tag_categories (
           id VARCHAR(100) PRIMARY KEY,
@@ -310,6 +379,149 @@ async function migrateDb(retries = 5, delayMs = 2e3) {
         ]);
         console.log("[Drizzle ORM] Initial recipes seeded successfully.");
       }
+      const existingTemplate = await db.select().from(templates).where(eq(templates.id, "tpl_default"));
+      if (existingTemplate.length === 0) {
+        console.log("[Drizzle ORM] Seeding default recipe template (tpl_default)...");
+        await db.insert(templates).values({
+          id: "tpl_default",
+          name: "Classic Recipe",
+          description: "Standard culinary recipe layout with culinary metrics, ingredients table, rich text method, and mobile-friendly card.",
+          isDefault: true,
+          currentVersionId: 1
+        });
+        await db.insert(templateVersions).values({
+          templateId: "tpl_default",
+          version: 1,
+          changeSummary: "Default system template",
+          fieldsSchema: [
+            {
+              id: "fld_title",
+              name: "Recipe Title",
+              type: "text",
+              required: true,
+              order: 1,
+              config: { multiline: false, placeholder: "e.g. Spaghetti Carbonara" }
+            },
+            {
+              id: "fld_description",
+              name: "Summary / Description",
+              type: "text",
+              required: false,
+              order: 2,
+              config: { multiline: true, resizable: true, placeholder: "Briefly describe this dish..." }
+            },
+            {
+              id: "fld_image",
+              name: "Cover Photo",
+              type: "image",
+              required: false,
+              order: 3,
+              config: { placeholder: "https://images.unsplash.com/..." }
+            },
+            {
+              id: "fld_yield",
+              name: "Yield / Portions",
+              type: "text",
+              required: false,
+              order: 4,
+              config: { multiline: false, placeholder: "e.g. 4 servings" }
+            },
+            {
+              id: "fld_prep_time",
+              name: "Prep Time",
+              type: "number",
+              required: false,
+              order: 5,
+              config: { min: 0, step: 1, unit: "min" }
+            },
+            {
+              id: "fld_cook_time",
+              name: "Cook Time",
+              type: "number",
+              required: false,
+              order: 6,
+              config: { min: 0, step: 1, unit: "min" }
+            },
+            {
+              id: "fld_total_time",
+              name: "Total Time",
+              type: "number",
+              required: false,
+              order: 7,
+              config: { min: 0, step: 1, unit: "min" }
+            },
+            {
+              id: "fld_tags",
+              name: "Tags & Taxonomy",
+              type: "tag_category",
+              required: false,
+              order: 8,
+              config: {}
+            },
+            {
+              id: "fld_sep_content",
+              name: "Method & Ingredients",
+              type: "separator",
+              required: false,
+              order: 9,
+              config: { separatorStyle: "heading" }
+            },
+            {
+              id: "fld_ingredients",
+              name: "Ingredients Table",
+              type: "ingredient_table",
+              required: true,
+              order: 10,
+              config: {}
+            },
+            {
+              id: "fld_instructions",
+              name: "Preparation Method",
+              type: "rich_text",
+              required: true,
+              order: 11,
+              config: {}
+            },
+            {
+              id: "fld_notes",
+              name: "Cook Notes",
+              type: "text",
+              required: false,
+              order: 12,
+              config: { multiline: true, resizable: true, placeholder: "Storage instructions, pairing ideas..." }
+            }
+          ],
+          cardLayout: {
+            columns: 4,
+            widgets: [
+              { id: "w_image", fieldId: "fld_image", widgetType: "image_banner", col: 1, row: 1, colSpan: 4, rowSpan: 2 },
+              { id: "w_title", fieldId: "fld_title", widgetType: "title_header", col: 1, row: 3, colSpan: 4, rowSpan: 1 },
+              { id: "w_prep", fieldId: "fld_prep_time", widgetType: "metric_chip", col: 1, row: 4, colSpan: 2, rowSpan: 1, options: { showLabel: true } },
+              { id: "w_cook", fieldId: "fld_cook_time", widgetType: "metric_chip", col: 3, row: 4, colSpan: 2, rowSpan: 1, options: { showLabel: true } },
+              { id: "w_tags", fieldId: "fld_tags", widgetType: "tag_chips", col: 1, row: 5, colSpan: 4, rowSpan: 1 }
+            ]
+          }
+        });
+      }
+      await pool.query(`
+        UPDATE recipes
+        SET field_values = jsonb_build_object(
+          'fld_title', title,
+          'fld_description', description,
+          'fld_yield', yield_amount,
+          'fld_prep_time', prep_time_minutes,
+          'fld_cook_time', cook_time_minutes,
+          'fld_total_time', total_time_minutes,
+          'fld_image', image_url,
+          'fld_ingredients', ingredients,
+          'fld_instructions', instructions,
+          'fld_tags', tags,
+          'fld_notes', notes
+        ),
+        template_id = 'tpl_default',
+        template_version_id = 1
+        WHERE field_values IS NULL OR field_values = '{}'::jsonb;
+      `);
       console.log("[Database] Schema migrations and Drizzle seeding completed.");
       return;
     } catch (err) {
@@ -346,7 +558,7 @@ var health_default = router;
 
 // server/src/routes/recipes.ts
 import { Router as Router2 } from "express";
-import { desc, eq as eq2 } from "drizzle-orm";
+import { and, desc, eq as eq2, isNull } from "drizzle-orm";
 var router2 = Router2();
 function formatRecipe(r) {
   let ingredients = r.ingredients || [];
@@ -381,13 +593,17 @@ function formatRecipe(r) {
     ingredients,
     instructions,
     tags: r.tags || {},
+    template_id: r.templateId || "tpl_default",
+    template_version_id: r.templateVersionId || 1,
+    field_values: r.fieldValues || {},
+    archived_values: r.archivedValues || {},
     created_at: r.createdAt.toISOString(),
     updated_at: r.updatedAt.toISOString()
   };
 }
 router2.get("/", async (_req, res) => {
   try {
-    const rows = await db.select().from(recipes).orderBy(desc(recipes.id));
+    const rows = await db.select().from(recipes).where(isNull(recipes.deletedAt)).orderBy(desc(recipes.id));
     res.json(rows.map(formatRecipe));
   } catch (err) {
     const details = err instanceof Error ? err.message : String(err);
@@ -401,7 +617,7 @@ router2.get("/:id", async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({ error: "Invalid recipe ID" });
     }
-    const [row] = await db.select().from(recipes).where(eq2(recipes.id, id));
+    const [row] = await db.select().from(recipes).where(and(eq2(recipes.id, id), isNull(recipes.deletedAt)));
     if (!row) {
       return res.status(404).json({ error: "Recipe not found" });
     }
@@ -412,29 +628,56 @@ router2.get("/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch recipe", details });
   }
 });
+function syncCoreColumnsFromFieldValues(body) {
+  const fv = body.field_values || {};
+  const title = fv.fld_title || body.title || "";
+  const description = fv.fld_description || body.description || "";
+  const yieldAmount = fv.fld_yield || body.yield_amount || "";
+  const prep = Number(fv.fld_prep_time) || Number(body.prep_time_minutes) || 0;
+  const cook = Number(fv.fld_cook_time) || Number(body.cook_time_minutes) || 0;
+  const total = Number(fv.fld_total_time) || Number(body.total_time_minutes) || prep + cook;
+  const imageUrl = fv.fld_image || body.image_url || "";
+  const sourceUrl = body.source_url || "";
+  const notes = fv.fld_notes || body.notes || "";
+  const ingredients = fv.fld_ingredients || body.ingredients || [];
+  const instructions = fv.fld_instructions || body.instructions || "";
+  const tags = fv.fld_tags || body.tags || {};
+  return {
+    title: title.trim(),
+    description: description.trim(),
+    yieldAmount: yieldAmount.trim(),
+    prepTimeMinutes: prep,
+    cookTimeMinutes: cook,
+    totalTimeMinutes: total,
+    imageUrl: imageUrl.trim(),
+    sourceUrl: sourceUrl.trim(),
+    notes: notes.trim(),
+    ingredients,
+    instructions,
+    tags,
+    templateId: body.template_id || "tpl_default",
+    templateVersionId: body.template_version_id || 1,
+    fieldValues: fv,
+    archivedValues: body.archived_values || {}
+  };
+}
 router2.post("/", async (req, res) => {
   try {
     const body = req.body;
-    if (!body.title || !body.title.trim()) {
+    const synced = syncCoreColumnsFromFieldValues(body);
+    if (!synced.title) {
       return res.status(400).json({ error: "Recipe title is required" });
     }
-    const prep = Number(body.prep_time_minutes) || 0;
-    const cook = Number(body.cook_time_minutes) || 0;
-    const total = Number(body.total_time_minutes) || prep + cook;
-    const [created] = await db.insert(recipes).values({
-      title: body.title.trim(),
-      description: body.description ? body.description.trim() : "",
-      yieldAmount: body.yield_amount ? body.yield_amount.trim() : "",
-      prepTimeMinutes: prep,
-      cookTimeMinutes: cook,
-      totalTimeMinutes: total,
-      imageUrl: body.image_url ? body.image_url.trim() : "",
-      sourceUrl: body.source_url ? body.source_url.trim() : "",
-      notes: body.notes ? body.notes.trim() : "",
-      ingredients: body.ingredients || [],
-      instructions: body.instructions !== void 0 ? body.instructions : "",
-      tags: body.tags || {}
-    }).returning();
+    const [created] = await db.insert(recipes).values(synced).returning();
+    await db.insert(recipeHistory).values({
+      recipeId: created.id,
+      templateVersionId: created.templateVersionId,
+      snapshot: {
+        title: created.title,
+        fieldValues: created.fieldValues,
+        archivedValues: created.archivedValues
+      }
+    });
     res.status(201).json(formatRecipe(created));
   } catch (err) {
     const details = err instanceof Error ? err.message : String(err);
@@ -449,33 +692,90 @@ router2.put("/:id", async (req, res) => {
       return res.status(400).json({ error: "Invalid recipe ID" });
     }
     const body = req.body;
-    const prep = body.prep_time_minutes !== void 0 ? Number(body.prep_time_minutes) : void 0;
-    const cook = body.cook_time_minutes !== void 0 ? Number(body.cook_time_minutes) : void 0;
-    const total = body.total_time_minutes !== void 0 ? Number(body.total_time_minutes) : prep !== void 0 && cook !== void 0 ? prep + cook : void 0;
+    const synced = syncCoreColumnsFromFieldValues(body);
     const updatePayload = {
+      ...synced,
       updatedAt: /* @__PURE__ */ new Date()
     };
-    if (body.title !== void 0) updatePayload.title = body.title.trim();
-    if (body.description !== void 0) updatePayload.description = body.description.trim();
-    if (body.yield_amount !== void 0) updatePayload.yieldAmount = body.yield_amount.trim();
-    if (prep !== void 0) updatePayload.prepTimeMinutes = prep;
-    if (cook !== void 0) updatePayload.cookTimeMinutes = cook;
-    if (total !== void 0) updatePayload.totalTimeMinutes = total;
-    if (body.image_url !== void 0) updatePayload.imageUrl = body.image_url.trim();
-    if (body.source_url !== void 0) updatePayload.sourceUrl = body.source_url.trim();
-    if (body.notes !== void 0) updatePayload.notes = body.notes.trim();
-    if (body.ingredients !== void 0) updatePayload.ingredients = body.ingredients;
-    if (body.instructions !== void 0) updatePayload.instructions = body.instructions;
-    if (body.tags !== void 0) updatePayload.tags = body.tags;
     const [updated] = await db.update(recipes).set(updatePayload).where(eq2(recipes.id, id)).returning();
     if (!updated) {
       return res.status(404).json({ error: "Recipe not found" });
     }
+    await db.insert(recipeHistory).values({
+      recipeId: updated.id,
+      templateVersionId: updated.templateVersionId,
+      snapshot: {
+        title: updated.title,
+        fieldValues: updated.fieldValues,
+        archivedValues: updated.archivedValues
+      }
+    });
     res.json(formatRecipe(updated));
   } catch (err) {
     const details = err instanceof Error ? err.message : String(err);
     console.error("Failed to update recipe:", err);
     res.status(500).json({ error: "Failed to update recipe", details });
+  }
+});
+router2.get("/:id/history", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Invalid recipe ID" });
+    }
+    const historyRows = await db.select().from(recipeHistory).where(eq2(recipeHistory.recipeId, id)).orderBy(desc(recipeHistory.savedAt));
+    res.json(
+      historyRows.map((h) => ({
+        id: h.id,
+        recipeId: h.recipeId,
+        templateVersionId: h.templateVersionId,
+        snapshot: h.snapshot,
+        savedAt: h.savedAt.toISOString()
+      }))
+    );
+  } catch (err) {
+    const details = err instanceof Error ? err.message : String(err);
+    console.error("Failed to fetch recipe history:", err);
+    res.status(500).json({ error: "Failed to fetch recipe history", details });
+  }
+});
+router2.post("/:id/restore-version/:historyId", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const historyId = parseInt(req.params.historyId, 10);
+    if (isNaN(id) || isNaN(historyId)) {
+      return res.status(400).json({ error: "Invalid recipe or history ID" });
+    }
+    const [historyEntry] = await db.select().from(recipeHistory).where(and(eq2(recipeHistory.id, historyId), eq2(recipeHistory.recipeId, id)));
+    if (!historyEntry) {
+      return res.status(404).json({ error: "History snapshot not found" });
+    }
+    const snapshot = historyEntry.snapshot;
+    const synced = syncCoreColumnsFromFieldValues({
+      field_values: snapshot.fieldValues,
+      archived_values: snapshot.archivedValues,
+      title: snapshot.title,
+      template_version_id: historyEntry.templateVersionId
+    });
+    const [restored] = await db.update(recipes).set({
+      ...synced,
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq2(recipes.id, id)).returning();
+    await db.insert(recipeHistory).values({
+      recipeId: restored.id,
+      templateVersionId: restored.templateVersionId,
+      snapshot: {
+        title: restored.title,
+        fieldValues: restored.fieldValues,
+        archivedValues: restored.archivedValues,
+        restoredFromHistoryId: historyId
+      }
+    });
+    res.json(formatRecipe(restored));
+  } catch (err) {
+    const details = err instanceof Error ? err.message : String(err);
+    console.error("Failed to restore recipe history version:", err);
+    res.status(500).json({ error: "Failed to restore recipe version", details });
   }
 });
 router2.delete("/:id", async (req, res) => {
@@ -484,7 +784,7 @@ router2.delete("/:id", async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({ error: "Invalid recipe ID" });
     }
-    const [deleted] = await db.delete(recipes).where(eq2(recipes.id, id)).returning({ id: recipes.id });
+    const [deleted] = await db.update(recipes).set({ deletedAt: /* @__PURE__ */ new Date(), updatedAt: /* @__PURE__ */ new Date() }).where(eq2(recipes.id, id)).returning({ id: recipes.id });
     if (!deleted) {
       return res.status(404).json({ error: "Recipe not found" });
     }
@@ -953,6 +1253,335 @@ router5.get("/", async (_req, res) => {
 });
 var conflicts_default = router5;
 
+// server/src/routes/templates.ts
+import { Router as Router6 } from "express";
+import { and as and2, desc as desc2, eq as eq6, isNull as isNull2 } from "drizzle-orm";
+var router6 = Router6();
+function formatTemplate(t, v, allVersions) {
+  return {
+    id: t.id,
+    name: t.name,
+    description: t.description,
+    isDefault: t.isDefault,
+    currentVersionId: t.currentVersionId,
+    currentVersion: v ? {
+      id: v.id,
+      templateId: v.templateId,
+      version: v.version,
+      changeSummary: v.changeSummary,
+      fieldsSchema: v.fieldsSchema,
+      cardLayout: v.cardLayout,
+      createdAt: v.createdAt.toISOString()
+    } : void 0,
+    versions: allVersions == null ? void 0 : allVersions.map((ver) => ({
+      id: ver.id,
+      templateId: ver.templateId,
+      version: ver.version,
+      changeSummary: ver.changeSummary,
+      fieldsSchema: ver.fieldsSchema,
+      cardLayout: ver.cardLayout,
+      createdAt: ver.createdAt.toISOString()
+    })),
+    createdAt: t.createdAt.toISOString(),
+    updatedAt: t.updatedAt.toISOString()
+  };
+}
+router6.get("/", async (_req, res) => {
+  try {
+    const templateRows = await db.select().from(templates).where(isNull2(templates.deletedAt)).orderBy(desc2(templates.isDefault), desc2(templates.createdAt));
+    const versionRows = await db.select().from(templateVersions);
+    const versionMap = /* @__PURE__ */ new Map();
+    for (const v of versionRows) {
+      versionMap.set(v.id, v);
+    }
+    const result = templateRows.map(
+      (t) => formatTemplate(t, versionMap.get(t.currentVersionId))
+    );
+    res.json(result);
+  } catch (err) {
+    const details = err instanceof Error ? err.message : String(err);
+    console.error("Failed to fetch templates:", err);
+    res.status(500).json({ error: "Failed to fetch templates", details });
+  }
+});
+router6.get("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [templateRow] = await db.select().from(templates).where(and2(eq6(templates.id, id), isNull2(templates.deletedAt)));
+    if (!templateRow) {
+      return res.status(404).json({ error: "Template not found" });
+    }
+    const allVersions = await db.select().from(templateVersions).where(eq6(templateVersions.templateId, id)).orderBy(desc2(templateVersions.version));
+    const currentVersion = allVersions.find((v) => v.id === templateRow.currentVersionId) || allVersions[0];
+    res.json(formatTemplate(templateRow, currentVersion, allVersions));
+  } catch (err) {
+    const details = err instanceof Error ? err.message : String(err);
+    console.error("Failed to fetch template detail:", err);
+    res.status(500).json({ error: "Failed to fetch template", details });
+  }
+});
+router6.post("/:id/check-field-usage", async (req, res) => {
+  var _a;
+  try {
+    const { id } = req.params;
+    const { fieldIds } = req.body;
+    if (!Array.isArray(fieldIds) || fieldIds.length === 0) {
+      return res.json([]);
+    }
+    const reports = [];
+    for (const fieldId of fieldIds) {
+      const result = await pool.query(
+        `SELECT id, title FROM recipes 
+         WHERE template_id = $1 
+           AND deleted_at IS NULL
+           AND field_values ? $2 
+           AND (field_values->>$2) IS NOT NULL 
+           AND (field_values->>$2) != '' 
+           AND (field_values->>$2) != '[]' 
+           AND (field_values->>$2) != '{}'
+         LIMIT 10`,
+        [id, fieldId]
+      );
+      const countResult = await pool.query(
+        `SELECT COUNT(*)::int as count FROM recipes 
+         WHERE template_id = $1 
+           AND deleted_at IS NULL
+           AND field_values ? $2 
+           AND (field_values->>$2) IS NOT NULL 
+           AND (field_values->>$2) != '' 
+           AND (field_values->>$2) != '[]' 
+           AND (field_values->>$2) != '{}'`,
+        [id, fieldId]
+      );
+      const usedByCount = ((_a = countResult.rows[0]) == null ? void 0 : _a.count) || 0;
+      reports.push({
+        fieldId,
+        inUse: usedByCount > 0,
+        usedByCount,
+        recipeTitles: result.rows.map((r) => r.title)
+      });
+    }
+    res.json(reports);
+  } catch (err) {
+    const details = err instanceof Error ? err.message : String(err);
+    console.error("Failed to check field usage:", err);
+    res.status(500).json({ error: "Failed to check field usage", details });
+  }
+});
+router6.post("/", async (req, res) => {
+  try {
+    const body = req.body;
+    if (!body.name || !body.name.trim()) {
+      return res.status(400).json({ error: "Template name is required" });
+    }
+    const templateId = `tpl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    if (body.isDefault) {
+      await db.update(templates).set({ isDefault: false }).where(eq6(templates.isDefault, true));
+    }
+    const [createdVersion] = await db.insert(templateVersions).values({
+      templateId,
+      version: 1,
+      changeSummary: "Initial version",
+      fieldsSchema: body.fieldsSchema || [],
+      cardLayout: body.cardLayout || { columns: 4, widgets: [] }
+    }).returning();
+    const [createdTemplate] = await db.insert(templates).values({
+      id: templateId,
+      name: body.name.trim(),
+      description: body.description ? body.description.trim() : "",
+      isDefault: Boolean(body.isDefault),
+      currentVersionId: createdVersion.id
+    }).returning();
+    res.status(201).json(formatTemplate(createdTemplate, createdVersion, [createdVersion]));
+  } catch (err) {
+    const details = err instanceof Error ? err.message : String(err);
+    console.error("Failed to create template:", err);
+    res.status(500).json({ error: "Failed to create template", details });
+  }
+});
+router6.put("/:id", async (req, res) => {
+  var _a, _b;
+  try {
+    const { id } = req.params;
+    const body = req.body;
+    const [existing] = await db.select().from(templates).where(and2(eq6(templates.id, id), isNull2(templates.deletedAt)));
+    if (!existing) {
+      return res.status(404).json({ error: "Template not found" });
+    }
+    const [latestVersion] = await db.select().from(templateVersions).where(eq6(templateVersions.id, existing.currentVersionId));
+    const prevFields = (latestVersion == null ? void 0 : latestVersion.fieldsSchema) || [];
+    const newFields = body.fieldsSchema || [];
+    const prevFieldIds = new Set(prevFields.map((f) => f.id));
+    const newFieldIds = new Set(newFields.map((f) => f.id));
+    const removedFieldIds = [...prevFieldIds].filter((fid) => !newFieldIds.has(fid));
+    if (removedFieldIds.length > 0 && !body.archiveRemovedFields && !body.confirmPurgeRemovedFields) {
+      const inUseFields = [];
+      for (const fid of removedFieldIds) {
+        const countRes = await pool.query(
+          `SELECT COUNT(*)::int as count FROM recipes 
+           WHERE template_id = $1 
+             AND deleted_at IS NULL
+             AND field_values ? $2 
+             AND (field_values->>$2) IS NOT NULL 
+             AND (field_values->>$2) != '' 
+             AND (field_values->>$2) != '[]' 
+             AND (field_values->>$2) != '{}'`,
+          [id, fid]
+        );
+        const count2 = ((_a = countRes.rows[0]) == null ? void 0 : _a.count) || 0;
+        if (count2 > 0) {
+          const sampleRes = await pool.query(
+            `SELECT title FROM recipes 
+             WHERE template_id = $1 
+               AND deleted_at IS NULL
+               AND field_values ? $2 
+             LIMIT 5`,
+            [id, fid]
+          );
+          const fieldDef = prevFields.find((f) => f.id === fid);
+          inUseFields.push({
+            fieldId: fid,
+            name: (fieldDef == null ? void 0 : fieldDef.name) || fid,
+            usedByCount: count2,
+            recipeTitles: sampleRes.rows.map((r) => r.title)
+          });
+        }
+      }
+      if (inUseFields.length > 0) {
+        return res.status(409).json({
+          error: "Removed fields contain data in existing recipes",
+          requiresResolution: true,
+          inUseFields
+        });
+      }
+    }
+    let finalFieldsSchema = newFields;
+    if (body.archiveRemovedFields && removedFieldIds.length > 0) {
+      const archivedFields = prevFields.filter((f) => removedFieldIds.includes(f.id)).map((f) => ({ ...f, isArchived: true }));
+      finalFieldsSchema = [...newFields, ...archivedFields];
+    }
+    const allVersions = await db.select({ version: templateVersions.version }).from(templateVersions).where(eq6(templateVersions.templateId, id));
+    const nextVersionNumber = Math.max(...allVersions.map((v) => v.version), 0) + 1;
+    if (body.isDefault) {
+      await db.update(templates).set({ isDefault: false }).where(eq6(templates.isDefault, true));
+    }
+    const [newVersionRow] = await db.insert(templateVersions).values({
+      templateId: id,
+      version: nextVersionNumber,
+      changeSummary: ((_b = body.changeSummary) == null ? void 0 : _b.trim()) || `Updated to version ${nextVersionNumber}`,
+      fieldsSchema: finalFieldsSchema,
+      cardLayout: body.cardLayout || (latestVersion == null ? void 0 : latestVersion.cardLayout) || { columns: 4, widgets: [] }
+    }).returning();
+    const updatePayload = {
+      currentVersionId: newVersionRow.id,
+      updatedAt: /* @__PURE__ */ new Date()
+    };
+    if (body.name !== void 0) updatePayload.name = body.name.trim();
+    if (body.description !== void 0) updatePayload.description = body.description.trim();
+    if (body.isDefault !== void 0) updatePayload.isDefault = Boolean(body.isDefault);
+    const [updatedTemplate] = await db.update(templates).set(updatePayload).where(eq6(templates.id, id)).returning();
+    if (body.confirmPurgeRemovedFields && removedFieldIds.length > 0) {
+      for (const fid of removedFieldIds) {
+        await pool.query(
+          `UPDATE recipes 
+           SET archived_values = archived_values || jsonb_build_object($2, field_values->$2),
+               field_values = field_values - $2
+           WHERE template_id = $1 AND field_values ? $2`,
+          [id, fid]
+        );
+      }
+    }
+    res.json(formatTemplate(updatedTemplate, newVersionRow));
+  } catch (err) {
+    const details = err instanceof Error ? err.message : String(err);
+    console.error("Failed to update template:", err);
+    res.status(500).json({ error: "Failed to update template", details });
+  }
+});
+router6.post("/:id/rollback", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { targetVersionId } = req.body;
+    const [templateRow] = await db.select().from(templates).where(and2(eq6(templates.id, id), isNull2(templates.deletedAt)));
+    if (!templateRow) {
+      return res.status(404).json({ error: "Template not found" });
+    }
+    const [targetVersion] = await db.select().from(templateVersions).where(and2(eq6(templateVersions.id, targetVersionId), eq6(templateVersions.templateId, id)));
+    if (!targetVersion) {
+      return res.status(404).json({ error: "Target version not found" });
+    }
+    const allVersions = await db.select({ version: templateVersions.version }).from(templateVersions).where(eq6(templateVersions.templateId, id));
+    const nextVersionNumber = Math.max(...allVersions.map((v) => v.version), 0) + 1;
+    const [rollbackVersion] = await db.insert(templateVersions).values({
+      templateId: id,
+      version: nextVersionNumber,
+      changeSummary: `Rolled back to v${targetVersion.version}`,
+      fieldsSchema: targetVersion.fieldsSchema,
+      cardLayout: targetVersion.cardLayout
+    }).returning();
+    const [updatedTemplate] = await db.update(templates).set({
+      currentVersionId: rollbackVersion.id,
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq6(templates.id, id)).returning();
+    res.json(formatTemplate(updatedTemplate, rollbackVersion));
+  } catch (err) {
+    const details = err instanceof Error ? err.message : String(err);
+    console.error("Failed to rollback template:", err);
+    res.status(500).json({ error: "Failed to rollback template", details });
+  }
+});
+router6.post("/:id/duplicate", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [sourceTemplate] = await db.select().from(templates).where(and2(eq6(templates.id, id), isNull2(templates.deletedAt)));
+    if (!sourceTemplate) {
+      return res.status(404).json({ error: "Source template not found" });
+    }
+    const [sourceVersion] = await db.select().from(templateVersions).where(eq6(templateVersions.id, sourceTemplate.currentVersionId));
+    const newTemplateId = `tpl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const [newVersion] = await db.insert(templateVersions).values({
+      templateId: newTemplateId,
+      version: 1,
+      changeSummary: `Cloned from ${sourceTemplate.name}`,
+      fieldsSchema: (sourceVersion == null ? void 0 : sourceVersion.fieldsSchema) || [],
+      cardLayout: (sourceVersion == null ? void 0 : sourceVersion.cardLayout) || { columns: 4, widgets: [] }
+    }).returning();
+    const [newTemplate] = await db.insert(templates).values({
+      id: newTemplateId,
+      name: `${sourceTemplate.name} (Copy)`,
+      description: sourceTemplate.description,
+      isDefault: false,
+      currentVersionId: newVersion.id
+    }).returning();
+    res.status(201).json(formatTemplate(newTemplate, newVersion, [newVersion]));
+  } catch (err) {
+    const details = err instanceof Error ? err.message : String(err);
+    console.error("Failed to duplicate template:", err);
+    res.status(500).json({ error: "Failed to duplicate template", details });
+  }
+});
+router6.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (id === "tpl_default") {
+      return res.status(400).json({ error: "The default template cannot be deleted." });
+    }
+    await pool.query(
+      `UPDATE recipes 
+       SET template_id = 'tpl_default', template_version_id = 1 
+       WHERE template_id = $1`,
+      [id]
+    );
+    await db.update(templates).set({ deletedAt: /* @__PURE__ */ new Date(), updatedAt: /* @__PURE__ */ new Date() }).where(eq6(templates.id, id));
+    res.json({ success: true, message: "Template removed successfully" });
+  } catch (err) {
+    const details = err instanceof Error ? err.message : String(err);
+    console.error("Failed to delete template:", err);
+    res.status(500).json({ error: "Failed to delete template", details });
+  }
+});
+var templates_default = router6;
+
 // server/src/index.ts
 var app = express();
 app.use(cors());
@@ -961,6 +1590,7 @@ app.use("/api/health", health_default);
 app.use("/api/config", config_default);
 app.use("/api/tags", tags_default);
 app.use("/api/conflicts", conflicts_default);
+app.use("/api/templates", templates_default);
 app.use("/api/recipes", recipes_default);
 if (fs.existsSync(config.clientDistPath)) {
   console.log(`[Server] Serving static client build from ${config.clientDistPath}`);

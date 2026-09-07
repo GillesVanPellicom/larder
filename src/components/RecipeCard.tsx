@@ -1,17 +1,25 @@
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { ButtonGroup } from '@/components/ui/button-group'
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import type { Recipe, RecipeViolation, TagCategory } from '@/shared/types'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { CardGridRenderer } from '@/components/template-engine/CardGridRenderer'
+import type { Recipe, RecipeTemplate, RecipeViolation, TagCategory } from '@/shared/types'
 import {
   AlertTriangle,
   Clock,
-  Info,
   Pencil,
   Trash2,
+  Users,
   Utensils,
 } from 'lucide-react'
 
@@ -19,6 +27,7 @@ interface RecipeCardProps {
   recipe: Recipe
   violations?: RecipeViolation[]
   categories: TagCategory[]
+  template?: RecipeTemplate | null
   onView: (recipe: Recipe) => void
   onEdit: (recipe: Recipe) => void
   onDeleteRequest: (recipe: Recipe) => void
@@ -28,6 +37,7 @@ export function RecipeCard({
   recipe,
   violations = [],
   categories,
+  template,
   onView,
   onEdit,
   onDeleteRequest,
@@ -35,137 +45,181 @@ export function RecipeCard({
   const hasViolations = violations.length > 0
   const ingredientCount = recipe.ingredients?.length || 0
 
+  const hasCustomLayout = Boolean(
+    template?.currentVersion?.cardLayout?.widgets &&
+    template.currentVersion.cardLayout.widgets.length > 0
+  )
+
   return (
     <Card
       onClick={() => onView(recipe)}
-      className="group relative flex flex-col justify-between overflow-hidden transition-all duration-150 hover:brightness-105 dark:hover:brightness-110 cursor-pointer border border-border bg-card text-card-foreground shadow-xs select-none"
+      className="group relative flex flex-col justify-between overflow-hidden p-0 pt-0 gap-0 transition-all duration-150 hover:brightness-105 dark:hover:brightness-110 cursor-pointer border border-border bg-card text-card-foreground shadow-xs select-none rounded-2xl"
     >
-      <div>
-        {/* Media Container */}
-        <div className="relative h-44 w-full overflow-hidden bg-muted/60">
-          {recipe.image_url ? (
-            <img
-              src={recipe.image_url}
-              alt={recipe.title}
-              className="h-full w-full object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center bg-muted/30">
-              <Utensils className="h-8 w-8 text-muted-foreground/40" />
-              <span className="mt-1.5 text-xs text-muted-foreground">
-                No image
-              </span>
-            </div>
-          )}
-
-          {/* Top-Left: Error Badge (Larger, icon only, hover shows violations) */}
-          {hasViolations && (
-            <div
-              className="absolute top-2.5 left-2.5 z-20 group/err"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex h-8.5 w-8.5 items-center justify-center rounded-lg bg-destructive text-white shadow-md backdrop-blur-xs transition-transform hover:scale-105 cursor-help">
-                <AlertTriangle className="h-4.5 w-4.5" />
-              </div>
-
-              {/* Hover Tooltip with Violations */}
-              <div className="pointer-events-none absolute top-full left-0 mt-1.5 hidden group-hover/err:block z-40 w-64 p-3 rounded-xl bg-popover/95 border border-border shadow-xl backdrop-blur-md text-xs text-popover-foreground animate-in fade-in zoom-in-95">
-                <div className="font-bold text-destructive flex items-center gap-1.5 mb-1.5">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
-                  <span>{violations.length} Metadata Violation{violations.length > 1 ? 's' : ''}</span>
+      {/* Top-Left: Error Badge */}
+      {hasViolations && (
+        <div
+          className="absolute top-2.5 left-2.5 z-20"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <div className="flex h-8.5 w-8.5 items-center justify-center rounded-lg bg-destructive text-white shadow-md backdrop-blur-xs transition-transform hover:scale-105 cursor-help">
+                  <AlertTriangle className="h-4.5 w-4.5" />
                 </div>
-                <ul className="space-y-1 text-muted-foreground list-disc list-inside text-[11px] leading-relaxed">
-                  {violations.map((v, i) => (
-                    <li key={i}>{v.message}</li>
-                  ))}
-                </ul>
+              }
+            />
+            <TooltipContent side="bottom" align="start" className="w-64">
+              <div className="font-bold text-destructive flex items-center gap-1.5 mb-1">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>{violations.length} Metadata Violation{violations.length > 1 ? 's' : ''}</span>
               </div>
-            </div>
-          )}
+              <ul className="space-y-1 text-muted-foreground list-disc list-inside text-xs leading-relaxed">
+                {violations.map((v, i) => (
+                  <li key={i}>{v.message}</li>
+                ))}
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      )}
 
-          {/* Top-Right: Cohesive Action ButtonGroup (Hover-only, on opposite side so it never shifts badge) */}
-          <div
-            className="absolute top-2.5 right-2.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-            onClick={(e) => e.stopPropagation()}
+      {/* Top-Right: Cohesive Action ButtonGroup */}
+      <div
+        className="absolute top-2.5 right-2.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <ButtonGroup orientation="horizontal" className="bg-black/80 backdrop-blur-md rounded-lg p-0.5 shadow-md border border-white/20">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => onEdit(recipe)}
+            title="Edit recipe"
+            className="h-8 w-8 text-white hover:bg-white/20 hover:text-white cursor-pointer"
           >
-            <div className="inline-flex items-center rounded-lg border border-white/20 bg-black/75 backdrop-blur-md p-0.5 shadow-md">
-              <button
-                type="button"
-                onClick={() => onEdit(recipe)}
-                title="Edit recipe"
-                className="flex h-8 w-8 items-center justify-center rounded-md text-white/90 hover:text-white hover:bg-white/20 transition-colors cursor-pointer"
-              >
-                <Pencil className="h-4.5 w-4.5" />
-              </button>
-              <div className="h-4 w-px bg-white/20 my-auto" />
-              <button
-                type="button"
-                onClick={() => onDeleteRequest(recipe)}
-                title="Delete recipe"
-                className="flex h-8 w-8 items-center justify-center rounded-md text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-colors cursor-pointer"
-              >
-                <Trash2 className="h-4.5 w-4.5" />
-              </button>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => onDeleteRequest(recipe)}
+            title="Delete recipe"
+            className="h-8 w-8 text-red-400 hover:bg-red-500/20 hover:text-red-300 cursor-pointer"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </ButtonGroup>
+      </div>
+
+      {hasCustomLayout ? (
+        <CardGridRenderer
+          cardLayout={template!.currentVersion!.cardLayout}
+          fieldValues={
+            recipe.field_values && Object.keys(recipe.field_values).length > 0
+              ? {
+                  ...recipe.field_values,
+                  fld_image: recipe.field_values.fld_image || recipe.image_url,
+                }
+              : {
+                  fld_title: recipe.title,
+                  fld_description: recipe.description,
+                  fld_yield: recipe.yield_amount,
+                  fld_prep_time: recipe.prep_time_minutes,
+                  fld_cook_time: recipe.cook_time_minutes,
+                  fld_total_time: recipe.total_time_minutes,
+                  fld_image: recipe.image_url,
+                  fld_tags: recipe.tags,
+                }
+          }
+          fieldsSchema={template!.currentVersion!.fieldsSchema}
+        />
+      ) : (
+        <div>
+          {/* Media Container: Flush to top edge with rounded top corners */}
+          <div className="relative h-48 w-full overflow-hidden bg-muted/60 rounded-t-2xl">
+            {recipe.image_url ? (
+              <img
+                src={recipe.image_url}
+                alt={recipe.title}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center bg-muted/30">
+                <Utensils className="h-8 w-8 text-muted-foreground/40" />
+                <span className="mt-1.5 text-xs text-muted-foreground">
+                  No image
+                </span>
+              </div>
+            )}
+
+            {/* Time & Yield Badges on Image */}
+            <div className="absolute bottom-2.5 left-2.5 flex flex-wrap gap-1.5">
+              {recipe.total_time_minutes > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-black/75 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur-xs shadow-xs">
+                  <Clock className="h-3.5 w-3.5 text-amber-400" />
+                  <span>{recipe.total_time_minutes}m</span>
+                </span>
+              )}
+              {recipe.yield_amount && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-black/75 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur-xs shadow-xs">
+                  <Users className="h-3.5 w-3.5 text-blue-300" />
+                  <span>{recipe.yield_amount}</span>
+                </span>
+              )}
             </div>
           </div>
-        </div>
 
         {/* Card Body */}
         <CardHeader className="p-4 pb-2">
-          <div className="flex items-center justify-between gap-2">
-            <CardTitle className="text-base font-bold tracking-tight text-foreground line-clamp-1">
-              {recipe.title}
-            </CardTitle>
-
-            {/* Info Icon with hover description (Replaces subtitle) */}
-            {recipe.description && (
-              <div
-                className="relative group/info shrink-0"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div
-                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-help"
-                  title="View description"
-                >
-                  <Info className="h-4 w-4" />
-                </div>
-                <div className="pointer-events-none absolute right-0 top-full mt-1 hidden group-hover/info:block z-30 w-56 p-2.5 rounded-xl bg-popover/95 border border-border shadow-lg backdrop-blur-md text-xs text-muted-foreground leading-relaxed animate-in fade-in zoom-in-95">
-                  <span className="font-semibold text-foreground block mb-0.5">Overview</span>
-                  {recipe.description}
-                </div>
-              </div>
-            )}
-          </div>
+          <CardTitle className="text-base font-bold tracking-tight text-foreground line-clamp-1">
+            {recipe.title}
+          </CardTitle>
         </CardHeader>
 
-        <CardContent className="p-4 pt-0 space-y-3">
-          {/* Classy Stats Strip: Total Time & Ingredient Count */}
-          <div className="flex items-center gap-3 text-xs text-muted-foreground font-medium py-1 px-2 rounded-lg bg-muted/40">
-            <div className="flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-              <span className="font-semibold text-foreground">
-                {recipe.total_time_minutes > 0 ? `${recipe.total_time_minutes}m` : '0m'}
-              </span>
+        <CardContent className="p-4 pt-1 space-y-3">
+          {/* Prominent Cook Time & Ingredients Feature Block */}
+          <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted/40 p-2.5 border border-border/60">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                <Clock className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block truncate">
+                  Cook Time
+                </span>
+                <span className="text-xs font-bold text-foreground truncate block">
+                  {recipe.cook_time_minutes > 0
+                    ? `${recipe.cook_time_minutes} min`
+                    : recipe.total_time_minutes > 0
+                    ? `${recipe.total_time_minutes} min`
+                    : '—'}
+                </span>
+              </div>
             </div>
 
-            <span className="text-muted-foreground/40">•</span>
-
-            <div className="flex items-center gap-1.5">
-              <Utensils className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span>
-                <strong className="font-semibold text-foreground">{ingredientCount}</strong>{' '}
-                {ingredientCount === 1 ? 'ingredient' : 'ingredients'}
-              </span>
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Utensils className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block truncate">
+                  Ingredients
+                </span>
+                <span className="text-xs font-bold text-foreground truncate block">
+                  {ingredientCount} item{ingredientCount === 1 ? '' : 's'}
+                </span>
+              </div>
             </div>
-
-            {recipe.yield_amount && (
-              <>
-                <span className="text-muted-foreground/40">•</span>
-                <span className="truncate text-foreground/80">{recipe.yield_amount}</span>
-              </>
-            )}
           </div>
+
+          {/* Prominent Ingredients Summary */}
+          {recipe.ingredients && recipe.ingredients.length > 0 && (
+            <p className="text-xs text-muted-foreground line-clamp-1 leading-relaxed">
+              <strong className="text-foreground font-semibold">Ingredients: </strong>
+              {recipe.ingredients.map((i) => i.name).filter(Boolean).join(', ')}
+            </p>
+          )}
 
           {/* Tags */}
           {recipe.tags && Object.keys(recipe.tags).length > 0 && (
@@ -187,6 +241,7 @@ export function RecipeCard({
           )}
         </CardContent>
       </div>
-    </Card>
-  )
+    )}
+  </Card>
+)
 }
