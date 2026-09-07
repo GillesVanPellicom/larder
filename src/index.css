@@ -1,0 +1,267 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: oklch(0.985 0.002 90);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.95 0.004 90);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.95 0.004 90);
+  --muted-foreground: oklch(0.5 0 0);
+  --accent: oklch(0.95 0.004 90);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.89 0.005 90);
+  --input: oklch(0.89 0.005 90);
+  --ring: oklch(0.5 0 0);
+  --radius: 0.625rem;
+}
+
+.dark {
+  --background: oklch(0.13 0.005 260);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.175 0.006 260);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.175 0.006 260);
+  --popover-foreground: oklch(0.98 0 0);
+  --primary: oklch(0.98 0 0);
+  --primary-foreground: oklch(0.15 0 0);
+  --secondary: oklch(0.23 0.006 260);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.23 0.006 260);
+  --muted-foreground: oklch(0.68 0 0);
+  --accent: oklch(0.23 0.006 260);
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(0.28 0.006 260);
+  --input: oklch(0.28 0.006 260);
+  --ring: oklch(0.65 0 0);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    scrollbar-gutter: stable;
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    min-height: 100vh;
+  }
+}
+
+/* Quill Rich Text Editor Custom Theme & Styling */
+.quill-editor-wrapper .ql-toolbar.ql-snow {
+  border: none !important;
+  border-bottom: 1px solid var(--border) !important;
+  background-color: color-mix(in oklch, var(--muted) 40%, transparent);
+  padding: 8px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.quill-editor-wrapper .ql-container.ql-snow {
+  border: none !important;
+  background-color: var(--card);
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 0.875rem;
+}
+
+.quill-editor-wrapper .ql-editor {
+  min-height: var(--quill-min-height, 220px);
+  padding: 14px 16px;
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+
+.quill-editor-wrapper .ql-editor.ql-blank::before {
+  color: var(--muted-foreground) !important;
+  font-style: normal;
+  font-family: inherit;
+  font-size: 0.875rem;
+  left: 16px;
+  right: 16px;
+}
+
+/* Icons styling for light & dark themes */
+.ql-snow .ql-stroke {
+  stroke: var(--foreground) !important;
+  opacity: 0.75;
+}
+
+.ql-snow .ql-fill {
+  fill: var(--foreground) !important;
+  opacity: 0.75;
+}
+
+.ql-snow.ql-toolbar button:hover,
+.ql-snow .ql-toolbar button:hover,
+.ql-snow.ql-toolbar button:focus,
+.ql-snow .ql-toolbar button:focus,
+.ql-snow.ql-toolbar button.ql-active,
+.ql-snow .ql-toolbar button.ql-active {
+  background-color: var(--accent) !important;
+  border-radius: calc(var(--radius) * 0.5);
+}
+
+.ql-snow.ql-toolbar button:hover .ql-stroke,
+.ql-snow .ql-toolbar button:hover .ql-stroke,
+.ql-snow.ql-toolbar button.ql-active .ql-stroke,
+.ql-snow .ql-toolbar button.ql-active .ql-stroke {
+  stroke: var(--primary) !important;
+  opacity: 1;
+}
+
+.ql-snow.ql-toolbar button:hover .ql-fill,
+.ql-snow .ql-toolbar button:hover .ql-fill,
+.ql-snow.ql-toolbar button.ql-active .ql-fill,
+.ql-snow .ql-toolbar button.ql-active .ql-fill {
+  fill: var(--primary) !important;
+  opacity: 1;
+}
+
+/* Quill tooltip (for links) */
+.ql-snow .ql-tooltip {
+  background-color: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  z-index: 50;
+}
+
+.ql-snow .ql-tooltip input[type="text"] {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: calc(var(--radius) * 0.5);
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}
+
+.ql-snow .ql-tooltip a {
+  color: var(--primary) !important;
+  font-weight: 600;
+}
+
+/* Rich Recipe Instructions Display Styling */
+.recipe-instructions-content {
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  color: var(--foreground);
+}
+
+.recipe-instructions-content p {
+  margin-bottom: 0.75em;
+}
+
+.recipe-instructions-content p:last-child {
+  margin-bottom: 0;
+}
+
+.recipe-instructions-content ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75em;
+}
+
+.recipe-instructions-content ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75em;
+}
+
+.recipe-instructions-content li {
+  margin-bottom: 0.4em;
+  padding-left: 0.25rem;
+}
+
+.recipe-instructions-content li[data-list="checked"] {
+  list-style-type: none;
+  position: relative;
+  padding-left: 1.6rem;
+}
+
+.recipe-instructions-content li[data-list="checked"]::before {
+  content: "☑";
+  position: absolute;
+  left: 0;
+  color: oklch(0.65 0.19 145);
+  font-size: 1.1em;
+}
+
+.recipe-instructions-content li[data-list="unchecked"] {
+  list-style-type: none;
+  position: relative;
+  padding-left: 1.6rem;
+}
+
+.recipe-instructions-content li[data-list="unchecked"]::before {
+  content: "☐";
+  position: absolute;
+  left: 0;
+  color: var(--muted-foreground);
+  font-size: 1.1em;
+}
+
+.recipe-instructions-content a {
+  color: oklch(0.6 0.18 250);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.recipe-instructions-content strong {
+  font-weight: 700;
+}
+
+.recipe-instructions-content em {
+  font-style: italic;
+}
+
+.recipe-instructions-content u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="larderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ea580c"/>
+      <stop offset="100%" stop-color="#9a3412"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#larderGrad)"/>
+  <g filter="url(#shadow)" transform="translate(106, 106) scale(0.585)">
+    <!-- Cloche and Platter Design -->
+    <path d="M64 400h384c17.7 0 32-14.3 32-32s-14.3-32-32-32H64c-17.7 0-32 14.3-32 32s14.3 32 32 32z" fill="#ffffff"/>
+    <path d="M256 128c-97.2 0-176 78.8-176 176h352c0-97.2-78.8-176-176-176z" fill="#ffffff" fill-opacity="0.95"/>
+    <circle cx="256" cy="112" r="28" fill="#ffffff"/>
+    <!-- Steam waves -->
+    <path d="M208 64c-8 16 8 24 0 40" stroke="#fde047" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <path d="M256 48c-8 16 8 24 0 40" stroke="#fde047" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <path d="M304 64c-8 16 8 24 0 40" stroke="#fde047" stroke-width="12" stroke-linecap="round" fill="none"/>
+  </g>
+</svg>

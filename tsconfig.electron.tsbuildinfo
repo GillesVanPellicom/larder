@@ -1,0 +1,1 @@
+{"root":["./electron/main.ts","./electron/preload.ts","./electron/backend/db.ts","./electron/backend/ipc.ts"],"version":"6.0.3"}

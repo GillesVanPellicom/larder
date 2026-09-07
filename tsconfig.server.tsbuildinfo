@@ -1,0 +1,1 @@
+{"root":["./server/src/config.ts","./server/src/index.ts","./server/src/db/index.ts","./server/src/db/migrate.ts","./server/src/db/schema.ts","./server/src/routes/config.ts","./server/src/routes/conflicts.ts","./server/src/routes/health.ts","./server/src/routes/recipes.ts","./server/src/routes/tags.ts","./shared/types.ts"],"version":"6.0.3"}
