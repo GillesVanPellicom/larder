@@ -1,5 +1,5 @@
 import type { CardGridLayoutConfig, CardGridWidget, TemplateField } from '@/shared/types'
-import { Clock, Flame, Image as ImageIcon, Star, Tag, Utensils } from 'lucide-react'
+import { Clock, Flame, Image as ImageIcon, Star, Tag, Timer, Utensils } from 'lucide-react'
 
 interface CardGridRendererProps {
   cardLayout?: CardGridLayoutConfig
@@ -47,7 +47,7 @@ export function CardGridRenderer({
       {topImageWidget && (
         <TopImageBanner
           field={fieldMap.get(topImageWidget.fieldId)}
-          value={fieldValues[topImageWidget.fieldId]}
+          value={fieldValues[topImageWidget.fieldId] || fieldValues.image_url || fieldValues.fld_image}
         />
       )}
 
@@ -73,6 +73,7 @@ export function CardGridRenderer({
                     widget={widget}
                     field={field}
                     value={rawValue}
+                    fieldValues={fieldValues}
                   />
                 </div>
               )
@@ -121,16 +122,18 @@ function RenderWidget({
   widget,
   field,
   value,
+  fieldValues,
 }: {
   widget: CardGridWidget
   field?: TemplateField
   value: unknown
+  fieldValues: Record<string, unknown>
 }) {
   const { widgetType, options } = widget
 
   // WIDGET 1: IMAGE BANNER (Fallback for non-top images)
   if (widgetType === 'image_banner') {
-    const imageUrl = (value as string) || ''
+    const imageUrl = (value as string) || (fieldValues.image_url as string) || (fieldValues.fld_image as string) || ''
     return (
       <div className="relative w-full h-32 rounded-xl overflow-hidden bg-muted/40 flex items-center justify-center">
         {imageUrl ? (
@@ -154,11 +157,116 @@ function RenderWidget({
 
   // WIDGET 2: TITLE HEADER
   if (widgetType === 'title_header') {
-    const titleText = (value as string) || field?.name || 'Untitled Recipe'
+    const titleText =
+      (value as string) ||
+      (fieldValues.title as string) ||
+      (fieldValues.fld_title as string) ||
+      field?.name ||
+      'Untitled Recipe'
     return (
       <h3 className="font-bold text-base text-foreground tracking-tight line-clamp-1 group-hover:text-primary transition-colors">
         {titleText}
       </h3>
+    )
+  }
+
+  // WIDGET: DESCRIPTION / TEXT SNIPPET
+  if (widgetType === 'description' || widgetType === 'text_snippet') {
+    const text =
+      (value as string) ||
+      (fieldValues.description as string) ||
+      (fieldValues.fld_description as string) ||
+      ''
+    if (!text) return null
+
+    return (
+      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+        {text}
+      </p>
+    )
+  }
+
+  // WIDGET: PREP TIME
+  if (widgetType === 'prep_time') {
+    const prep =
+      Number(value) ||
+      Number(fieldValues.prep_time_minutes) ||
+      Number(fieldValues.fld_prep_time) ||
+      0
+    if (!prep) return null
+
+    return (
+      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border bg-muted/30 text-xs text-foreground font-medium truncate">
+        <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <span className="truncate font-semibold">Prep: {prep} min</span>
+      </div>
+    )
+  }
+
+  // WIDGET: COOK TIME
+  if (widgetType === 'cook_time') {
+    const cook =
+      Number(value) ||
+      Number(fieldValues.cook_time_minutes) ||
+      Number(fieldValues.fld_cook_time) ||
+      0
+    if (!cook) return null
+
+    return (
+      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border bg-muted/30 text-xs text-foreground font-medium truncate">
+        <Flame className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+        <span className="truncate font-semibold">Cook: {cook} min</span>
+      </div>
+    )
+  }
+
+  // WIDGET: TOTAL TIME
+  if (widgetType === 'total_time') {
+    const prep =
+      Number(fieldValues.prep_time_minutes) ||
+      Number(fieldValues.fld_prep_time) ||
+      0
+    const cook =
+      Number(fieldValues.cook_time_minutes) ||
+      Number(fieldValues.fld_cook_time) ||
+      0
+    const total =
+      Number(value) ||
+      Number(fieldValues.total_time_minutes) ||
+      Number(fieldValues.fld_total_time) ||
+      (prep + cook) ||
+      0
+    if (!total) return null
+
+    return (
+      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border bg-muted/30 text-xs text-foreground font-medium truncate">
+        <Timer className="h-3.5 w-3.5 text-primary shrink-0" />
+        <span className="truncate font-semibold">Total: {total} min</span>
+      </div>
+    )
+  }
+
+  // WIDGET: YIELD
+  if (widgetType === 'yield') {
+    const rawYield = String(
+      value ||
+      fieldValues.yield_amount ||
+      fieldValues.fld_yield ||
+      ''
+    ).trim()
+    if (!rawYield) return null
+
+    const display =
+      rawYield.toLowerCase().includes('serving') ||
+      rawYield.toLowerCase().includes('portion')
+        ? rawYield
+        : `${rawYield} servings`
+
+    return (
+      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border bg-muted/30 text-xs text-foreground font-medium truncate">
+        <Utensils className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <span className="truncate font-semibold">{display}</span>
+      </div>
     )
   }
 
@@ -189,7 +297,7 @@ function RenderWidget({
 
   // WIDGET 4: TAG CHIPS
   if (widgetType === 'tag_chips') {
-    const tagsDict = (value as Record<string, string[]>) || {}
+    const tagsDict = (value as Record<string, string[]>) || (fieldValues.tags as Record<string, string[]>) || (fieldValues.fld_tags as Record<string, string[]>) || {}
     const selectedGroups = options?.selectedTagGroups || []
 
     let filteredTags: string[] = []
@@ -252,18 +360,6 @@ function RenderWidget({
       <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 text-xs font-semibold">
         <span>{field?.name || 'Active'}</span>
       </div>
-    )
-  }
-
-  // WIDGET 7: TEXT SNIPPET
-  if (widgetType === 'text_snippet') {
-    const text = (value as string) || ''
-    if (!text) return null
-
-    return (
-      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-        {text}
-      </p>
     )
   }
 

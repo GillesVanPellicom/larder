@@ -66,6 +66,8 @@ export const tagCategories = pgTable('tag_categories', {
   name: varchar('name', { length: 255 }).notNull(),
   color: varchar('color', { length: 50 }).default('neutral').notNull(),
   exclusive: boolean('exclusive').default(false).notNull(),
+  minTags: integer('min_tags').default(0),
+  maxTags: integer('max_tags'),
   tags: jsonb('tags').$type<string[]>().default([]).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

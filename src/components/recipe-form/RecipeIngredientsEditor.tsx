@@ -1,12 +1,8 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import type { IngredientItem } from '@/shared/types'
-import { Info, Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 
 interface RecipeIngredientsEditorProps {
   ingredients: IngredientItem[]
@@ -31,18 +27,7 @@ export function RecipeIngredientsEditor({
         <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
           Ingredients {isMandatory && <span className="text-destructive">*</span>}
         </h2>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <button type="button" className="p-0.5 text-muted-foreground hover:text-foreground cursor-help">
-                <Info className="h-3.5 w-3.5" />
-              </button>
-            }
-          />
-          <TooltipContent>
-            Specify quantities, units, and ingredients. Press Enter to append a row.
-          </TooltipContent>
-        </Tooltip>
+        <InfoTooltip content="Specify quantities, units, and ingredients. Press Enter to append a row." />
       </div>
 
       {error && (

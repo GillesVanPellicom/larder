@@ -11,6 +11,29 @@
     <meta name="apple-mobile-web-app-title" content="Larder" />
     <meta name="description" content="Larder - Culinary Recipe Knowledge Base with Rich Filtering and Conflict Resolution" />
     <title>Larder — Culinary Recipe Knowledge Base</title>
+    <script>
+      (function() {
+        try {
+          var match = document.cookie.match(/(?:^|;\s*)coquinaria_theme=([^;]+)/);
+          var theme = match ? decodeURIComponent(match[1]) : null;
+          if (!theme) {
+            var legacy = localStorage.getItem('larder-theme');
+            if (legacy === 'light' || legacy === 'dark') theme = legacy;
+          }
+          if (!theme) {
+            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          var root = document.documentElement;
+          if (theme === 'dark') {
+            root.classList.add('dark');
+            root.style.colorScheme = 'dark';
+          } else {
+            root.classList.remove('dark');
+            root.style.colorScheme = 'light';
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,11 +1,18 @@
 import type { Recipe } from '@/shared/types'
+import { formatGracefulNumber } from '@/lib/recipeMath'
 import { Clock, Users } from 'lucide-react'
 
 interface RecipeHeroProps {
   recipe: Recipe
+  scaledYield?: string
+  yieldMultiplier?: number
 }
 
-export function RecipeHero({ recipe }: RecipeHeroProps) {
+export function RecipeHero({
+  recipe,
+  scaledYield,
+  yieldMultiplier = 1,
+}: RecipeHeroProps) {
   return (
     <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
       {recipe.image_url ? (
@@ -88,11 +95,16 @@ export function RecipeHero({ recipe }: RecipeHeroProps) {
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block">
             Yield
           </span>
-          <div className="flex items-center justify-center gap-1 mt-1">
+          <div className="flex items-center justify-center gap-1.5 mt-1 flex-wrap">
             <Users className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-sm font-bold text-foreground">
-              {recipe.yield_amount || '—'}
+              {scaledYield || recipe.yield_amount || '—'}
             </span>
+            {Math.abs(yieldMultiplier - 1) > 0.001 && (
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                {formatGracefulNumber(yieldMultiplier)}×
+              </span>
+            )}
           </div>
         </div>
       </div>

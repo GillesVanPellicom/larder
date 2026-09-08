@@ -6,7 +6,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Filter, RotateCcw, Search, X } from 'lucide-react'
+import { Filter, Plus, RotateCcw, Search, Settings, X } from 'lucide-react'
 
 interface CatalogToolbarProps {
   searchQuery: string
@@ -14,6 +14,8 @@ interface CatalogToolbarProps {
   activeFiltersCount: number
   onResetFilters: () => void
   onOpenFilterDrawer: () => void
+  onNewRecipe: () => void
+  onOpenSettings: () => void
 }
 
 export function CatalogToolbar({
@@ -22,6 +24,8 @@ export function CatalogToolbar({
   activeFiltersCount,
   onResetFilters,
   onOpenFilterDrawer,
+  onNewRecipe,
+  onOpenSettings,
 }: CatalogToolbarProps) {
   return (
     <div className="flex items-center gap-2.5">
@@ -94,6 +98,38 @@ export function CatalogToolbar({
           </TooltipContent>
         </Tooltip>
       </ButtonGroup>
+
+      {/* New Recipe Action */}
+      <Button
+        type="button"
+        size="sm"
+        onClick={onNewRecipe}
+        className="h-9 px-3 text-xs font-semibold cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 shadow-2xs gap-1.5 shrink-0"
+        title="New Recipe (N or Cmd+N)"
+      >
+        <Plus className="h-4 w-4" />
+        <span className="hidden sm:inline">New Recipe</span>
+      </Button>
+
+      {/* Settings Navigation Action */}
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={onOpenSettings}
+              className="h-9 w-9 border-border text-foreground hover:bg-muted cursor-pointer shrink-0 shadow-2xs"
+              aria-label="Settings"
+              title="Settings"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          }
+        />
+        <TooltipContent>Settings</TooltipContent>
+      </Tooltip>
     </div>
   )
 }

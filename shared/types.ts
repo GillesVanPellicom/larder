@@ -44,6 +44,7 @@ export type CreateRecipeDTO = Omit<Recipe, 'id' | 'created_at' | 'updated_at'>
 // ==========================================
 
 export type FieldType =
+  | 'recipe_details'
   | 'text'
   | 'rich_text'
   | 'number'
@@ -67,6 +68,12 @@ export interface FieldConfig {
   exclusive?: boolean // for 'tag_category': single-select vs multi
   separatorStyle?: 'line' | 'dashed' | 'heading'
   isContainer?: boolean // allows nesting other fields
+  mandatoryDetails?: {
+    description?: boolean
+    prepTime?: boolean
+    cookTime?: boolean
+    yieldAmount?: boolean
+  }
 }
 
 export interface TemplateField {
@@ -84,6 +91,11 @@ export interface TemplateField {
 export type CardWidgetType =
   | 'image_banner'
   | 'title_header'
+  | 'description'
+  | 'prep_time'
+  | 'cook_time'
+  | 'total_time'
+  | 'yield'
   | 'metric_chip'
   | 'tag_chips'
   | 'rating_stars'
@@ -103,6 +115,7 @@ export interface CardGridWidget {
     variant?: 'subtle' | 'outline' | 'solid'
     align?: 'left' | 'center' | 'right'
     icon?: string
+    selectedTagGroups?: string[]
   }
 }
 
@@ -153,6 +166,8 @@ export interface TagCategory {
   name: string
   color: string
   exclusive?: boolean
+  min_tags?: number
+  max_tags?: number
   tags: string[]
   created_at?: string
   updated_at?: string

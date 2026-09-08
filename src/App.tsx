@@ -1,56 +1,41 @@
 import { useState } from 'react'
 import type { CreateRecipeDTO, Recipe } from '@/shared/types'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { Header } from '@/components/layout/Header'
 import { RecipesCatalogPage } from '@/components/catalog/RecipesCatalogPage'
 import { RecipeViewPage } from '@/components/recipe-view/RecipeViewPage'
 import { RecipeFormPage } from '@/components/recipe-form/RecipeFormPage'
-import { ConflictsView } from '@/components/conflicts/ConflictsView'
 import { SettingsPage } from '@/components/settings/SettingsPage'
-import { TemplateEditorPage } from '@/components/templates/TemplateEditorPage'
 import { FilterDrawer } from '@/components/filter-drawer/FilterDrawer'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { useNavigation } from '@/hooks/useNavigation'
 import { useRecipesData } from '@/hooks/useRecipesData'
 import { useRecipeFilters } from '@/hooks/useRecipeFilters'
 import { useAppKeyboardShortcuts } from '@/hooks/useAppKeyboardShortcuts'
-import { useSubHeader } from '@/hooks/useSubHeader'
 import { useTemplatesData } from '@/hooks/useTemplatesData'
-import { SubHeader } from '@/components/layout/SubHeader'
+import { useTheme } from '@/hooks/useTheme'
 
 export function App() {
+  useTheme()
   const {
     currentView,
     selectedRecipe,
-    selectedTemplate,
     navigateTo,
     handleBack,
-    handleNavTab,
     handleSavedTransition,
     handleDeletedTransition,
   } = useNavigation()
 
-  const {
-    templates,
-    loading: templatesLoading,
-    createTemplate,
-    updateTemplate,
-    rollbackTemplate,
-    duplicateTemplate,
-    deleteTemplate,
-  } = useTemplatesData()
+  const { templates } = useTemplatesData()
 
   const {
     recipes,
     categories,
     metadataConfig,
-    conflicts,
     violationsMap,
     loading,
     saveRecipe,
     deleteRecipe,
     saveConfig,
-    fetchConflicts,
     fetchCategories,
   } = useRecipesData()
 
@@ -62,9 +47,6 @@ export function App() {
     filteredRecipes,
     activeFiltersCount,
   } = useRecipeFilters(recipes, violationsMap)
-
-  // SubHeader State (programmatically configurable, defaults to true)
-  const { subHeaderEnabled } = useSubHeader()
 
   // Drawer & Deletion Dialog States
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false)
@@ -99,46 +81,9 @@ export function App() {
     }
   }
 
-  // SubHeader is automatically active on the 3 core pages (and programmatically configurable)
-  const isSubHeaderActive =
-    subHeaderEnabled &&
-    (currentView === 'recipes' ||
-      currentView === 'recipe-view' ||
-      currentView === 'recipe-form')
-
   return (
     <TooltipProvider delay={200}>
-      <div className="min-h-screen bg-background text-foreground flex flex-col font-sans transition-colors duration-200">
-        {/* Global Navigation Header */}
-        <Header
-          currentView={currentView}
-          recipesCount={filteredRecipes.length}
-          conflictsCount={conflicts.length}
-          onNavTab={handleNavTab}
-          onNewRecipe={() => navigateTo('recipe-form', null)}
-        />
-
-        {/* Contextual Sticky Sub Header */}
-        {isSubHeaderActive && (
-          <SubHeader
-            currentView={currentView}
-            searchQuery={filterCriteria.searchQuery}
-            onSearchChange={(query) =>
-              setFilterCriteria({ ...filterCriteria, searchQuery: query })
-            }
-            activeFiltersCount={activeFiltersCount}
-            onResetFilters={resetFilters}
-            onOpenFilterDrawer={() => setFilterDrawerOpen(true)}
-            selectedRecipe={selectedRecipe}
-            selectedTemplate={selectedTemplate}
-            onBack={handleBack}
-            onEdit={(recipe) => navigateTo('recipe-form', recipe)}
-            onDeleteRequest={(recipe) => setRecipeToDelete(recipe)}
-            onRefreshConflicts={fetchConflicts}
-            onOpenConfig={() => navigateTo('settings', null)}
-          />
-        )}
-
+      <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
         {/* Main Content Router */}
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
           {/* VIEW 1: Recipes Catalog */}
@@ -156,10 +101,10 @@ export function App() {
               onResetFilters={resetFilters}
               onOpenFilterDrawer={() => setFilterDrawerOpen(true)}
               onNewRecipe={() => navigateTo('recipe-form', null)}
+              onOpenSettings={() => navigateTo('settings', null)}
               onViewRecipe={(recipe) => navigateTo('recipe-view', recipe)}
               onEditRecipe={(recipe) => navigateTo('recipe-form', recipe)}
               onDeleteRequest={(recipe) => setRecipeToDelete(recipe)}
-              hideToolbar={isSubHeaderActive}
             />
           )}
 
@@ -176,7 +121,6 @@ export function App() {
               onBack={handleBack}
               onEdit={(recipe) => navigateTo('recipe-form', recipe)}
               onDeleteRequest={(recipe) => setRecipeToDelete(recipe)}
-              hideTopBar={isSubHeaderActive}
             />
           )}
 
@@ -189,55 +133,17 @@ export function App() {
               templates={templates}
               onBack={handleBack}
               onSave={handleSaveRecipe}
-              hideTopBar={isSubHeaderActive}
             />
           )}
 
-          {/* VIEW 4: Metadata Conflicts Dashboard */}
-          {currentView === 'conflicts' && (
-            <ConflictsView
-              conflicts={conflicts}
-              loading={loading}
-              onRefresh={fetchConflicts}
-              onFixRecipe={(recipe) => navigateTo('recipe-form', recipe)}
-              onOpenConfig={() => navigateTo('settings', null)}
-            />
-          )}
-
-          {/* VIEW 5: Settings & Taxonomy Configuration */}
+          {/* VIEW 4: Settings & Configuration */}
           {currentView === 'settings' && (
             <SettingsPage
               metadataConfig={metadataConfig}
               categories={categories}
               onSaveConfig={saveConfig}
               onRefreshCategories={fetchCategories}
-              templates={templates}
-              templatesLoading={templatesLoading}
-              onOpenTemplateEditor={(tpl) => navigateTo('template-editor', null, tpl)}
-              onDuplicateTemplate={duplicateTemplate}
-              onDeleteTemplate={deleteTemplate}
-            />
-          )}
-
-          {/* VIEW 6: Recipe Template Editor */}
-          {currentView === 'template-editor' && (
-            <TemplateEditorPage
-              template={selectedTemplate}
-              categories={categories}
-              onBack={handleBack}
-              onSave={async (data) => {
-                if (selectedTemplate) {
-                  return updateTemplate(selectedTemplate.id, data)
-                } else {
-                  return createTemplate(data)
-                }
-              }}
-              onRollback={
-                selectedTemplate
-                  ? (verId) => rollbackTemplate(selectedTemplate.id, verId)
-                  : undefined
-              }
-              onDuplicate={duplicateTemplate}
+              onBack={() => navigateTo('recipes', null)}
             />
           )}
         </main>

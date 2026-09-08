@@ -9,15 +9,20 @@ import { CardGridRenderer } from '@/components/template-engine/CardGridRenderer'
 import { FIELD_CATALOG } from '@/components/template-engine/fieldCatalog'
 import type { CardGridLayoutConfig, CardGridWidget, TagCategory, TemplateField } from '@/shared/types'
 import {
+  AlignLeft,
   Clock,
   Eye,
   EyeOff,
+  Flame,
   GripVertical,
   Info,
   Plus,
   Star,
   Tag,
+  Timer,
   Trash2,
+  Type,
+  Utensils,
 } from 'lucide-react'
 
 export interface CardGridDesignerProps {
@@ -25,6 +30,17 @@ export interface CardGridDesignerProps {
   cardLayout: CardGridLayoutConfig
   categories?: TagCategory[]
   onChange: (layout: CardGridLayoutConfig) => void
+}
+
+export interface AvailableCardWidget {
+  id: string
+  fieldId: string
+  label: string
+  widgetType: CardGridWidget['widgetType']
+  icon: typeof Clock
+  defaultSpan: number
+  defaultRowSpan: number
+  sourceComponentName: string
 }
 
 type ActiveDragState =
@@ -47,7 +63,7 @@ type ActiveDragState =
     }
   | {
       type: 'palette'
-      field: TemplateField
+      widgetDef: AvailableCardWidget
       defaultSpan: number
       defaultRowSpan: number
     }
@@ -71,17 +87,237 @@ export function CardGridDesigner({
   const [activeDrag, setActiveDrag] = useState<ActiveDragState | null>(null)
   const [hoverGhost, setHoverGhost] = useState<HoverGhost | null>(null)
   const [snapNotice, setSnapNotice] = useState<string | null>(null)
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
 
   const gridRef = useRef<HTMLDivElement>(null)
 
-  // Filter fields that have widget representations
-  const eligibleFields = fields.filter((f) => {
-    const def = FIELD_CATALOG[f.type]
-    return def && def.hasWidgetForm && !f.isArchived
-  })
+  // Build the list of available widgets from the fields schema
+  // "Recipe Details" component generates multiple standalone widgets: Header, Description, Prep Time, Cook Time, Total Time, Yield
+  const availableWidgets: AvailableCardWidget[] = []
+  for (const field of fields) {
+    if (field.isArchived) continue
+    if (field.type === 'separator' || field.type === 'ingredient_table' || field.type === 'rich_text') continue
 
-  const placedFieldIds = new Set(cardLayout.widgets.map((w) => w.fieldId))
-  const unplacedFields = eligibleFields.filter((f) => !placedFieldIds.has(f.id))
+    if (field.type === 'recipe_details') {
+      availableWidgets.push(
+        {
+          id: `${field.id}__title`,
+          fieldId: field.id,
+          label: 'Recipe Title',
+          widgetType: 'title_header',
+          icon: Type,
+          defaultSpan: 4,
+          defaultRowSpan: 1,
+          sourceComponentName: field.name,
+        },
+        {
+          id: `${field.id}__description`,
+          fieldId: field.id,
+          label: 'Description',
+          widgetType: 'description',
+          icon: AlignLeft,
+          defaultSpan: 4,
+          defaultRowSpan: 1,
+          sourceComponentName: field.name,
+        },
+        {
+          id: `${field.id}__prep_time`,
+          fieldId: field.id,
+          label: 'Prep Time',
+          widgetType: 'prep_time',
+          icon: Clock,
+          defaultSpan: 2,
+          defaultRowSpan: 1,
+          sourceComponentName: field.name,
+        },
+        {
+          id: `${field.id}__cook_time`,
+          fieldId: field.id,
+          label: 'Cook Time',
+          widgetType: 'cook_time',
+          icon: Flame,
+          defaultSpan: 2,
+          defaultRowSpan: 1,
+          sourceComponentName: field.name,
+        },
+        {
+          id: `${field.id}__total_time`,
+          fieldId: field.id,
+          label: 'Total Time',
+          widgetType: 'total_time',
+          icon: Timer,
+          defaultSpan: 2,
+          defaultRowSpan: 1,
+          sourceComponentName: field.name,
+        },
+        {
+          id: `${field.id}__yield`,
+          fieldId: field.id,
+          label: 'Yield / Servings',
+          widgetType: 'yield',
+          icon: Utensils,
+          defaultSpan: 2,
+          defaultRowSpan: 1,
+          sourceComponentName: field.name,
+        }
+      )
+    } else if (field.id === 'fld_title') {
+      availableWidgets.push({
+        id: field.id,
+        fieldId: field.id,
+        label: 'Recipe Title',
+        widgetType: 'title_header',
+        icon: Type,
+        defaultSpan: 4,
+        defaultRowSpan: 1,
+        sourceComponentName: field.name,
+      })
+    } else if (field.id === 'fld_description') {
+      availableWidgets.push({
+        id: field.id,
+        fieldId: field.id,
+        label: 'Description',
+        widgetType: 'description',
+        icon: AlignLeft,
+        defaultSpan: 4,
+        defaultRowSpan: 1,
+        sourceComponentName: field.name,
+      })
+    } else if (field.id === 'fld_prep_time') {
+      availableWidgets.push({
+        id: field.id,
+        fieldId: field.id,
+        label: 'Prep Time',
+        widgetType: 'prep_time',
+        icon: Clock,
+        defaultSpan: 2,
+        defaultRowSpan: 1,
+        sourceComponentName: field.name,
+      })
+    } else if (field.id === 'fld_cook_time') {
+      availableWidgets.push({
+        id: field.id,
+        fieldId: field.id,
+        label: 'Cook Time',
+        widgetType: 'cook_time',
+        icon: Flame,
+        defaultSpan: 2,
+        defaultRowSpan: 1,
+        sourceComponentName: field.name,
+      })
+    } else if (field.id === 'fld_total_time') {
+      availableWidgets.push({
+        id: field.id,
+        fieldId: field.id,
+        label: 'Total Time',
+        widgetType: 'total_time',
+        icon: Timer,
+        defaultSpan: 2,
+        defaultRowSpan: 1,
+        sourceComponentName: field.name,
+      })
+    } else if (field.id === 'fld_yield') {
+      availableWidgets.push({
+        id: field.id,
+        fieldId: field.id,
+        label: 'Yield / Servings',
+        widgetType: 'yield',
+        icon: Utensils,
+        defaultSpan: 2,
+        defaultRowSpan: 1,
+        sourceComponentName: field.name,
+      })
+    } else if (field.type === 'image') {
+      availableWidgets.push({
+        id: field.id,
+        fieldId: field.id,
+        label: field.name,
+        widgetType: 'image_banner',
+        icon: FIELD_CATALOG.image.icon,
+        defaultSpan: 4,
+        defaultRowSpan: 2,
+        sourceComponentName: field.name,
+      })
+    } else if (field.type === 'tag_category') {
+      availableWidgets.push({
+        id: field.id,
+        fieldId: field.id,
+        label: field.name,
+        widgetType: 'tag_chips',
+        icon: FIELD_CATALOG.tag_category.icon,
+        defaultSpan: 4,
+        defaultRowSpan: 1,
+        sourceComponentName: field.name,
+      })
+    } else if (field.type === 'rating') {
+      availableWidgets.push({
+        id: field.id,
+        fieldId: field.id,
+        label: field.name,
+        widgetType: 'rating_stars',
+        icon: FIELD_CATALOG.rating.icon,
+        defaultSpan: 2,
+        defaultRowSpan: 1,
+        sourceComponentName: field.name,
+      })
+    } else if (field.type === 'boolean') {
+      availableWidgets.push({
+        id: field.id,
+        fieldId: field.id,
+        label: field.name,
+        widgetType: 'icon_badge',
+        icon: FIELD_CATALOG.boolean.icon,
+        defaultSpan: 2,
+        defaultRowSpan: 1,
+        sourceComponentName: field.name,
+      })
+    } else if (field.type === 'text') {
+      availableWidgets.push({
+        id: field.id,
+        fieldId: field.id,
+        label: field.name,
+        widgetType: 'text_snippet',
+        icon: FIELD_CATALOG.text.icon,
+        defaultSpan: 4,
+        defaultRowSpan: 1,
+        sourceComponentName: field.name,
+      })
+    } else if (field.type === 'number') {
+      availableWidgets.push({
+        id: field.id,
+        fieldId: field.id,
+        label: field.name,
+        widgetType: 'metric_chip',
+        icon: FIELD_CATALOG.number.icon,
+        defaultSpan: 2,
+        defaultRowSpan: 1,
+        sourceComponentName: field.name,
+      })
+    }
+  }
+
+  // Filter unplaced widgets from cardLayout
+  const unplacedWidgets = availableWidgets.filter((item) => {
+    return !cardLayout.widgets.some((w) => {
+      if (item.widgetType === 'title_header') return w.widgetType === 'title_header'
+      if (item.widgetType === 'description') {
+        return w.widgetType === 'description' || (w.widgetType === 'text_snippet' && (w.fieldId.includes('desc') || w.fieldId.includes('details')))
+      }
+      if (item.widgetType === 'prep_time') {
+        return w.widgetType === 'prep_time' || (w.widgetType === 'metric_chip' && w.fieldId.includes('prep'))
+      }
+      if (item.widgetType === 'cook_time') {
+        return w.widgetType === 'cook_time' || (w.widgetType === 'metric_chip' && w.fieldId.includes('cook'))
+      }
+      if (item.widgetType === 'total_time') {
+        return w.widgetType === 'total_time' || (w.widgetType === 'metric_chip' && w.fieldId.includes('total'))
+      }
+      if (item.widgetType === 'yield') {
+        return w.widgetType === 'yield' || (w.widgetType === 'metric_chip' && w.fieldId.includes('yield'))
+      }
+      return w.fieldId === item.id || w.fieldId === item.fieldId
+    })
+  })
 
   const updateWidget = useCallback(
     (id: string, patch: Partial<CardGridWidget>) => {
@@ -105,40 +341,50 @@ export function CardGridDesigner({
   )
 
   // Add widget at bottom on click
-  const addWidgetAtBottom = (field: TemplateField) => {
-    const def = FIELD_CATALOG[field.type]
-    const nextRow =
-      cardLayout.widgets.length > 0
-        ? Math.max(...cardLayout.widgets.map((w) => w.row + w.rowSpan - 1)) + 1
-        : 1
+  const addWidgetAtBottom = useCallback(
+    (item: AvailableCardWidget) => {
+      const nextRow =
+        cardLayout.widgets.length > 0
+          ? Math.max(...cardLayout.widgets.map((w) => w.row + w.rowSpan - 1)) + 1
+          : 1
 
-    const defaultSpan = field.type === 'image' ? 4 : field.type === 'text' ? 4 : 2
-    const defaultRowSpan = field.type === 'image' ? 2 : 1
+      const newWidget: CardGridWidget = {
+        id: `w_${item.widgetType}_${Date.now().toString(36)}`,
+        fieldId: item.fieldId,
+        widgetType: item.widgetType,
+        col: 1,
+        row: nextRow,
+        colSpan: item.defaultSpan,
+        rowSpan: item.defaultRowSpan,
+        options: { showLabel: true },
+      }
 
-    const newWidget: CardGridWidget = {
-      id: `w_${field.id}_${cardLayout.widgets.length + 1}`,
-      fieldId: field.id,
-      widgetType: def.defaultWidgetType || 'metric_chip',
-      col: 1,
-      row: nextRow,
-      colSpan: defaultSpan,
-      rowSpan: defaultRowSpan,
-      options: { showLabel: true },
-    }
-
-    onChange({
-      ...cardLayout,
-      widgets: [...cardLayout.widgets, newWidget],
-    })
-    setSelectedWidgetId(newWidget.id)
-  }
+      onChange({
+        ...cardLayout,
+        widgets: [...cardLayout.widgets, newWidget],
+      })
+      setSelectedWidgetId(newWidget.id)
+    },
+    [cardLayout, onChange]
+  )
 
   // Calculate (col, row) from client coordinates relative to grid
   const calculateGridCoords = useCallback((clientX: number, clientY: number) => {
     if (!gridRef.current) return null
     const rect = gridRef.current.getBoundingClientRect()
-    const x = clientX - rect.left
-    const y = clientY - rect.top
+
+    // If pointer is outside grid bounds, return null so ghost does not jump prematurely
+    if (
+      clientX < rect.left - 40 ||
+      clientX > rect.right + 40 ||
+      clientY < rect.top - 40 ||
+      clientY > rect.bottom + 80
+    ) {
+      return null
+    }
+
+    const x = Math.max(0, Math.min(rect.width, clientX - rect.left))
+    const y = Math.max(0, clientY - rect.top)
     const colStep = (rect.width - 24) / 4
     const rowStep = 48 + 8 // 48px cell + 8px gap
     const col = Math.min(4, Math.max(1, Math.floor(x / (colStep + 8)) + 1))
@@ -153,6 +399,7 @@ export function CardGridDesigner({
     const target = e.currentTarget as HTMLElement
     target.setPointerCapture(e.pointerId)
     setSelectedWidgetId(widget.id)
+    setCursorPos({ x: e.clientX, y: e.clientY })
 
     setActiveDrag({
       type: 'move',
@@ -172,6 +419,8 @@ export function CardGridDesigner({
 
   const handleMovePointerMove = (e: React.PointerEvent) => {
     if (!activeDrag || activeDrag.type !== 'move' || !gridRef.current) return
+    setCursorPos({ x: e.clientX, y: e.clientY })
+
     const rect = gridRef.current.getBoundingClientRect()
     const colStep = (rect.width - 24) / 4
     const rowStep = 48 + 8 // 56px
@@ -214,6 +463,7 @@ export function CardGridDesigner({
     }
     setActiveDrag(null)
     setHoverGhost(null)
+    setCursorPos(null)
   }
 
   // RESIZE WIDGET HANDLERS
@@ -252,6 +502,8 @@ export function CardGridDesigner({
 
   const handleResizePointerMove = (e: React.PointerEvent) => {
     if (!activeDrag || activeDrag.type !== 'resize' || !gridRef.current) return
+    setCursorPos({ x: e.clientX, y: e.clientY })
+
     const rect = gridRef.current.getBoundingClientRect()
     const colWidth = rect.width / 4
     const deltaX = e.clientX - activeDrag.startX
@@ -298,36 +550,42 @@ export function CardGridDesigner({
     }
     setActiveDrag(null)
     setHoverGhost(null)
+    setCursorPos(null)
   }
 
   // PALETTE DRAG HANDLERS (Drag from tray onto card)
-  const handlePalettePointerDown = (e: React.PointerEvent, field: TemplateField) => {
+  const handlePalettePointerDown = (
+    e: React.PointerEvent,
+    item: AvailableCardWidget
+  ) => {
     e.preventDefault()
     e.stopPropagation()
     const target = e.currentTarget as HTMLElement
     target.setPointerCapture(e.pointerId)
-
-    const defaultSpan = field.type === 'image' ? 4 : field.type === 'text' ? 4 : 2
-    const defaultRowSpan = field.type === 'image' ? 2 : 1
+    setCursorPos({ x: e.clientX, y: e.clientY })
 
     setActiveDrag({
       type: 'palette',
-      field,
-      defaultSpan,
-      defaultRowSpan,
+      widgetDef: item,
+      defaultSpan: item.defaultSpan,
+      defaultRowSpan: item.defaultRowSpan,
     })
   }
 
   const handlePalettePointerMove = (e: React.PointerEvent) => {
     if (!activeDrag || activeDrag.type !== 'palette') return
+    setCursorPos({ x: e.clientX, y: e.clientY })
+
     const coords = calculateGridCoords(e.clientX, e.clientY)
     if (!coords) {
       setHoverGhost(null)
       return
     }
-    const isValid = coords.col + activeDrag.defaultSpan - 1 <= 4
+    const maxCol = 5 - activeDrag.defaultSpan
+    const clampedCol = Math.min(maxCol, Math.max(1, coords.col))
+    const isValid = coords.col <= maxCol
     setHoverGhost({
-      col: coords.col,
+      col: clampedCol,
       row: coords.row,
       colSpan: activeDrag.defaultSpan,
       rowSpan: activeDrag.defaultRowSpan,
@@ -345,25 +603,27 @@ export function CardGridDesigner({
     }
 
     if (hoverGhost && hoverGhost.isValid) {
-      const def = FIELD_CATALOG[activeDrag.field.type]
       const newWidget: CardGridWidget = {
-        id: `w_${activeDrag.field.id}_${cardLayout.widgets.length + 1}`,
-        fieldId: activeDrag.field.id,
-        widgetType: def.defaultWidgetType || 'metric_chip',
+        id: `w_${activeDrag.widgetDef.widgetType}_${Date.now().toString(36)}`,
+        fieldId: activeDrag.widgetDef.fieldId,
+        widgetType: activeDrag.widgetDef.widgetType,
         col: hoverGhost.col,
         row: hoverGhost.row,
         colSpan: hoverGhost.colSpan,
         rowSpan: hoverGhost.rowSpan,
         options: { showLabel: true },
       }
+
       onChange({
         ...cardLayout,
         widgets: [...cardLayout.widgets, newWidget],
       })
       setSelectedWidgetId(newWidget.id)
     }
+
     setActiveDrag(null)
     setHoverGhost(null)
+    setCursorPos(null)
   }
 
   const selectedWidget = cardLayout.widgets.find((w) => w.id === selectedWidgetId)
@@ -465,7 +725,7 @@ export function CardGridDesigner({
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
         {/* Left Column: Available Widgets Palette */}
-        <div className="md:col-span-4 space-y-4">
+        <div className="md:col-span-5 lg:col-span-4 space-y-4">
           <div className="rounded-2xl border border-border bg-card p-4 space-y-3 shadow-xs">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
@@ -485,25 +745,24 @@ export function CardGridDesigner({
               </Tooltip>
             </div>
 
-            {unplacedFields.length === 0 ? (
+            {unplacedWidgets.length === 0 ? (
               <div className="p-4 text-center border border-dashed border-border rounded-xl text-xs text-muted-foreground">
-                All eligible fields have been placed on the card.
+                All available widgets have been placed on the card.
               </div>
             ) : (
               <div className="space-y-2">
-                {unplacedFields.map((field) => {
-                  const def = FIELD_CATALOG[field.type]
-                  const IconComp = def ? def.icon : Clock
+                {unplacedWidgets.map((item) => {
+                  const IconComp = item.icon
                   const isBeingDragged =
-                    activeDrag?.type === 'palette' && activeDrag.field.id === field.id
+                    activeDrag?.type === 'palette' && activeDrag.widgetDef.id === item.id
 
                   return (
                     <div
-                      key={field.id}
-                      onPointerDown={(e) => handlePalettePointerDown(e, field)}
+                      key={item.id}
+                      onPointerDown={(e) => handlePalettePointerDown(e, item)}
                       onPointerMove={handlePalettePointerMove}
                       onPointerUp={handlePalettePointerUp}
-                      onClick={() => addWidgetAtBottom(field)}
+                      onClick={() => addWidgetAtBottom(item)}
                       className={`group flex items-center justify-between p-2.5 rounded-xl border border-border bg-muted/20 hover:bg-muted/50 transition-all cursor-grab active:cursor-grabbing select-none ${
                         isBeingDragged ? 'opacity-40 ring-2 ring-primary' : ''
                       }`}
@@ -513,9 +772,14 @@ export function CardGridDesigner({
                         <div className="h-7 w-7 rounded-lg bg-background flex items-center justify-center border border-border shrink-0">
                           <IconComp className="h-3.5 w-3.5 text-primary" />
                         </div>
-                        <span className="text-xs font-semibold text-foreground truncate">
-                          {field.name}
-                        </span>
+                        <div className="min-w-0">
+                          <span className="text-xs font-semibold text-foreground truncate block">
+                            {item.label}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground truncate block">
+                            {item.defaultSpan}×{item.defaultRowSpan} • {item.sourceComponentName}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-1">
                         <Plus className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground" />
@@ -528,11 +792,11 @@ export function CardGridDesigner({
           </div>
 
           {/* Selected Widget Quick Inspector */}
-          {selectedWidget && selectedField && (
+          {selectedWidget && (
             <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-3 animate-in fade-in duration-100">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-foreground truncate">
-                  {selectedField.name} Widget
+                  {getWidgetInspectorTitle(selectedWidget, selectedField)}
                 </span>
                 <Button
                   variant="ghost"
@@ -629,12 +893,19 @@ export function CardGridDesigner({
           )}
         </div>
 
-        {/* Right Column: Interactive Card Canvas (~340px Frame) */}
-          <div
-            className={`w-[340px] max-w-full rounded-2xl border border-border bg-card shadow-sm relative overflow-hidden select-none ${
-              previewMode ? 'p-0' : 'p-4'
-            }`}
-          >
+        {/* Right Column: Interactive Card Workspace */}
+        <div className="md:col-span-7 lg:col-span-8 flex flex-col items-center w-full">
+          <div className="w-full rounded-2xl border border-border bg-muted/20 p-4 sm:p-8 flex flex-col items-center justify-center min-h-[560px]">
+            <div className="flex items-center gap-2 mb-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <span>Card Layout Canvas (4 Columns)</span>
+            </div>
+
+            {/* Centered Interactive Card Canvas Frame */}
+            <div
+              className={`w-full max-w-[420px] mx-auto rounded-2xl border border-border bg-card shadow-lg relative overflow-hidden select-none transition-all duration-200 ${
+                previewMode ? 'p-0' : 'p-4'
+              }`}
+            >
             {previewMode ? (
               <CardGridRenderer
                 cardLayout={cardLayout}
@@ -797,10 +1068,54 @@ export function CardGridDesigner({
               })}
             </div>
           )}
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Floating Drag Avatar Following Cursor */}
+      {activeDrag && cursorPos && (
+        <div
+          style={{
+            left: `${cursorPos.x + 12}px`,
+            top: `${cursorPos.y + 12}px`,
+          }}
+          className="fixed pointer-events-none z-50 rounded-xl border border-primary bg-background/95 px-3 py-2 shadow-xl backdrop-blur-xs flex items-center gap-2 text-xs font-semibold text-foreground animate-in fade-in duration-75"
+        >
+          <GripVertical className="h-3.5 w-3.5 text-primary" />
+          <span>
+            {activeDrag.type === 'palette'
+              ? activeDrag.widgetDef.label
+              : activeDrag.type === 'move'
+              ? 'Moving widget'
+              : 'Resizing widget'}
+          </span>
+          {hoverGhost && (
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+              Col {hoverGhost.col}, Row {hoverGhost.row}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   )
+}
+
+function getWidgetInspectorTitle(
+  widget: CardGridWidget,
+  field?: TemplateField | null
+): string {
+  if (widget.widgetType === 'title_header') return 'Recipe Title Widget'
+  if (widget.widgetType === 'description') return 'Description Widget'
+  if (widget.widgetType === 'prep_time') return 'Prep Time Widget'
+  if (widget.widgetType === 'cook_time') return 'Cook Time Widget'
+  if (widget.widgetType === 'total_time') return 'Total Time Widget'
+  if (widget.widgetType === 'yield') return 'Yield / Servings Widget'
+  if (widget.widgetType === 'image_banner') return 'Cover Photo Banner'
+  if (widget.widgetType === 'tag_chips') return 'Tags & Taxonomy Widget'
+  if (widget.widgetType === 'rating_stars') return 'Star Rating Widget'
+  if (widget.widgetType === 'icon_badge') return 'Badge Widget'
+  return `${field?.name || 'Card'} Widget`
 }
 
 function SampleWidgetContent({
@@ -835,8 +1150,54 @@ function SampleWidgetContent({
     return (
       <div className="flex items-center w-full h-full px-2.5 rounded-xl border border-border bg-card">
         <h4 className="font-bold text-sm text-foreground truncate">
-          {field?.name || 'Recipe Title'}
+          {field?.name || 'Spaghetti Cacio e Pepe'}
         </h4>
+      </div>
+    )
+  }
+
+  if (widgetType === 'description' || widgetType === 'text_snippet') {
+    return (
+      <div className="flex flex-col justify-center px-2.5 w-full h-full rounded-xl border border-border bg-card/60 text-xs text-muted-foreground overflow-hidden">
+        <p className="line-clamp-2 leading-relaxed text-[11px] text-muted-foreground">
+          Quintessential Roman pasta prepared with freshly crushed Tellicherry black pepper and Pecorino Romano...
+        </p>
+      </div>
+    )
+  }
+
+  if (widgetType === 'prep_time') {
+    return (
+      <div className="flex items-center gap-1.5 px-2.5 w-full h-full rounded-xl border border-border bg-muted/30 text-xs text-foreground font-medium truncate">
+        <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <span className="font-semibold truncate">Prep: 15 min</span>
+      </div>
+    )
+  }
+
+  if (widgetType === 'cook_time') {
+    return (
+      <div className="flex items-center gap-1.5 px-2.5 w-full h-full rounded-xl border border-border bg-muted/30 text-xs text-foreground font-medium truncate">
+        <Flame className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+        <span className="font-semibold truncate">Cook: 25 min</span>
+      </div>
+    )
+  }
+
+  if (widgetType === 'total_time') {
+    return (
+      <div className="flex items-center gap-1.5 px-2.5 w-full h-full rounded-xl border border-border bg-muted/30 text-xs text-foreground font-medium truncate">
+        <Timer className="h-3.5 w-3.5 text-primary shrink-0" />
+        <span className="font-semibold truncate">Total: 40 min</span>
+      </div>
+    )
+  }
+
+  if (widgetType === 'yield') {
+    return (
+      <div className="flex items-center gap-1.5 px-2.5 w-full h-full rounded-xl border border-border bg-muted/30 text-xs text-foreground font-medium truncate">
+        <Utensils className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <span className="font-semibold truncate">Yield: 4 servings</span>
       </div>
     )
   }

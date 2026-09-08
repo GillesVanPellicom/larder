@@ -15,6 +15,8 @@ router.get('/', async (_req, res) => {
       name: r.name,
       color: r.color,
       exclusive: r.exclusive ?? false,
+      min_tags: r.minTags !== null && r.minTags !== undefined ? r.minTags : (r.exclusive ? 1 : 0),
+      max_tags: r.maxTags !== null && r.maxTags !== undefined ? r.maxTags : (r.exclusive ? 1 : (r.tags?.length || 0)),
       tags: r.tags || [],
       created_at: r.createdAt.toISOString(),
       updated_at: r.updatedAt.toISOString(),
@@ -30,7 +32,7 @@ router.get('/', async (_req, res) => {
 // POST /api/tags/categories - Create a new tag category
 router.post('/categories', async (req, res) => {
   try {
-    const { id, name, color, exclusive, tags } = req.body as Partial<TagCategory>
+    const { id, name, color, exclusive, min_tags, max_tags, tags } = req.body as Partial<TagCategory>
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Category name is required' })
@@ -48,6 +50,8 @@ router.post('/categories', async (req, res) => {
         name: name.trim(),
         color: color || 'neutral',
         exclusive: Boolean(exclusive),
+        minTags: min_tags !== undefined ? min_tags : 0,
+        maxTags: max_tags !== undefined ? max_tags : (tags ? tags.length : 0),
         tags: tags || [],
       })
       .returning()
@@ -64,7 +68,7 @@ router.post('/categories', async (req, res) => {
 router.put('/categories/:id', async (req, res) => {
   try {
     const { id } = req.params
-    const { name, color, exclusive } = req.body
+    const { name, color, exclusive, min_tags, max_tags } = req.body
 
     const updatePayload: Record<string, unknown> = {
       updatedAt: new Date(),
@@ -72,6 +76,8 @@ router.put('/categories/:id', async (req, res) => {
     if (name !== undefined) updatePayload.name = name.trim()
     if (color !== undefined) updatePayload.color = color
     if (exclusive !== undefined) updatePayload.exclusive = Boolean(exclusive)
+    if (min_tags !== undefined) updatePayload.minTags = min_tags
+    if (max_tags !== undefined) updatePayload.maxTags = max_tags
 
     const [updated] = await db
       .update(tagCategories)
@@ -295,12 +301,22 @@ router.delete('/:categoryId/:tag', async (req, res) => {
 
     // Remove from category's tags list
     const updatedCategoryTags = (category.tags || []).filter((t) => t !== tag)
+    const newCount = updatedCategoryTags.length
+    const updatePayload: Record<string, unknown> = {
+      tags: updatedCategoryTags,
+      updatedAt: new Date(),
+    }
+    // If a tag is removed and set at max, automatically decrement max (max--)
+    if (category.maxTags !== null && category.maxTags !== undefined && category.maxTags > newCount) {
+      updatePayload.maxTags = Math.max(0, newCount)
+    }
+    if (category.minTags !== null && category.minTags !== undefined && category.minTags > newCount) {
+      updatePayload.minTags = Math.max(0, newCount)
+    }
+
     await db
       .update(tagCategories)
-      .set({
-        tags: updatedCategoryTags,
-        updatedAt: new Date(),
-      })
+      .set(updatePayload)
       .where(eq(tagCategories.id, categoryId))
 
     res.json({

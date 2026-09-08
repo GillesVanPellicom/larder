@@ -1,10 +1,5 @@
 import { QuillEditor } from '@/components/QuillEditor'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-import { Info } from 'lucide-react'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 
 interface RecipeInstructionsEditorProps {
   value: string
@@ -25,18 +20,7 @@ export function RecipeInstructionsEditor({
         <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
           Preparation & Cooking Instructions {isMandatory && <span className="text-destructive">*</span>}
         </h2>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <button type="button" className="p-0.5 text-muted-foreground hover:text-foreground cursor-help">
-                <Info className="h-3.5 w-3.5" />
-              </button>
-            }
-          />
-          <TooltipContent>
-            Type directions freely. Use formatting tools for bold, lists, and links.
-          </TooltipContent>
-        </Tooltip>
+        <InfoTooltip content="Type directions freely. Use formatting tools for bold, lists, and links." />
       </div>
 
       {error && (

@@ -1,20 +1,24 @@
-import { Button } from '@/components/ui/button'
+import { formatGracefulNumber } from '@/lib/recipeMath'
 import type { IngredientItem } from '@/shared/types'
-import { CheckCircle2, CheckSquare, Utensils } from 'lucide-react'
+import { CheckCircle2, Utensils } from 'lucide-react'
 
 interface RecipeIngredientsListProps {
   ingredients: IngredientItem[]
   checkedIngredients: Record<string, boolean>
   onToggleIngredient: (id: string) => void
-  onOpenTodoDialog: () => void
+  yieldMultiplier?: number
+  onOpenYieldModal?: () => void
 }
 
 export function RecipeIngredientsList({
   ingredients,
   checkedIngredients,
   onToggleIngredient,
-  onOpenTodoDialog,
+  yieldMultiplier = 1,
+  onOpenYieldModal,
 }: RecipeIngredientsListProps) {
+  const isScaled = Math.abs(yieldMultiplier - 1) > 0.001
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -26,21 +30,18 @@ export function RecipeIngredientsList({
           <span className="text-xs text-muted-foreground font-mono">
             ({ingredients.length})
           </span>
-        </div>
 
-        {ingredients.length > 0 && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onOpenTodoDialog}
-            className="text-xs h-8 cursor-pointer border-border hover:bg-muted text-blue-600 dark:text-blue-400 gap-1.5"
-            title="Add ingredients to Microsoft To Do"
-          >
-            <CheckSquare className="h-3.5 w-3.5" />
-            <span>Add to To Do</span>
-          </Button>
-        )}
+          {isScaled && onOpenYieldModal && (
+            <button
+              type="button"
+              onClick={onOpenYieldModal}
+              className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25 transition-colors cursor-pointer ml-1"
+              title="Click to adjust multiplier"
+            >
+              {formatGracefulNumber(yieldMultiplier)}×
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-4 shadow-xs space-y-2">

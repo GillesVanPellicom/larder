@@ -12,7 +12,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { CardGridRenderer } from '@/components/template-engine/CardGridRenderer'
 import type { Recipe, RecipeTemplate, RecipeViolation, TagCategory } from '@/shared/types'
 import {
   AlertTriangle,
@@ -37,18 +36,12 @@ export function RecipeCard({
   recipe,
   violations = [],
   categories,
-  template,
   onView,
   onEdit,
   onDeleteRequest,
 }: RecipeCardProps) {
   const hasViolations = violations.length > 0
   const ingredientCount = recipe.ingredients?.length || 0
-
-  const hasCustomLayout = Boolean(
-    template?.currentVersion?.cardLayout?.widgets &&
-    template.currentVersion.cardLayout.widgets.length > 0
-  )
 
   return (
     <Card
@@ -111,30 +104,7 @@ export function RecipeCard({
         </ButtonGroup>
       </div>
 
-      {hasCustomLayout ? (
-        <CardGridRenderer
-          cardLayout={template!.currentVersion!.cardLayout}
-          fieldValues={
-            recipe.field_values && Object.keys(recipe.field_values).length > 0
-              ? {
-                  ...recipe.field_values,
-                  fld_image: recipe.field_values.fld_image || recipe.image_url,
-                }
-              : {
-                  fld_title: recipe.title,
-                  fld_description: recipe.description,
-                  fld_yield: recipe.yield_amount,
-                  fld_prep_time: recipe.prep_time_minutes,
-                  fld_cook_time: recipe.cook_time_minutes,
-                  fld_total_time: recipe.total_time_minutes,
-                  fld_image: recipe.image_url,
-                  fld_tags: recipe.tags,
-                }
-          }
-          fieldsSchema={template!.currentVersion!.fieldsSchema}
-        />
-      ) : (
-        <div>
+      <div>
           {/* Media Container: Flush to top edge with rounded top corners */}
           <div className="relative h-48 w-full overflow-hidden bg-muted/60 rounded-t-2xl">
             {recipe.image_url ? (
@@ -241,7 +211,6 @@ export function RecipeCard({
           )}
         </CardContent>
       </div>
-    )}
-  </Card>
-)
+    </Card>
+  )
 }

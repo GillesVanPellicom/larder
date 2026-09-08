@@ -1,13 +1,21 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ButtonGroup } from '@/components/ui/button-group'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { AddToTodoDialog } from '@/components/AddToTodoDialog'
-import { ArrowLeft, ExternalLink, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, ExternalLink, ListTodo, MoreHorizontal, Pencil, RotateCcw, Scale, Trash2 } from 'lucide-react'
 import { RecipeHero } from './RecipeHero'
 import { RecipeIngredientsList } from './RecipeIngredientsList'
 import { RecipeInstructionsView } from './RecipeInstructionsView'
 import { RecipeFieldsView } from '@/components/template-engine/RecipeFieldsView'
+import { YieldMultiplierDialog } from './YieldMultiplierDialog'
+import { scaleIngredients, scaleYield } from '@/lib/recipeMath'
 import type { Recipe, RecipeTemplate, TagCategory } from '@/shared/types'
 
 export interface RecipeViewPageProps {
@@ -31,6 +39,18 @@ export function RecipeViewPage({
 }: RecipeViewPageProps) {
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({})
   const [todoDialogOpen, setTodoDialogOpen] = useState(false)
+  const [yieldMultiplier, setYieldMultiplier] = useState(1)
+  const [yieldModalOpen, setYieldModalOpen] = useState(false)
+
+  const displayIngredients = useMemo(
+    () => scaleIngredients(recipe.ingredients || [], yieldMultiplier),
+    [recipe.ingredients, yieldMultiplier]
+  )
+
+  const scaledYield = useMemo(
+    () => scaleYield(recipe.yield_amount, yieldMultiplier),
+    [recipe.yield_amount, yieldMultiplier]
+  )
 
   const toggleIngredient = (id: string) => {
     setCheckedIngredients((prev) => ({ ...prev, [id]: !prev[id] }))
@@ -51,33 +71,75 @@ export function RecipeViewPage({
             <ArrowLeft className="h-4.5 w-4.5" />
           </Button>
 
-          <ButtonGroup orientation="horizontal" className="border border-border rounded-lg bg-card shadow-xs">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => onEdit(recipe)}
-              title="Edit recipe"
-              className="h-9 w-9 text-foreground hover:bg-muted cursor-pointer"
-            >
-              <Pencil className="h-4.5 w-4.5" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => onDeleteRequest(recipe)}
-              title="Delete recipe"
-              className="h-9 w-9 text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer"
-            >
-              <Trash2 className="h-4.5 w-4.5" />
-            </Button>
-          </ButtonGroup>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 cursor-pointer border-border hover:bg-muted text-foreground"
+                  title="Recipe options"
+                >
+                  <MoreHorizontal className="h-4.5 w-4.5" />
+                </Button>
+              }
+            />
+            <DropdownMenuContent align="end" className="w-56 bg-card border-border shadow-md">
+              <DropdownMenuItem
+                onClick={() => setYieldModalOpen(true)}
+                className="cursor-pointer gap-2 py-2 text-xs font-medium text-foreground"
+              >
+                <Scale className="h-4 w-4" />
+                <span>Yield multiplier</span>
+              </DropdownMenuItem>
+
+              {yieldMultiplier !== 1 && (
+                <DropdownMenuItem
+                  onClick={() => setYieldMultiplier(1)}
+                  className="cursor-pointer gap-2 text-xs py-1.5 text-muted-foreground hover:text-foreground"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span>Reset to 1×</span>
+                </DropdownMenuItem>
+              )}
+
+              <DropdownMenuItem
+                onClick={() => setTodoDialogOpen(true)}
+                disabled={displayIngredients.length === 0}
+                className="cursor-pointer gap-2 py-2 text-xs font-medium text-foreground"
+              >
+                <ListTodo className="h-4 w-4" />
+                <span>Export to Microsoft To Do</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem
+                onClick={() => onEdit(recipe)}
+                className="cursor-pointer gap-2 py-2 text-xs font-medium text-foreground"
+              >
+                <Pencil className="h-4 w-4" />
+                <span>Edit recipe</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => onDeleteRequest(recipe)}
+                className="cursor-pointer gap-2 py-2 text-xs font-medium text-destructive focus:text-destructive focus:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+                <span>Delete recipe</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
 
       {/* Hero Media & Metrics */}
-      <RecipeHero recipe={recipe} />
+      <RecipeHero
+        recipe={recipe}
+        scaledYield={scaledYield}
+        yieldMultiplier={yieldMultiplier}
+      />
 
       {/* Tags Section */}
       {Object.keys(recipe.tags || {}).length > 0 && (
@@ -102,10 +164,11 @@ export function RecipeViewPage({
         {/* Ingredients Column */}
         <div className="md:col-span-1">
           <RecipeIngredientsList
-            ingredients={recipe.ingredients || []}
+            ingredients={displayIngredients}
             checkedIngredients={checkedIngredients}
             onToggleIngredient={toggleIngredient}
-            onOpenTodoDialog={() => setTodoDialogOpen(true)}
+            yieldMultiplier={yieldMultiplier}
+            onOpenYieldModal={() => setYieldModalOpen(true)}
           />
         </div>
 
@@ -155,7 +218,16 @@ export function RecipeViewPage({
         open={todoDialogOpen}
         onOpenChange={setTodoDialogOpen}
         recipeTitle={recipe.title}
-        ingredients={recipe.ingredients || []}
+        ingredients={displayIngredients}
+        checkedIngredients={checkedIngredients}
+      />
+
+      {/* Volatile Yield Multiplier Dialog */}
+      <YieldMultiplierDialog
+        open={yieldModalOpen}
+        onOpenChange={setYieldModalOpen}
+        currentMultiplier={yieldMultiplier}
+        onApplyMultiplier={setYieldMultiplier}
       />
     </div>
   )

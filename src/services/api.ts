@@ -208,6 +208,8 @@ export const tagsApi = {
     id: string
     name: string
     exclusive?: boolean
+    min_tags?: number
+    max_tags?: number
     tags?: string[]
   }): Promise<TagCategory> {
     const res = await fetch('/api/tags/categories', {
@@ -220,7 +222,7 @@ export const tagsApi = {
 
   async updateCategory(
     id: string,
-    data: { name?: string; exclusive?: boolean }
+    data: { name?: string; exclusive?: boolean; min_tags?: number; max_tags?: number }
   ): Promise<TagCategory> {
     const res = await fetch(`/api/tags/categories/${id}`, {
       method: 'PUT',

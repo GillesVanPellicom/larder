@@ -93,6 +93,8 @@ var tagCategories = pgTable("tag_categories", {
   name: varchar("name", { length: 255 }).notNull(),
   color: varchar("color", { length: 50 }).default("neutral").notNull(),
   exclusive: boolean("exclusive").default(false).notNull(),
+  minTags: integer("min_tags").default(0),
+  maxTags: integer("max_tags"),
   tags: jsonb("tags").$type().default([]).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
@@ -212,6 +214,8 @@ async function migrateDb(retries = 5, delayMs = 2e3) {
         );
 
         ALTER TABLE tag_categories ADD COLUMN IF NOT EXISTS exclusive BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE tag_categories ADD COLUMN IF NOT EXISTS min_tags INTEGER DEFAULT 0;
+        ALTER TABLE tag_categories ADD COLUMN IF NOT EXISTS max_tags INTEGER;
 
         CREATE TABLE IF NOT EXISTS metadata_config (
           id VARCHAR(50) PRIMARY KEY,
@@ -876,15 +880,20 @@ var router4 = Router4();
 router4.get("/", async (_req, res) => {
   try {
     const rows = await db.select().from(tagCategories);
-    const result = rows.map((r) => ({
-      id: r.id,
-      name: r.name,
-      color: r.color,
-      exclusive: r.exclusive ?? false,
-      tags: r.tags || [],
-      created_at: r.createdAt.toISOString(),
-      updated_at: r.updatedAt.toISOString()
-    }));
+    const result = rows.map((r) => {
+      var _a;
+      return {
+        id: r.id,
+        name: r.name,
+        color: r.color,
+        exclusive: r.exclusive ?? false,
+        min_tags: r.minTags !== null && r.minTags !== void 0 ? r.minTags : r.exclusive ? 1 : 0,
+        max_tags: r.maxTags !== null && r.maxTags !== void 0 ? r.maxTags : r.exclusive ? 1 : ((_a = r.tags) == null ? void 0 : _a.length) || 0,
+        tags: r.tags || [],
+        created_at: r.createdAt.toISOString(),
+        updated_at: r.updatedAt.toISOString()
+      };
+    });
     res.json(result);
   } catch (err) {
     const details = err instanceof Error ? err.message : String(err);
@@ -894,7 +903,7 @@ router4.get("/", async (_req, res) => {
 });
 router4.post("/categories", async (req, res) => {
   try {
-    const { id, name, color, exclusive, tags } = req.body;
+    const { id, name, color, exclusive, min_tags, max_tags, tags } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: "Category name is required" });
     }
@@ -904,6 +913,8 @@ router4.post("/categories", async (req, res) => {
       name: name.trim(),
       color: color || "neutral",
       exclusive: Boolean(exclusive),
+      minTags: min_tags !== void 0 ? min_tags : 0,
+      maxTags: max_tags !== void 0 ? max_tags : tags ? tags.length : 0,
       tags: tags || []
     }).returning();
     res.status(201).json(created);
@@ -916,13 +927,15 @@ router4.post("/categories", async (req, res) => {
 router4.put("/categories/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, color, exclusive } = req.body;
+    const { name, color, exclusive, min_tags, max_tags } = req.body;
     const updatePayload = {
       updatedAt: /* @__PURE__ */ new Date()
     };
     if (name !== void 0) updatePayload.name = name.trim();
     if (color !== void 0) updatePayload.color = color;
     if (exclusive !== void 0) updatePayload.exclusive = Boolean(exclusive);
+    if (min_tags !== void 0) updatePayload.minTags = min_tags;
+    if (max_tags !== void 0) updatePayload.maxTags = max_tags;
     const [updated] = await db.update(tagCategories).set(updatePayload).where(eq4(tagCategories.id, id)).returning();
     if (!updated) {
       return res.status(404).json({ error: "Tag category not found" });
@@ -1076,10 +1089,18 @@ router4.delete("/:categoryId/:tag", async (req, res) => {
       }
     }
     const updatedCategoryTags = (category.tags || []).filter((t) => t !== tag);
-    await db.update(tagCategories).set({
+    const newCount = updatedCategoryTags.length;
+    const updatePayload = {
       tags: updatedCategoryTags,
       updatedAt: /* @__PURE__ */ new Date()
-    }).where(eq4(tagCategories.id, categoryId));
+    };
+    if (category.maxTags !== null && category.maxTags !== void 0 && category.maxTags > newCount) {
+      updatePayload.maxTags = Math.max(0, newCount);
+    }
+    if (category.minTags !== null && category.minTags !== void 0 && category.minTags > newCount) {
+      updatePayload.minTags = Math.max(0, newCount);
+    }
+    await db.update(tagCategories).set(updatePayload).where(eq4(tagCategories.id, categoryId));
     res.json({
       success: true,
       categoryId,

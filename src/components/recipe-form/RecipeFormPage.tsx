@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { normalizeInstructionsToHtml } from '@/lib/instructions'
-import { validateRecipeForm } from '@/lib/recipeValidation'
-import { DynamicFieldInput } from '@/components/template-engine/DynamicFieldInput'
 import type {
   CreateRecipeDTO,
   IngredientItem,
@@ -12,7 +12,7 @@ import type {
   RecipeTemplate,
   TagCategory,
 } from '@/shared/types'
-import { ArrowLeft, Check, LayoutTemplate } from 'lucide-react'
+import { ArrowLeft, Check, Image as ImageIcon, X } from 'lucide-react'
 import { RecipeBasicFields } from './RecipeBasicFields'
 import { RecipeTagsEditor } from './RecipeTagsEditor'
 import { RecipeIngredientsEditor } from './RecipeIngredientsEditor'
@@ -32,7 +32,6 @@ export function RecipeFormPage({
   recipe,
   categories,
   metadataConfig,
-  templates = [],
   onBack,
   onSave,
   hideTopBar = false,
@@ -46,10 +45,10 @@ export function RecipeFormPage({
   const [description, setDescription] = useState(recipe?.description || '')
   const [yieldAmount, setYieldAmount] = useState(recipe?.yield_amount || '')
   const [prepTimeMinutes, setPrepTimeMinutes] = useState<number | ''>(
-    recipe?.prep_time_minutes || ''
+    recipe?.prep_time_minutes ?? ''
   )
   const [cookTimeMinutes, setCookTimeMinutes] = useState<number | ''>(
-    recipe?.cook_time_minutes || ''
+    recipe?.cook_time_minutes ?? ''
   )
   const [imageUrl, setImageUrl] = useState(recipe?.image_url || '')
 
@@ -68,28 +67,22 @@ export function RecipeFormPage({
 
   const [tags, setTags] = useState<RecipeTags>(recipe?.tags || {})
 
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
-    recipe?.template_id || templates.find((t) => t.isDefault)?.id || templates[0]?.id || 'tpl_default'
-  )
-  const [dynamicValues, setDynamicValues] = useState<Record<string, unknown>>(() => {
-    return recipe?.field_values || {}
-  })
-
   useEffect(() => {
     if (recipe) {
       setTitle(recipe.title || '')
       setDescription(recipe.description || '')
       setYieldAmount(recipe.yield_amount || '')
-      setPrepTimeMinutes(recipe.prep_time_minutes || '')
-      setCookTimeMinutes(recipe.cook_time_minutes || '')
+      setPrepTimeMinutes(recipe.prep_time_minutes ?? '')
+      setCookTimeMinutes(recipe.cook_time_minutes ?? '')
       setImageUrl(recipe.image_url || '')
       if (recipe.ingredients?.length) setIngredients(recipe.ingredients)
       setInstructionsHtml(normalizeInstructionsToHtml(recipe.instructions))
       if (recipe.tags) setTags(recipe.tags)
-      if (recipe.template_id) setSelectedTemplateId(recipe.template_id)
-      if (recipe.field_values) setDynamicValues(recipe.field_values)
     }
   }, [recipe])
+
+  const calculatedTotalTime =
+    (Number(prepTimeMinutes) || 0) + (Number(cookTimeMinutes) || 0)
 
   const mandatory = metadataConfig?.mandatoryFields || {
     title: true,
@@ -102,9 +95,6 @@ export function RecipeFormPage({
     cook_time_minutes: false,
     total_time_minutes: false,
   }
-
-  const calculatedTotalTime =
-    (Number(prepTimeMinutes) || 0) + (Number(cookTimeMinutes) || 0)
 
   const clearFieldError = (field: string) => {
     setFieldErrors((prev) => {
@@ -146,69 +136,90 @@ export function RecipeFormPage({
     setFieldErrors({})
 
     const cleanIngredients = ingredients.filter((i) => i.name.trim().length > 0)
+    const finalTitle = title.trim()
+    const finalDesc = description.trim()
+    const finalYield = yieldAmount.trim()
+    const finalPrep = Number(prepTimeMinutes) || 0
+    const finalCook = Number(cookTimeMinutes) || 0
+    const finalImage = imageUrl.trim()
+    const finalIng = cleanIngredients
+    const finalInst = instructionsHtml.trim()
+    const finalTags = tags
 
-    const activeTemplate =
-      templates.find((t) => t.id === selectedTemplateId) ||
-      templates.find((t) => t.isDefault) ||
-      templates[0] ||
-      null
+    const nextErrors: Record<string, string> = {}
 
-    const isCustomTemplate = Boolean(
-      activeTemplate &&
-      activeTemplate.id !== 'tpl_default' &&
-      activeTemplate.currentVersion?.fieldsSchema?.length
-    )
+    // Recipe Details Validation
+    if (!finalTitle) {
+      nextErrors.title = 'Recipe title is required.'
+    }
+    if (mandatory.description && !finalDesc) {
+      nextErrors.description = 'Description is required.'
+    }
+    if (mandatory.prep_time_minutes && !finalPrep) {
+      nextErrors.prep_time_minutes = 'Prep time is required.'
+    }
+    if (mandatory.cook_time_minutes && !finalCook) {
+      nextErrors.cook_time_minutes = 'Cook time is required.'
+    }
+    if (mandatory.yield_amount && !finalYield) {
+      nextErrors.yield_amount = 'Yield is required.'
+    }
 
-    const finalTitle = String(dynamicValues.fld_title || title || '').trim()
-    const finalDesc = String(dynamicValues.fld_description || description || '').trim()
-    const finalYield = String(dynamicValues.fld_yield || yieldAmount || '').trim()
-    const finalPrep = Number(dynamicValues.fld_prep_time) || Number(prepTimeMinutes) || 0
-    const finalCook = Number(dynamicValues.fld_cook_time) || Number(cookTimeMinutes) || 0
-    const finalImage = String(dynamicValues.fld_image || imageUrl || '').trim()
-    const finalIng = (dynamicValues.fld_ingredients as IngredientItem[]) || cleanIngredients
-    const finalInst = (dynamicValues.fld_instructions as string) || instructionsHtml
-    const finalTags = (dynamicValues.fld_tags as RecipeTags) || tags
+    // Cover Image Validation
+    if (mandatory.image_url && !finalImage) {
+      nextErrors.image_url = 'Cover photo is required.'
+    }
 
-    if (!isCustomTemplate) {
-      const validation = validateRecipeForm(
-        {
-          title,
-          description,
-          yield_amount: yieldAmount,
-          prep_time_minutes: prepTimeMinutes,
-          cook_time_minutes: cookTimeMinutes,
-          image_url: imageUrl,
-          ingredients: cleanIngredients,
-          instructions: instructionsHtml,
-          tags,
-        },
-        metadataConfig,
-        categories
-      )
+    // Ingredients Validation
+    if (mandatory.ingredients !== false && finalIng.length === 0) {
+      nextErrors.ingredients = 'At least one ingredient is required.'
+    }
 
-      if (!validation.valid) {
-        const firstErrorMessage = Object.values(validation.errors)[0]
-        setError(firstErrorMessage || 'Please correct the validation errors.')
-        setFieldErrors(validation.errors)
-        return
+    // Instructions Validation
+    const isInstEmpty =
+      !finalInst ||
+      finalInst === '<p><br></p>' ||
+      finalInst === '<p></p>' ||
+      finalInst.replace(/<[^>]*>/g, '').trim().length === 0
+    if (mandatory.instructions !== false && isInstEmpty) {
+      nextErrors.instructions = 'Instructions are required.'
+    }
+
+    // Category Tag Range Validation
+    for (const cat of categories) {
+      const selected = finalTags[cat.id] || []
+      const totalCatTags = cat.tags?.length || 0
+      const minAllowed =
+        cat.min_tags !== undefined
+          ? cat.min_tags
+          : cat.exclusive
+          ? 1
+          : 0
+      const maxAllowed =
+        cat.max_tags !== undefined
+          ? cat.max_tags
+          : cat.exclusive
+          ? 1
+          : totalCatTags
+
+      if (selected.length < minAllowed) {
+        nextErrors[`tags.${cat.id}`] =
+          minAllowed === 1
+            ? `Please select a tag for ${cat.name}.`
+            : `Please select at least ${minAllowed} tags for ${cat.name}.`
+      } else if (maxAllowed > 0 && selected.length > maxAllowed) {
+        nextErrors[`tags.${cat.id}`] =
+          maxAllowed === 1
+            ? `Only 1 tag allowed for ${cat.name}.`
+            : `Please select at most ${maxAllowed} tags for ${cat.name}.`
       }
-    } else if (activeTemplate?.currentVersion?.fieldsSchema) {
-      // Validate template custom fields
-      for (const f of activeTemplate.currentVersion.fieldsSchema) {
-        if (f.required && !f.isArchived && f.type !== 'separator') {
-          const val = dynamicValues[f.id]
-          if (
-            val === undefined ||
-            val === null ||
-            val === '' ||
-            (Array.isArray(val) && val.length === 0)
-          ) {
-            setError(`"${f.name}" is required by this template.`)
-            setFieldErrors({ [f.id]: `${f.name} is required.` })
-            return
-          }
-        }
-      }
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors)
+      const firstErrorMessage = Object.values(nextErrors)[0]
+      setError(firstErrorMessage || 'Please complete all required fields.')
+      return
     }
 
     try {
@@ -226,20 +237,20 @@ export function RecipeFormPage({
         ingredients: finalIng,
         instructions: finalInst,
         tags: finalTags,
-        template_id: activeTemplate?.id || 'tpl_default',
-        template_version_id: activeTemplate?.currentVersion?.version || 1,
+        template_id: recipe?.template_id || 'tpl_default',
+        template_version_id: recipe?.template_version_id || 1,
         field_values: {
-          ...dynamicValues,
-          fld_title: finalTitle,
-          fld_description: finalDesc,
-          fld_yield: finalYield,
-          fld_prep_time: finalPrep,
-          fld_cook_time: finalCook,
-          fld_total_time: finalPrep + finalCook,
-          fld_image: finalImage,
-          fld_ingredients: finalIng,
-          fld_instructions: finalInst,
-          fld_tags: finalTags,
+          ...recipe?.field_values,
+          title: finalTitle,
+          description: finalDesc,
+          yield_amount: finalYield,
+          prep_time_minutes: finalPrep,
+          cook_time_minutes: finalCook,
+          total_time_minutes: finalPrep + finalCook,
+          image_url: finalImage,
+          ingredients: finalIng,
+          instructions: finalInst,
+          tags: finalTags,
         },
       }
 
@@ -252,32 +263,25 @@ export function RecipeFormPage({
     }
   }
 
-  const activeTemplate =
-    templates.find((t) => t.id === selectedTemplateId) ||
-    templates.find((t) => t.isDefault) ||
-    templates[0] ||
-    null
-
-  const isCustomTemplate = Boolean(
-    activeTemplate &&
-    activeTemplate.id !== 'tpl_default' &&
-    activeTemplate.currentVersion?.fieldsSchema?.length
-  )
-
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-16 animate-in fade-in duration-150">
       {/* Top Action Bar */}
       {!hideTopBar && (
         <div className="flex items-center justify-between border-b border-border pb-4">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={onBack}
-            title="Back to Recipes"
-            className="h-9 w-9 cursor-pointer border-border hover:bg-muted text-foreground"
-          >
-            <ArrowLeft className="h-4.5 w-4.5" />
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onBack}
+              title="Back to Recipes"
+              className="h-9 w-9 cursor-pointer border-border hover:bg-muted text-foreground"
+            >
+              <ArrowLeft className="h-4.5 w-4.5" />
+            </Button>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">
+              {recipe ? 'Edit Recipe' : 'New Recipe'}
+            </h1>
+          </div>
 
           <div className="flex items-center gap-2">
             <Button
@@ -297,37 +301,15 @@ export function RecipeFormPage({
               disabled={submitting}
               className="cursor-pointer font-semibold min-w-28 border-border bg-card hover:bg-muted text-foreground"
             >
-              {submitting ? 'Saving...' : <><Check className="h-4 w-4 mr-1.5" /> {recipe ? 'Save Changes' : 'Create Recipe'}</>}
+              {submitting ? (
+                'Saving...'
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-1.5" />{' '}
+                  {recipe ? 'Save Changes' : 'Create Recipe'}
+                </>
+              )}
             </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Template Selector Bar (When multiple templates exist) */}
-      {templates.length > 1 && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl border border-border bg-card shadow-xs">
-          <div className="flex items-center gap-2">
-            <LayoutTemplate className="h-4 w-4 text-primary" />
-            <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-              Recipe Template:
-            </span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-1.5">
-            {templates.map((tpl) => (
-              <button
-                key={tpl.id}
-                type="button"
-                onClick={() => setSelectedTemplateId(tpl.id)}
-                className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-all cursor-pointer ${
-                  selectedTemplateId === tpl.id
-                    ? 'bg-primary text-primary-foreground border-primary font-bold shadow-xs'
-                    : 'bg-muted/30 text-muted-foreground border-border hover:text-foreground hover:bg-muted'
-                }`}
-              >
-                {tpl.name}
-              </button>
-            ))}
           </div>
         </div>
       )}
@@ -339,83 +321,142 @@ export function RecipeFormPage({
         </div>
       )}
 
-      {/* Form Body */}
+      {/* Set Sequence Form Body */}
       <form id="recipe-form" onSubmit={handleSubmit} className="space-y-6">
-        {isCustomTemplate ? (
-          <div className="space-y-5">
-            {activeTemplate.currentVersion!.fieldsSchema.map((f) => (
-              <div
-                key={f.id}
-                className={
-                  f.type === 'separator'
-                    ? ''
-                    : 'rounded-2xl border border-border bg-card p-6 shadow-xs'
-                }
-              >
-                <DynamicFieldInput
-                  field={f}
-                  value={dynamicValues[f.id]}
-                  onChange={(val) => {
-                    setDynamicValues((prev) => ({ ...prev, [f.id]: val }))
-                    if (f.id === 'fld_title' && typeof val === 'string') setTitle(val)
-                    if (f.id === 'fld_image' && typeof val === 'string') setImageUrl(val)
+        {/* 1. Recipe Details (Title, Description, Times, Yield with Steppers) */}
+        <RecipeBasicFields
+          title={title}
+          onTitleChange={setTitle}
+          description={description}
+          onDescriptionChange={setDescription}
+          prepTimeMinutes={prepTimeMinutes}
+          onPrepTimeChange={setPrepTimeMinutes}
+          cookTimeMinutes={cookTimeMinutes}
+          onCookTimeChange={setCookTimeMinutes}
+          calculatedTotalTime={calculatedTotalTime}
+          yieldAmount={yieldAmount}
+          onYieldChange={setYieldAmount}
+          mandatory={mandatory}
+          fieldErrors={fieldErrors}
+          onClearFieldError={clearFieldError}
+        />
+
+        {/* 2. Cover Photo */}
+        <div className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-xs">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              Cover Photo {mandatory.image_url && <span className="text-destructive">*</span>}
+            </h2>
+            <InfoTooltip content="Add a high-quality photo URL for this recipe. A preview will be shown below." />
+          </div>
+
+          <div className="space-y-3">
+            <div className="relative">
+              <Input
+                placeholder="https://images.unsplash.com/..."
+                value={imageUrl}
+                onChange={(e) => {
+                  setImageUrl(e.target.value)
+                  if (fieldErrors.image_url) clearFieldError('image_url')
+                }}
+                className={`pl-9 pr-9 ${fieldErrors.image_url ? 'border-destructive ring-destructive/20 ring-2' : ''}`}
+              />
+              <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              {Boolean(imageUrl) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImageUrl('')
+                    if (fieldErrors.image_url) clearFieldError('image_url')
                   }}
-                  categories={categories}
-                  error={fieldErrors[f.id]}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5"
+                  title="Clear image URL"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {fieldErrors.image_url && (
+              <span className="text-[11px] text-destructive block">
+                {fieldErrors.image_url}
+              </span>
+            )}
+
+            {Boolean(imageUrl) && (
+              <div className="relative h-48 sm:h-64 w-full rounded-xl overflow-hidden border border-border bg-muted/20">
+                <img
+                  src={imageUrl}
+                  alt="Cover preview"
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    ;(e.target as HTMLImageElement).style.display = 'none'
+                  }}
                 />
               </div>
-            ))}
+            )}
           </div>
-        ) : (
-          <>
-            <RecipeBasicFields
-              title={title}
-              onTitleChange={setTitle}
-              description={description}
-              onDescriptionChange={setDescription}
-              prepTimeMinutes={prepTimeMinutes}
-              onPrepTimeChange={setPrepTimeMinutes}
-              cookTimeMinutes={cookTimeMinutes}
-              onCookTimeChange={setCookTimeMinutes}
-              calculatedTotalTime={calculatedTotalTime}
-              yieldAmount={yieldAmount}
-              onYieldChange={setYieldAmount}
-              imageUrl={imageUrl}
-              onImageUrlChange={setImageUrl}
-              mandatory={mandatory}
-              fieldErrors={fieldErrors}
-              onClearFieldError={clearFieldError}
-            />
+        </div>
 
-            <RecipeTagsEditor
-              categories={categories}
-              tags={tags}
-              onTagsChange={setTags}
-              mandatoryCategories={metadataConfig?.mandatoryCategories}
-              fieldErrors={fieldErrors}
-              onClearFieldError={clearFieldError}
-            />
+        {/* 3. Tags (Categories with Selection Range Rules) */}
+        <RecipeTagsEditor
+          categories={categories}
+          tags={tags}
+          onTagsChange={setTags}
+          mandatoryCategories={categories.filter((c) => (c.min_tags || 0) > 0 || c.exclusive).map((c) => c.id)}
+          fieldErrors={fieldErrors}
+          onClearFieldError={clearFieldError}
+        />
 
-            <RecipeIngredientsEditor
-              ingredients={ingredients}
-              onIngredientChange={handleIngredientChange}
-              onAddRow={addIngredientRow}
-              onRemoveRow={removeIngredientRow}
-              isMandatory={Boolean(mandatory.ingredients)}
-              error={fieldErrors.ingredients}
-            />
+        {/* 4. Ingredients Table */}
+        <RecipeIngredientsEditor
+          ingredients={ingredients}
+          onIngredientChange={handleIngredientChange}
+          onAddRow={addIngredientRow}
+          onRemoveRow={removeIngredientRow}
+          isMandatory={Boolean(mandatory.ingredients !== false)}
+          error={fieldErrors.ingredients}
+        />
 
-            <RecipeInstructionsEditor
-              value={instructionsHtml}
-              onChange={(html) => {
-                setInstructionsHtml(html)
-                if (fieldErrors.instructions) clearFieldError('instructions')
-              }}
-              isMandatory={Boolean(mandatory.instructions)}
-              error={fieldErrors.instructions}
-            />
-          </>
-        )}
+        {/* 5. Instructions Editor */}
+        <RecipeInstructionsEditor
+          value={instructionsHtml}
+          onChange={(html) => {
+            setInstructionsHtml(html)
+            if (fieldErrors.instructions) clearFieldError('instructions')
+          }}
+          isMandatory={Boolean(mandatory.instructions !== false)}
+          error={fieldErrors.instructions}
+        />
+
+        {/* Bottom Save Bar for easy access on long recipes */}
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onBack}
+            className="cursor-pointer"
+          >
+            Cancel
+          </Button>
+
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={submitting}
+            className="cursor-pointer font-semibold min-w-28 border-border bg-card hover:bg-muted text-foreground"
+          >
+            {submitting ? (
+              'Saving...'
+            ) : (
+              <>
+                <Check className="h-4 w-4 mr-1.5" />{' '}
+                {recipe ? 'Save Changes' : 'Create Recipe'}
+              </>
+            )}
+          </Button>
+        </div>
       </form>
     </div>
   )

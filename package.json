@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently -n \"server,client\" -c \"blue,green\" \"pnpm dev:server\" \"pnpm dev:client\"",
     "dev:server": "tsx watch server/src/index.ts",
-    "dev:client": "vite",
+    "dev:client": "vite --host",
     "build": "tsc -b && vite build && tsup server/src/index.ts --format esm --out-dir dist-server",
     "build:client": "vite build",
     "build:server": "tsup server/src/index.ts --format esm --out-dir dist-server",

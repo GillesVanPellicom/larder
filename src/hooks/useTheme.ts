@@ -1,35 +1,32 @@
 import { useEffect, useState } from 'react'
+import {
+  applyDeviceSettings,
+  getDeviceSetting,
+  setDeviceSetting,
+  subscribeDeviceSettings,
+  type Theme,
+} from '@/lib/deviceSettings'
 
-type Theme = 'light' | 'dark'
-
-function getInitialTheme(): Theme {
-  if (typeof window === 'undefined') return 'light'
-  const saved = localStorage.getItem('larder-theme') as Theme | null
-  if (saved === 'light' || saved === 'dark') {
-    return saved
-  }
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
+export type { Theme }
 
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>(getInitialTheme)
+  const [theme, setThemeState] = useState<Theme>(() => getDeviceSetting('theme'))
 
   useEffect(() => {
-    const root = document.documentElement
-    if (theme === 'dark') {
-      root.classList.add('dark')
-    } else {
-      root.classList.remove('dark')
-    }
-    localStorage.setItem('larder-theme', theme)
+    applyDeviceSettings({ theme })
+    return subscribeDeviceSettings((settings) => {
+      setThemeState(settings.theme)
+      applyDeviceSettings(settings)
+    })
   }, [theme])
 
   const toggleTheme = () => {
-    setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'))
+    const nextTheme: Theme = theme === 'dark' ? 'light' : 'dark'
+    setDeviceSetting('theme', nextTheme)
   }
 
-  const setTheme = (t: Theme) => {
-    setThemeState(t)
+  const setTheme = (nextTheme: Theme) => {
+    setDeviceSetting('theme', nextTheme)
   }
 
   return { theme, toggleTheme, setTheme }

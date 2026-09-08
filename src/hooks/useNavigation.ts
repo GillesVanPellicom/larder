@@ -5,9 +5,7 @@ export type PageView =
   | 'recipes'
   | 'recipe-view'
   | 'recipe-form'
-  | 'conflicts'
   | 'settings'
-  | 'template-editor'
 
 export interface HistoryEntry {
   view: PageView

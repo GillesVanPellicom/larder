@@ -1,25 +1,25 @@
-import type {
-  MetadataConfig,
-  RecipeTemplate,
-  TagCategory,
-} from '@/shared/types'
-import { LayoutTemplate, Sliders, Tags } from 'lucide-react'
 import { useState } from 'react'
-import { MetadataRulesTab } from './MetadataRulesTab'
-import { TaxonomyTab } from './TaxonomyTab'
-import { TemplatesManager } from '@/components/templates/TemplatesManager'
+import { Button } from '@/components/ui/button'
+import { CategoriesAndRulesTab } from './CategoriesAndRulesTab'
+import { useTheme } from '@/hooks/useTheme'
+import { usePwa } from '@/hooks/usePwa'
+import type { MetadataConfig, TagCategory } from '@/shared/types'
+import {
+  ArrowLeft,
+  Check,
+  Download,
+  Moon,
+  Palette,
+  SlidersHorizontal,
+  Sun,
+} from 'lucide-react'
 
 export interface SettingsPageProps {
   metadataConfig: MetadataConfig | null
   categories: TagCategory[]
   onSaveConfig: (config: MetadataConfig) => Promise<void>
   onRefreshCategories: () => Promise<void>
-  // Templates Management Props
-  templates?: RecipeTemplate[]
-  templatesLoading?: boolean
-  onOpenTemplateEditor: (template: RecipeTemplate | null) => void
-  onDuplicateTemplate?: (id: string) => Promise<RecipeTemplate>
-  onDeleteTemplate?: (id: string) => Promise<void>
+  onBack?: () => void
 }
 
 export function SettingsPage({
@@ -27,104 +27,178 @@ export function SettingsPage({
   categories,
   onSaveConfig,
   onRefreshCategories,
-  templates = [],
-  templatesLoading = false,
-  onOpenTemplateEditor,
-  onDuplicateTemplate,
-  onDeleteTemplate,
+  onBack,
 }: SettingsPageProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'metadata' | 'tags' | 'templates'>('metadata')
+  const [activeSubTab, setActiveSubTab] = useState<'rules' | 'appearance'>('rules')
+  const { theme, setTheme } = useTheme()
+  const { canInstall, triggerInstall } = usePwa()
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-150">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-          Settings &amp; Configuration
-        </h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Configure metadata validation, manage tags and taxonomies, and customize templates.
-        </p>
+    <div className="space-y-6 w-full max-w-7xl mx-auto animate-in fade-in duration-150">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onBack}
+              title="Back to Recipes"
+              className="h-9 w-9 cursor-pointer border-border hover:bg-muted text-foreground shrink-0"
+            >
+              <ArrowLeft className="h-4.5 w-4.5" />
+            </Button>
+          )}
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+              Settings
+            </h1>
+          </div>
+        </div>
       </div>
 
-      {/* Sub-tab Navigation */}
+      {/* Primary Tabs */}
       <div className="flex items-center gap-2 sm:gap-6 border-b border-border">
         <button
           type="button"
-          onClick={() => setActiveSubTab('metadata')}
+          onClick={() => setActiveSubTab('rules')}
           className={`group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer ${
-            activeSubTab === 'metadata'
+            activeSubTab === 'rules'
               ? 'border-foreground text-foreground'
               : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
           }`}
         >
-          <Sliders className="h-4 w-4" />
-          <span>Metadata Rules</span>
+          <SlidersHorizontal className="h-4 w-4" />
+          <span>Categories &amp; Rules</span>
         </button>
 
         <button
           type="button"
-          onClick={() => setActiveSubTab('tags')}
+          onClick={() => setActiveSubTab('appearance')}
           className={`group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer ${
-            activeSubTab === 'tags'
+            activeSubTab === 'appearance'
               ? 'border-foreground text-foreground'
               : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
           }`}
         >
-          <Tags className="h-4 w-4" />
-          <span>Tags &amp; Taxonomy</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('templates')}
-          className={`group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer ${
-            activeSubTab === 'templates'
-              ? 'border-foreground text-foreground'
-              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-          }`}
-        >
-          <LayoutTemplate className="h-4 w-4" />
-          <span>Templates</span>
+          <Palette className="h-4 w-4" />
+          <span>Appearance</span>
         </button>
       </div>
 
-      {/* Tab 1: Metadata Validation Rules */}
-      {activeSubTab === 'metadata' && (
-        <MetadataRulesTab
-          metadataConfig={metadataConfig}
+      {/* Tab 1: Categories & Rules Manager */}
+      {activeSubTab === 'rules' && (
+        <CategoriesAndRulesTab
           categories={categories}
+          metadataConfig={metadataConfig}
+          onRefreshCategories={onRefreshCategories}
           onSaveConfig={onSaveConfig}
         />
       )}
 
-      {/* Tab 2: Tags & Taxonomy Manager */}
-      {activeSubTab === 'tags' && (
-        <TaxonomyTab
-          categories={categories}
-          onRefreshCategories={onRefreshCategories}
-        />
-      )}
+      {/* Tab 2: Appearance & Theme */}
+      {activeSubTab === 'appearance' && (
+        <div className="space-y-6 max-w-2xl animate-in fade-in duration-150">
+          <div className="rounded-2xl border border-border bg-card p-6 space-y-6 shadow-xs">
+            <div>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                Theme Preference
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Choose your preferred color theme for Coquinaria.
+              </p>
+            </div>
 
-      {/* Tab 3: Recipe Templates Manager */}
-      {activeSubTab === 'templates' && (
-        <TemplatesManager
-          templates={templates}
-          loading={templatesLoading}
-          onOpenEditor={onOpenTemplateEditor}
-          onDuplicateTemplate={
-            onDuplicateTemplate ||
-            (async () => {
-              throw new Error('Duplicate not available')
-            })
-          }
-          onDeleteTemplate={
-            onDeleteTemplate ||
-            (async () => {
-              throw new Error('Delete not available')
-            })
-          }
-        />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Light Theme Card */}
+              <div
+                onClick={() => setTheme('light')}
+                className={`relative flex flex-col gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  theme === 'light'
+                    ? 'border-primary bg-primary/5 shadow-xs'
+                    : 'border-border bg-muted/20 hover:border-border/80 hover:bg-muted/40'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400">
+                      <Sun className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-foreground block">
+                        Light Mode
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        Clean, bright look
+                      </span>
+                    </div>
+                  </div>
+                  {theme === 'light' && (
+                    <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
+                      <Check className="h-3 w-3" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Dark Theme Card */}
+              <div
+                onClick={() => setTheme('dark')}
+                className={`relative flex flex-col gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  theme === 'dark'
+                    ? 'border-primary bg-primary/5 shadow-xs'
+                    : 'border-border bg-muted/20 hover:border-border/80 hover:bg-muted/40'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-zinc-800 text-zinc-100">
+                      <Moon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-foreground block">
+                        Dark Mode
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        Easy on the eyes
+                      </span>
+                    </div>
+                  </div>
+                  {theme === 'dark' && (
+                    <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
+                      <Check className="h-3 w-3" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Progressive Web App Install Option */}
+          {canInstall && (
+            <div className="rounded-2xl border border-border bg-card p-6 space-y-3 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                    App Installation
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Install Coquinaria on your device for fast offline access.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={triggerInstall}
+                  className="cursor-pointer gap-1.5"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Install App</span>
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )

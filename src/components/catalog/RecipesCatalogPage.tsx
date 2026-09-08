@@ -18,10 +18,10 @@ interface RecipesCatalogPageProps {
   onResetFilters: () => void
   onOpenFilterDrawer: () => void
   onNewRecipe: () => void
+  onOpenSettings: () => void
   onViewRecipe: (recipe: Recipe) => void
   onEditRecipe: (recipe: Recipe) => void
   onDeleteRequest: (recipe: Recipe) => void
-  hideToolbar?: boolean
 }
 
 export function RecipesCatalogPage({
@@ -37,25 +37,25 @@ export function RecipesCatalogPage({
   onResetFilters,
   onOpenFilterDrawer,
   onNewRecipe,
+  onOpenSettings,
   onViewRecipe,
   onEditRecipe,
   onDeleteRequest,
-  hideToolbar = false,
 }: RecipesCatalogPageProps) {
   return (
     <div className="space-y-6">
       {/* Catalog Search & Action Toolbar */}
-      {!hideToolbar && (
-        <CatalogToolbar
-          searchQuery={filterCriteria.searchQuery}
-          onSearchChange={(query) =>
-            onFilterCriteriaChange({ ...filterCriteria, searchQuery: query })
-          }
-          activeFiltersCount={activeFiltersCount}
-          onResetFilters={onResetFilters}
-          onOpenFilterDrawer={onOpenFilterDrawer}
-        />
-      )}
+      <CatalogToolbar
+        searchQuery={filterCriteria.searchQuery}
+        onSearchChange={(query) =>
+          onFilterCriteriaChange({ ...filterCriteria, searchQuery: query })
+        }
+        activeFiltersCount={activeFiltersCount}
+        onResetFilters={onResetFilters}
+        onOpenFilterDrawer={onOpenFilterDrawer}
+        onNewRecipe={onNewRecipe}
+        onOpenSettings={onOpenSettings}
+      />
 
       {/* Active Filter Chips Bar */}
       {activeFiltersCount > 0 && (

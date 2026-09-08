@@ -1,6 +1,7 @@
-import type { CardWidgetType, FieldType, TemplateField } from '@/shared/types'
+import type { CardGridLayoutConfig, CardWidgetType, FieldType, TemplateField } from '@/shared/types'
 import {
   AlignLeft,
+  FileText,
   Hash,
   Image as ImageIcon,
   Minus,
@@ -22,6 +23,22 @@ export interface FieldTypeDefinition {
 }
 
 export const FIELD_CATALOG: Record<FieldType, FieldTypeDefinition> = {
+  recipe_details: {
+    type: 'recipe_details',
+    label: 'Recipe Details',
+    description: 'Header, description, prep time, cook time, and yield.',
+    icon: FileText,
+    hasWidgetForm: true,
+    defaultWidgetType: 'title_header',
+    defaultConfig: {
+      mandatoryDetails: {
+        description: false,
+        prepTime: false,
+        cookTime: false,
+        yieldAmount: false,
+      },
+    },
+  },
   text: {
     type: 'text',
     label: 'Text Field',
@@ -134,3 +151,114 @@ export function createDefaultField(type: FieldType, order: number): TemplateFiel
     config: { ...def.defaultConfig },
   }
 }
+
+export const DEFAULT_FIELDS: TemplateField[] = [
+  {
+    id: 'fld_details',
+    name: 'Recipe Details',
+    type: 'recipe_details',
+    required: true,
+    order: 1,
+    config: {
+      mandatoryDetails: {
+        description: false,
+        prepTime: false,
+        cookTime: false,
+        yieldAmount: false,
+      },
+    },
+  },
+  {
+    id: 'fld_image',
+    name: 'Cover Photo',
+    type: 'image',
+    required: false,
+    order: 2,
+    config: { placeholder: 'https://images.unsplash.com/...' },
+  },
+  {
+    id: 'fld_tags',
+    name: 'Tags & Taxonomy',
+    type: 'tag_category',
+    required: false,
+    order: 3,
+    config: { exclusive: false },
+  },
+  {
+    id: 'fld_ingredients',
+    name: 'Ingredients Table',
+    type: 'ingredient_table',
+    required: true,
+    order: 4,
+    config: {},
+  },
+  {
+    id: 'fld_instructions',
+    name: 'Instructions',
+    type: 'rich_text',
+    required: true,
+    order: 5,
+    config: {},
+  },
+]
+
+export const DEFAULT_CARD_LAYOUT: CardGridLayoutConfig = {
+  columns: 4,
+  widgets: [
+    {
+      id: 'w_cover',
+      fieldId: 'fld_image',
+      widgetType: 'image_banner',
+      col: 1,
+      row: 1,
+      colSpan: 4,
+      rowSpan: 2,
+    },
+    {
+      id: 'w_title',
+      fieldId: 'fld_details',
+      widgetType: 'title_header',
+      col: 1,
+      row: 3,
+      colSpan: 4,
+      rowSpan: 1,
+    },
+    {
+      id: 'w_prep',
+      fieldId: 'fld_details',
+      widgetType: 'prep_time',
+      col: 1,
+      row: 4,
+      colSpan: 1,
+      rowSpan: 1,
+    },
+    {
+      id: 'w_cook',
+      fieldId: 'fld_details',
+      widgetType: 'cook_time',
+      col: 2,
+      row: 4,
+      colSpan: 1,
+      rowSpan: 1,
+    },
+    {
+      id: 'w_total',
+      fieldId: 'fld_details',
+      widgetType: 'total_time',
+      col: 3,
+      row: 4,
+      colSpan: 1,
+      rowSpan: 1,
+    },
+    {
+      id: 'w_yield',
+      fieldId: 'fld_details',
+      widgetType: 'yield',
+      col: 4,
+      row: 4,
+      colSpan: 1,
+      rowSpan: 1,
+    },
+  ],
+}
+

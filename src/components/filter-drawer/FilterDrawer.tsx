@@ -42,15 +42,10 @@ export function FilterDrawer({
     onChange(DEFAULT_FILTER_CRITERIA)
   }
 
-  const handleToggleIngredient = (ingredient: string) => {
-    const current = criteria.selectedIngredients
-    const updated = current.includes(ingredient)
-      ? current.filter((i) => i !== ingredient)
-      : [...current, ingredient]
-
+  const handleSelectedIngredientsChange = (selected: string[]) => {
     onChange({
       ...criteria,
-      selectedIngredients: updated,
+      selectedIngredients: selected,
     })
   }
 
@@ -64,15 +59,10 @@ export function FilterDrawer({
     })
   }
 
-  const handleToggleTag = (categoryId: string, tag: string) => {
-    const current = criteria.selectedTags[categoryId] || []
-    const updated = current.includes(tag)
-      ? current.filter((t) => t !== tag)
-      : [...current, tag]
-
+  const handleCategoryTagsChange = (categoryId: string, tags: string[]) => {
     const nextSelectedTags = { ...criteria.selectedTags }
-    if (updated.length > 0) {
-      nextSelectedTags[categoryId] = updated
+    if (tags.length > 0) {
+      nextSelectedTags[categoryId] = tags
     } else {
       delete nextSelectedTags[categoryId]
     }
@@ -184,7 +174,7 @@ export function FilterDrawer({
             allIngredients={allIngredients}
             selectedIngredients={criteria.selectedIngredients}
             matchMode={criteria.matchModePerElement.ingredients}
-            onToggleIngredient={handleToggleIngredient}
+            onSelectedIngredientsChange={handleSelectedIngredientsChange}
             onMatchModeChange={handleIngredientsMatchModeChange}
           />
 
@@ -193,7 +183,7 @@ export function FilterDrawer({
             categories={categories}
             selectedTags={criteria.selectedTags}
             matchModes={criteria.matchModePerElement.categoryTags}
-            onToggleTag={handleToggleTag}
+            onCategoryTagsChange={handleCategoryTagsChange}
             onCategoryMatchModeChange={handleCategoryMatchModeChange}
           />
         </div>

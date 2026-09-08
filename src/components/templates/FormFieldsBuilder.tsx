@@ -36,6 +36,7 @@ import {
   Plus,
   Settings2,
   Trash2,
+  X,
 } from 'lucide-react'
 
 interface FormFieldsBuilderProps {
@@ -43,6 +44,8 @@ interface FormFieldsBuilderProps {
   onChange: (fields: TemplateField[]) => void
   categories?: TagCategory[]
   onDeleteRequest: (field: TemplateField) => void
+  onAddTag?: (categoryId: string, tagName: string) => Promise<void>
+  onDeleteTag?: (categoryId: string, tagName: string) => Promise<void>
 }
 
 export function FormFieldsBuilder({
@@ -50,9 +53,13 @@ export function FormFieldsBuilder({
   onChange,
   categories = [],
   onDeleteRequest,
+  onAddTag,
+  onDeleteTag,
 }: FormFieldsBuilderProps) {
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
+  const [newTagInput, setNewTagInput] = useState('')
+  const [tagSubmitting, setTagSubmitting] = useState(false)
 
   // Configure touch-friendly sensors with activation delay so scrolling is not blocked!
   const sensors = useSensors(
@@ -99,6 +106,23 @@ export function FormFieldsBuilder({
   }
 
   const editingField = fields.find((f) => f.id === editingFieldId)
+
+  const currentCategory = editingField
+    ? categories.find(
+        (c) => c.id === (editingField.config.categoryId || editingField.id)
+      ) || categories[0]
+    : null
+
+  const handleInlineAddTag = async () => {
+    if (!newTagInput.trim() || !currentCategory || !onAddTag) return
+    try {
+      setTagSubmitting(true)
+      await onAddTag(currentCategory.id, newTagInput.trim())
+      setNewTagInput('')
+    } finally {
+      setTagSubmitting(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -197,6 +221,9 @@ export function FormFieldsBuilder({
                       )
                     }
                     onDelete={() => onDeleteRequest(field)}
+                    onToggleRequired={(req) =>
+                      updateField(field.id, { required: req })
+                    }
                   />
                 ))}
               </div>
@@ -263,6 +290,108 @@ export function FormFieldsBuilder({
               )}
 
               {/* Field-Specific Configurations */}
+              {/* Type: Recipe Details */}
+              {editingField.type === 'recipe_details' && (
+                <div className="space-y-4 pt-1">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Default recipe details component encompassing header title, description, prep time, cook time, and yield.
+                  </p>
+
+                  <div className="space-y-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+                      Sub-Field Validation Rules
+                    </span>
+
+                    {/* Title */}
+                    <div className="flex items-center justify-between p-2.5 rounded-xl border border-border bg-muted/20">
+                      <div>
+                        <span className="text-xs font-semibold text-foreground block">Recipe Title</span>
+                        <span className="text-[10px] text-muted-foreground">Primary identifier for the dish</span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                        Required
+                      </span>
+                    </div>
+
+                    {/* Description */}
+                    <div className="flex items-center justify-between p-2.5 rounded-xl border border-border bg-muted/20">
+                      <div>
+                        <span className="text-xs font-semibold text-foreground block">Description</span>
+                        <span className="text-[10px] text-muted-foreground">Require dish summary</span>
+                      </div>
+                      <Switch
+                        checked={Boolean(editingField.config.mandatoryDetails?.description)}
+                        onCheckedChange={(checked) =>
+                          updateConfig(editingField.id, {
+                            mandatoryDetails: {
+                              ...editingField.config.mandatoryDetails,
+                              description: checked,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+
+                    {/* Prep Time */}
+                    <div className="flex items-center justify-between p-2.5 rounded-xl border border-border bg-muted/20">
+                      <div>
+                        <span className="text-xs font-semibold text-foreground block">Prep Time</span>
+                        <span className="text-[10px] text-muted-foreground">Require preparation minutes</span>
+                      </div>
+                      <Switch
+                        checked={Boolean(editingField.config.mandatoryDetails?.prepTime)}
+                        onCheckedChange={(checked) =>
+                          updateConfig(editingField.id, {
+                            mandatoryDetails: {
+                              ...editingField.config.mandatoryDetails,
+                              prepTime: checked,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+
+                    {/* Cook Time */}
+                    <div className="flex items-center justify-between p-2.5 rounded-xl border border-border bg-muted/20">
+                      <div>
+                        <span className="text-xs font-semibold text-foreground block">Cook Time</span>
+                        <span className="text-[10px] text-muted-foreground">Require cooking minutes</span>
+                      </div>
+                      <Switch
+                        checked={Boolean(editingField.config.mandatoryDetails?.cookTime)}
+                        onCheckedChange={(checked) =>
+                          updateConfig(editingField.id, {
+                            mandatoryDetails: {
+                              ...editingField.config.mandatoryDetails,
+                              cookTime: checked,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+
+                    {/* Yield */}
+                    <div className="flex items-center justify-between p-2.5 rounded-xl border border-border bg-muted/20">
+                      <div>
+                        <span className="text-xs font-semibold text-foreground block">Yield</span>
+                        <span className="text-[10px] text-muted-foreground">Require portion or serving count</span>
+                      </div>
+                      <Switch
+                        checked={Boolean(editingField.config.mandatoryDetails?.yieldAmount)}
+                        onCheckedChange={(checked) =>
+                          updateConfig(editingField.id, {
+                            mandatoryDetails: {
+                              ...editingField.config.mandatoryDetails,
+                              yieldAmount: checked,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Type: Text */}
               {editingField.type === 'text' && (
                 <div className="space-y-3 pt-1">
@@ -400,7 +529,7 @@ export function FormFieldsBuilder({
 
               {/* Type: Tag Category */}
               {editingField.type === 'tag_category' && (
-                <div className="space-y-3 pt-1">
+                <div className="space-y-4 pt-1">
                   {categories.length > 0 && (
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-muted-foreground">
@@ -422,10 +551,12 @@ export function FormFieldsBuilder({
                       </select>
                     </div>
                   )}
+
+                  {/* Multi-select toggle */}
                   <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-muted/20">
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-semibold text-foreground">
-                        Exclusive Selection
+                        Multi-select
                       </span>
                       <Tooltip>
                         <TooltipTrigger
@@ -436,17 +567,86 @@ export function FormFieldsBuilder({
                           }
                         />
                         <TooltipContent side="top">
-                          Only allows selecting a single tag for this category instead of multiple tags.
+                          Allow selecting multiple tags for this category. Disable for single exclusive choice.
                         </TooltipContent>
                       </Tooltip>
                     </div>
                     <Switch
-                      checked={Boolean(editingField.config.exclusive)}
-                      onCheckedChange={(exc) =>
-                        updateConfig(editingField.id, { exclusive: exc })
+                      checked={!editingField.config.exclusive}
+                      onCheckedChange={(multi) =>
+                        updateConfig(editingField.id, { exclusive: !multi })
                       }
                     />
                   </div>
+
+                  {/* Inline Tag Manager */}
+                  {currentCategory && (
+                    <div className="space-y-2.5 pt-2 border-t border-border">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-foreground">
+                          {currentCategory.name} Tags ({currentCategory.tags.length})
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {editingField.config.exclusive ? 'Single Choice' : 'Multi-Select'}
+                        </span>
+                      </div>
+
+                      {/* Tag Chips */}
+                      <div className="flex flex-wrap gap-1.5 min-h-9 p-2.5 rounded-xl border border-border bg-muted/20">
+                        {currentCategory.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center gap-1 text-xs font-medium bg-card px-2 py-0.5 rounded-md border border-border text-foreground shadow-2xs"
+                          >
+                            <span>{tag}</span>
+                            {onDeleteTag && (
+                              <button
+                                type="button"
+                                onClick={() => onDeleteTag(currentCategory.id, tag)}
+                                className="text-muted-foreground hover:text-destructive cursor-pointer"
+                                title={`Delete "${tag}"`}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
+                          </span>
+                        ))}
+                        {currentCategory.tags.length === 0 && (
+                          <span className="text-xs text-muted-foreground italic">
+                            No tags configured in this category.
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Add Tag Input */}
+                      {onAddTag && (
+                        <div className="flex gap-2">
+                          <Input
+                            value={newTagInput}
+                            onChange={(e) => setNewTagInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                void handleInlineAddTag()
+                              }
+                            }}
+                            placeholder="Add tag name..."
+                            className="h-8 text-xs flex-1"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={!newTagInput.trim() || tagSubmitting}
+                            onClick={handleInlineAddTag}
+                            className="h-8 text-xs px-3 cursor-pointer"
+                          >
+                            <Plus className="h-3.5 w-3.5 mr-1" />
+                            Add
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -498,11 +698,13 @@ function SortableFieldItem({
   isSelected,
   onSelect,
   onDelete,
+  onToggleRequired,
 }: {
   field: TemplateField
   isSelected: boolean
   onSelect: () => void
   onDelete: () => void
+  onToggleRequired: (required: boolean) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: field.id })
@@ -620,7 +822,23 @@ function SortableFieldItem({
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
+        {/* Direct Mandatory Switch right on the row */}
+        <div
+          className="flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-muted/50 transition-colors"
+          onClick={(e) => e.stopPropagation()}
+          title="Toggle mandatory requirement"
+        >
+          <Switch
+            checked={field.required}
+            onCheckedChange={onToggleRequired}
+            className="scale-85"
+          />
+          <span className="text-[11px] font-medium text-muted-foreground hidden sm:inline select-none">
+            Mandatory
+          </span>
+        </div>
+
         <Button
           type="button"
           variant="ghost"

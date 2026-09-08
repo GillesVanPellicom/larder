@@ -85,6 +85,8 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
         );
 
         ALTER TABLE tag_categories ADD COLUMN IF NOT EXISTS exclusive BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE tag_categories ADD COLUMN IF NOT EXISTS min_tags INTEGER DEFAULT 0;
+        ALTER TABLE tag_categories ADD COLUMN IF NOT EXISTS max_tags INTEGER;
 
         CREATE TABLE IF NOT EXISTS metadata_config (
           id VARCHAR(50) PRIMARY KEY,

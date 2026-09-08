@@ -1,11 +1,11 @@
-import { Badge } from '@/components/ui/badge'
+import { MultiCombobox } from '@/components/ui/multi-combobox'
 import type { MatchMode, TagCategory } from '@/shared/types'
 
 interface FilterTagsSectionProps {
   categories: TagCategory[]
   selectedTags: Record<string, string[]>
   matchModes: Record<string, MatchMode>
-  onToggleTag: (categoryId: string, tag: string) => void
+  onCategoryTagsChange: (categoryId: string, tags: string[]) => void
   onCategoryMatchModeChange: (categoryId: string, mode: MatchMode) => void
 }
 
@@ -13,18 +13,17 @@ export function FilterTagsSection({
   categories,
   selectedTags,
   matchModes,
-  onToggleTag,
+  onCategoryTagsChange,
   onCategoryMatchModeChange,
 }: FilterTagsSectionProps) {
+  if (categories.length === 0) return null
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           Tag Categories
         </label>
-        <span className="text-[11px] text-neutral-400">
-          Mode configurable per category
-        </span>
       </div>
 
       {categories.map((cat) => {
@@ -34,29 +33,29 @@ export function FilterTagsSection({
         return (
           <div
             key={cat.id}
-            className="rounded-xl border border-neutral-200 bg-white p-3.5 shadow-2xs dark:border-neutral-800 dark:bg-neutral-950"
+            className="rounded-xl border border-border bg-card p-3.5 space-y-2.5 shadow-2xs"
           >
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-neutral-900 dark:text-neutral-100">
+                <span className="text-xs font-semibold text-foreground">
                   {cat.name}
                 </span>
                 {categorySelectedTags.length > 0 && (
-                  <span className="text-[10px] bg-neutral-200 dark:bg-neutral-800 px-1.5 py-0.2 rounded-full font-mono">
+                  <span className="text-[10px] bg-muted px-1.5 py-0.2 rounded-full font-mono text-foreground">
                     {categorySelectedTags.length}
                   </span>
                 )}
               </div>
 
               {/* Per-Category Any/All Toggle */}
-              <div className="flex items-center rounded-md border border-neutral-200 bg-neutral-50 p-0.5 dark:border-neutral-800 dark:bg-neutral-900">
+              <div className="flex items-center rounded-md border border-border bg-muted/40 p-0.5 shadow-2xs">
                 <button
                   type="button"
                   onClick={() => onCategoryMatchModeChange(cat.id, 'any')}
-                  className={`px-1.5 py-0.5 text-[10px] font-semibold rounded cursor-pointer ${
+                  className={`px-1.5 py-0.5 text-[10px] font-semibold rounded cursor-pointer transition-colors ${
                     mode === 'any'
-                      ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
-                      : 'text-neutral-400 hover:text-neutral-700'
+                      ? 'bg-foreground text-background shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   ANY
@@ -64,10 +63,10 @@ export function FilterTagsSection({
                 <button
                   type="button"
                   onClick={() => onCategoryMatchModeChange(cat.id, 'all')}
-                  className={`px-1.5 py-0.5 text-[10px] font-semibold rounded cursor-pointer ${
+                  className={`px-1.5 py-0.5 text-[10px] font-semibold rounded cursor-pointer transition-colors ${
                     mode === 'all'
-                      ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
-                      : 'text-neutral-400 hover:text-neutral-700'
+                      ? 'bg-foreground text-background shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   ALL
@@ -75,21 +74,13 @@ export function FilterTagsSection({
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-1.5">
-              {(cat.tags || []).map((tag) => {
-                const isSelected = categorySelectedTags.includes(tag)
-                return (
-                  <Badge
-                    key={tag}
-                    variant={isSelected ? 'default' : 'outline'}
-                    onClick={() => onToggleTag(cat.id, tag)}
-                    className="cursor-pointer transition-transform active:scale-95 text-xs py-1"
-                  >
-                    {tag}
-                  </Badge>
-                )
-              })}
-            </div>
+            <MultiCombobox
+              options={cat.tags || []}
+              values={categorySelectedTags}
+              onValuesChange={(vals) => onCategoryTagsChange(cat.id, vals)}
+              placeholder={`Select ${cat.name}...`}
+              emptyMessage={`No ${cat.name} tags found.`}
+            />
           </div>
         )
       })}
