@@ -5,98 +5,82 @@ import { X } from 'lucide-react'
 interface ActiveFiltersBarProps {
   criteria: FilterCriteria
   onChange: (criteria: FilterCriteria) => void
-  onResetAll: () => void
 }
 
 export function ActiveFiltersBar({
   criteria,
   onChange,
-  onResetAll,
 }: ActiveFiltersBarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-border bg-card p-3 text-xs shadow-2xs">
-      <span className="text-muted-foreground font-semibold uppercase tracking-wider text-[10px] mr-1">
-        Active Filters:
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3.5 text-xs shadow-2xs">
+      <span className="text-muted-foreground font-semibold text-xs sm:text-sm mr-1">
+        Active filters:
       </span>
 
       {criteria.searchQuery && (
-        <Badge variant="secondary" className="gap-1 py-0.5 text-xs">
+        <Badge
+          variant="secondary"
+          onClick={() => onChange({ ...criteria, searchQuery: '' })}
+          className="group gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border border-border bg-muted/50 text-foreground cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all select-none"
+          title="Click to remove search filter"
+        >
           <span>&ldquo;{criteria.searchQuery}&rdquo;</span>
-          <button
-            type="button"
-            onClick={() => onChange({ ...criteria, searchQuery: '' })}
-            className="cursor-pointer hover:text-foreground"
-            aria-label="Remove search query filter"
-          >
-            <X className="h-3 w-3" />
-          </button>
+          <X className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors shrink-0" />
         </Badge>
       )}
 
       {criteria.maxTotalTime && (
-        <Badge variant="secondary" className="gap-1 py-0.5 text-xs">
-          <span>&le; {criteria.maxTotalTime}m</span>
-          <button
-            type="button"
-            onClick={() => onChange({ ...criteria, maxTotalTime: undefined })}
-            className="cursor-pointer hover:text-foreground"
-            aria-label="Remove max time filter"
-          >
-            <X className="h-3 w-3" />
-          </button>
+        <Badge
+          variant="secondary"
+          onClick={() => onChange({ ...criteria, maxTotalTime: undefined })}
+          className="group gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border border-border bg-muted/50 text-foreground cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all select-none"
+          title="Click to remove max time filter"
+        >
+          <span>&le; {criteria.maxTotalTime} min</span>
+          <X className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors shrink-0" />
         </Badge>
       )}
 
       {criteria.selectedIngredients.map((ing) => (
-        <Badge key={ing} variant="secondary" className="gap-1 py-0.5 text-xs">
-          <span>Ing: {ing}</span>
-          <button
-            type="button"
-            onClick={() =>
-              onChange({
-                ...criteria,
-                selectedIngredients: criteria.selectedIngredients.filter((i) => i !== ing),
-              })
-            }
-            className="cursor-pointer hover:text-foreground"
-            aria-label={`Remove ingredient ${ing}`}
-          >
-            <X className="h-3 w-3" />
-          </button>
+        <Badge
+          key={ing}
+          variant="secondary"
+          onClick={() =>
+            onChange({
+              ...criteria,
+              selectedIngredients: criteria.selectedIngredients.filter((i) => i !== ing),
+            })
+          }
+          className="group gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border border-border bg-muted/50 text-foreground cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all select-none"
+          title={`Click to remove ingredient filter "${ing}"`}
+        >
+          <span className="text-muted-foreground font-normal">Ingredient:</span>
+          <span>{ing}</span>
+          <X className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors shrink-0" />
         </Badge>
       ))}
 
       {Object.entries(criteria.selectedTags).map(([catId, tags]) =>
         tags.map((tag) => (
-          <Badge key={`${catId}-${tag}`} variant="secondary" className="gap-1 py-0.5 text-xs">
-            <span>
-              {catId}: {tag}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                const updated = tags.filter((t) => t !== tag)
-                const next = { ...criteria.selectedTags }
-                if (updated.length > 0) next[catId] = updated
-                else delete next[catId]
-                onChange({ ...criteria, selectedTags: next })
-              }}
-              className="cursor-pointer hover:text-foreground"
-              aria-label={`Remove tag ${tag}`}
-            >
-              <X className="h-3 w-3" />
-            </button>
+          <Badge
+            key={`${catId}-${tag}`}
+            variant="secondary"
+            onClick={() => {
+              const updated = tags.filter((t) => t !== tag)
+              const next = { ...criteria.selectedTags }
+              if (updated.length > 0) next[catId] = updated
+              else delete next[catId]
+              onChange({ ...criteria, selectedTags: next })
+            }}
+            className="group gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border border-border bg-muted/50 text-foreground cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all select-none"
+            title={`Click to remove tag filter "${tag}"`}
+          >
+            <span className="text-muted-foreground font-normal">{catId}:</span>
+            <span>{tag}</span>
+            <X className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors shrink-0" />
           </Badge>
         ))
       )}
-
-      <button
-        type="button"
-        onClick={onResetAll}
-        className="text-muted-foreground hover:text-foreground ml-auto font-medium text-xs underline cursor-pointer"
-      >
-        Reset all
-      </button>
     </div>
   )
 }

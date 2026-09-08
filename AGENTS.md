@@ -53,3 +53,7 @@
 - **Max Decrement on Tag Removal**: When a tag is deleted and the category's range max is currently at the total count, automatically decrement max (`max--`).
 - **Required Semantics**: `min >= 1` means the category is required in recipes; `min = 0` means optional.
 
+### 11. Minimal Action Labels
+- **Action-Only Copy**: Action descriptions and button labels must simply state the action verb or core noun without redundant contextual descriptors (e.g. `"Add"` instead of `"Add Ingredient Row"`, `"Edit"` instead of `"Edit Recipe"`, `"New"` instead of `"New Recipe"`, `"Save"` instead of `"Save Rules"`, `"Delete"` instead of `"Delete Category"`). The surrounding page/section context provides all necessary meaning.
+
+

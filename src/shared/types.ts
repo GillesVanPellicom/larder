@@ -173,6 +173,8 @@ export interface TagCategory {
   updated_at?: string
 }
 
+export type TimeTrackingMode = 'prep_and_cook' | 'total_only' | 'no_cook'
+
 export interface MandatoryFieldsConfig {
   title: boolean
   ingredients: boolean
@@ -182,12 +184,12 @@ export interface MandatoryFieldsConfig {
   yield_amount: boolean
   prep_time_minutes: boolean
   cook_time_minutes: boolean
-  total_time_minutes: boolean
 }
 
 export interface MetadataConfig {
   mandatoryFields: MandatoryFieldsConfig
   mandatoryCategories: string[]
+  timeTrackingMode?: TimeTrackingMode
   updated_at?: string
 }
 

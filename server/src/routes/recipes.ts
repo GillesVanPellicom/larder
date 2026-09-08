@@ -104,37 +104,57 @@ function syncCoreColumnsFromFieldValues(
   body: Partial<CreateRecipeDTO> & { field_values?: Record<string, unknown> }
 ) {
   const fv = body.field_values || {}
-  const title = (fv.fld_title as string) || body.title || ''
-  const description = (fv.fld_description as string) || body.description || ''
-  const yieldAmount = (fv.fld_yield as string) || body.yield_amount || ''
-  const prep = Number(fv.fld_prep_time) || Number(body.prep_time_minutes) || 0
-  const cook = Number(fv.fld_cook_time) || Number(body.cook_time_minutes) || 0
-  const total = Number(fv.fld_total_time) || Number(body.total_time_minutes) || (prep + cook)
-  const imageUrl = (fv.fld_image as string) || body.image_url || ''
+  const title = body.title !== undefined ? body.title : ((fv.fld_title as string) || '')
+  const description = body.description !== undefined ? body.description : ((fv.fld_description as string) || '')
+  const yieldAmount = body.yield_amount !== undefined ? body.yield_amount : ((fv.fld_yield as string) || '')
+  const prep = body.prep_time_minutes !== undefined ? Number(body.prep_time_minutes) : (Number(fv.fld_prep_time) || 0)
+  const cook = body.cook_time_minutes !== undefined ? Number(body.cook_time_minutes) : (Number(fv.fld_cook_time) || 0)
+  const total = body.total_time_minutes !== undefined ? Number(body.total_time_minutes) : (Number(fv.fld_total_time) || (prep + cook))
+  const imageUrl = body.image_url !== undefined ? body.image_url : ((fv.fld_image as string) || '')
   const sourceUrl = body.source_url || ''
-  const notes = (fv.fld_notes as string) || body.notes || ''
+  const notes = body.notes !== undefined ? body.notes : ((fv.fld_notes as string) || '')
   const ingredients =
-    (fv.fld_ingredients as unknown as IngredientItem[]) || body.ingredients || []
+    body.ingredients !== undefined
+      ? body.ingredients
+      : (fv.fld_ingredients as unknown as IngredientItem[]) || []
   const instructions =
-    (fv.fld_instructions as unknown as string | InstructionStep[]) || body.instructions || ''
-  const tags = (fv.fld_tags as unknown as RecipeTags) || body.tags || {}
+    body.instructions !== undefined
+      ? body.instructions
+      : (fv.fld_instructions as unknown as string | InstructionStep[]) || ''
+  const tags =
+    body.tags !== undefined
+      ? body.tags
+      : (fv.fld_tags as unknown as RecipeTags) || {}
 
   return {
-    title: title.trim(),
-    description: description.trim(),
-    yieldAmount: yieldAmount.trim(),
+    title: String(title).trim(),
+    description: String(description).trim(),
+    yieldAmount: String(yieldAmount).trim(),
     prepTimeMinutes: prep,
     cookTimeMinutes: cook,
     totalTimeMinutes: total,
-    imageUrl: imageUrl.trim(),
-    sourceUrl: sourceUrl.trim(),
-    notes: notes.trim(),
+    imageUrl: String(imageUrl).trim(),
+    sourceUrl: String(sourceUrl).trim(),
+    notes: String(notes).trim(),
     ingredients,
     instructions,
     tags,
     templateId: body.template_id || 'tpl_default',
     templateVersionId: body.template_version_id || 1,
-    fieldValues: fv,
+    fieldValues: {
+      ...fv,
+      fld_title: title,
+      fld_description: description,
+      fld_yield: yieldAmount,
+      fld_prep_time: prep,
+      fld_cook_time: cook,
+      fld_total_time: total,
+      fld_image: imageUrl,
+      fld_notes: notes,
+      fld_ingredients: ingredients,
+      fld_instructions: instructions,
+      fld_tags: tags,
+    },
     archivedValues: body.archived_values || {},
   }
 }

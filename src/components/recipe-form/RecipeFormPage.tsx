@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
@@ -12,11 +12,13 @@ import type {
   RecipeTemplate,
   TagCategory,
 } from '@/shared/types'
-import { ArrowLeft, Check, Image as ImageIcon, X } from 'lucide-react'
+import { ArrowLeft, Image as ImageIcon, X } from 'lucide-react'
+import { ConfirmUnsavedDialog } from '@/components/ConfirmUnsavedDialog'
 import { RecipeBasicFields } from './RecipeBasicFields'
 import { RecipeTagsEditor } from './RecipeTagsEditor'
 import { RecipeIngredientsEditor } from './RecipeIngredientsEditor'
 import { RecipeInstructionsEditor } from './RecipeInstructionsEditor'
+import { SaveBar } from '@/components/ui/save-bar'
 
 export interface RecipeFormPageProps {
   recipe?: Recipe | null
@@ -24,8 +26,67 @@ export interface RecipeFormPageProps {
   metadataConfig: MetadataConfig | null
   templates?: RecipeTemplate[]
   onBack: () => void
-  onSave: (data: CreateRecipeDTO, id?: number) => Promise<void>
+  onSave: (data: CreateRecipeDTO, id?: number) => Promise<Recipe | void>
   hideTopBar?: boolean
+}
+
+const DEFAULT_INGREDIENTS: IngredientItem[] = [
+  { id: '1', name: '', amount: '', unit: '' },
+  { id: '2', name: '', amount: '', unit: '' },
+]
+
+function normalizeHtml(html: string): string {
+  return (html || '')
+    .replace(/<span class="ql-ui"[^>]*>[\s\S]*?<\/span>/gi, '')
+    .replace(/<p><br\s*\/?><\/p>|<p><\/p>/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function normalizeIngredients(items: IngredientItem[] | undefined): Array<{ name: string; amount: string; unit: string }> {
+  if (!items || !Array.isArray(items)) return []
+  return items.map((i) => ({
+    name: String(i?.name ?? '').trim(),
+    amount: String(i?.amount ?? '').trim(),
+    unit: String(i?.unit ?? '').trim(),
+  }))
+}
+
+function normalizeTags(t: RecipeTags | undefined): Record<string, string[]> {
+  const res: Record<string, string[]> = {}
+  for (const [k, v] of Object.entries(t || {})) {
+    if (Array.isArray(v) && v.length > 0) {
+      res[k] = [...v].sort()
+    }
+  }
+  return res
+}
+
+function getInitialValues(r?: Recipe | null) {
+  const prep = typeof r?.prep_time_minutes === 'number' ? r.prep_time_minutes : ''
+  const cook = typeof r?.cook_time_minutes === 'number' ? r.cook_time_minutes : ''
+  const rawIngs =
+    r?.ingredients && r.ingredients.length > 0
+      ? r.ingredients
+      : DEFAULT_INGREDIENTS
+  const cleanIngs = rawIngs.map((i, idx) => ({
+    id: i.id || String(idx + 1),
+    name: String(i?.name ?? ''),
+    amount: String(i?.amount ?? ''),
+    unit: String(i?.unit ?? ''),
+  }))
+
+  return {
+    title: String(r?.title ?? '').trim(),
+    description: String(r?.description ?? '').trim(),
+    yieldAmount: String(r?.yield_amount ?? '').trim(),
+    prepTimeMinutes: prep as number | '',
+    cookTimeMinutes: cook as number | '',
+    imageUrl: String(r?.image_url ?? '').trim(),
+    ingredients: cleanIngs,
+    instructionsHtml: normalizeInstructionsToHtml(r?.instructions),
+    tags: (r?.tags ? JSON.parse(JSON.stringify(r.tags)) : {}) as RecipeTags,
+  }
 }
 
 export function RecipeFormPage({
@@ -39,50 +100,125 @@ export function RecipeFormPage({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [showBackConfirm, setShowBackConfirm] = useState(false)
+  const [currentRecipe, setCurrentRecipe] = useState<Recipe | null | undefined>(recipe)
+
+  const timeTrackingMode = metadataConfig?.timeTrackingMode || 'prep_and_cook'
+
+  const [initialState, setInitialState] = useState(() => getInitialValues(recipe))
 
   // Form Fields
-  const [title, setTitle] = useState(recipe?.title || '')
-  const [description, setDescription] = useState(recipe?.description || '')
-  const [yieldAmount, setYieldAmount] = useState(recipe?.yield_amount || '')
+  const [title, setTitle] = useState(initialState.title)
+  const [description, setDescription] = useState(initialState.description)
+  const [yieldAmount, setYieldAmount] = useState(initialState.yieldAmount)
   const [prepTimeMinutes, setPrepTimeMinutes] = useState<number | ''>(
-    recipe?.prep_time_minutes ?? ''
+    initialState.prepTimeMinutes
   )
   const [cookTimeMinutes, setCookTimeMinutes] = useState<number | ''>(
-    recipe?.cook_time_minutes ?? ''
+    initialState.cookTimeMinutes
   )
-  const [imageUrl, setImageUrl] = useState(recipe?.image_url || '')
-
+  const [imageUrl, setImageUrl] = useState(initialState.imageUrl)
   const [ingredients, setIngredients] = useState<IngredientItem[]>(
-    recipe?.ingredients && recipe.ingredients.length > 0
-      ? recipe.ingredients
-      : [
-          { id: '1', name: '', amount: '', unit: '' },
-          { id: '2', name: '', amount: '', unit: '' },
-        ]
+    initialState.ingredients
   )
-
-  const [instructionsHtml, setInstructionsHtml] = useState<string>(() =>
-    normalizeInstructionsToHtml(recipe?.instructions)
+  const [instructionsHtml, setInstructionsHtml] = useState<string>(
+    initialState.instructionsHtml
   )
-
-  const [tags, setTags] = useState<RecipeTags>(recipe?.tags || {})
+  const [tags, setTags] = useState<RecipeTags>(initialState.tags)
 
   useEffect(() => {
-    if (recipe) {
-      setTitle(recipe.title || '')
-      setDescription(recipe.description || '')
-      setYieldAmount(recipe.yield_amount || '')
-      setPrepTimeMinutes(recipe.prep_time_minutes ?? '')
-      setCookTimeMinutes(recipe.cook_time_minutes ?? '')
-      setImageUrl(recipe.image_url || '')
-      if (recipe.ingredients?.length) setIngredients(recipe.ingredients)
-      setInstructionsHtml(normalizeInstructionsToHtml(recipe.instructions))
-      if (recipe.tags) setTags(recipe.tags)
-    }
+    setCurrentRecipe(recipe)
+    const init = getInitialValues(recipe)
+    setInitialState(init)
+    setTitle(init.title)
+    setDescription(init.description)
+    setYieldAmount(init.yieldAmount)
+    setPrepTimeMinutes(init.prepTimeMinutes)
+    setCookTimeMinutes(init.cookTimeMinutes)
+    setImageUrl(init.imageUrl)
+    setIngredients(init.ingredients)
+    setInstructionsHtml(init.instructionsHtml)
+    setTags(init.tags)
   }, [recipe])
 
-  const calculatedTotalTime =
-    (Number(prepTimeMinutes) || 0) + (Number(cookTimeMinutes) || 0)
+  const isDirty = useMemo(() => {
+    const diffs: string[] = []
+
+    if (title.trim() !== initialState.title) {
+      diffs.push(`title: "${title.trim()}" !== "${initialState.title}"`)
+    }
+    if (description.trim() !== initialState.description) {
+      diffs.push(`description: "${description.trim()}" !== "${initialState.description}"`)
+    }
+    if (yieldAmount.trim() !== initialState.yieldAmount) {
+      diffs.push(`yieldAmount: "${yieldAmount.trim()}" !== "${initialState.yieldAmount}"`)
+    }
+
+    const curPrep = typeof prepTimeMinutes === 'number' ? prepTimeMinutes : 0
+    const initPrep = typeof initialState.prepTimeMinutes === 'number' ? initialState.prepTimeMinutes : 0
+    if (curPrep !== initPrep) {
+      diffs.push(`prepTimeMinutes: ${curPrep} !== ${initPrep}`)
+    }
+
+    const curCook = typeof cookTimeMinutes === 'number' ? cookTimeMinutes : 0
+    const initCook = typeof initialState.cookTimeMinutes === 'number' ? initialState.cookTimeMinutes : 0
+    if (curCook !== initCook) {
+      diffs.push(`cookTimeMinutes: ${curCook} !== ${initCook}`)
+    }
+
+    if (imageUrl.trim() !== initialState.imageUrl) {
+      diffs.push(`imageUrl: "${imageUrl.trim()}" !== "${initialState.imageUrl}"`)
+    }
+
+    const curInst = normalizeHtml(instructionsHtml)
+    const initInst = normalizeHtml(initialState.instructionsHtml)
+    if (curInst !== initInst) {
+      diffs.push(`instructionsHtml: "${curInst}" !== "${initInst}"`)
+    }
+
+    const curIngs = normalizeIngredients(ingredients)
+    const initIngs = normalizeIngredients(initialState.ingredients)
+    if (JSON.stringify(curIngs) !== JSON.stringify(initIngs)) {
+      diffs.push(`ingredients: ${JSON.stringify(curIngs)} !== ${JSON.stringify(initIngs)}`)
+    }
+
+    const curTags = normalizeTags(tags)
+    const initTags = normalizeTags(initialState.tags)
+    if (JSON.stringify(curTags) !== JSON.stringify(initTags)) {
+      diffs.push(`tags: ${JSON.stringify(curTags)} !== ${JSON.stringify(initTags)}`)
+    }
+
+    if (diffs.length > 0) {
+      console.log('[RecipeForm isDirty Telemetry]:', diffs)
+      return true
+    }
+    return false
+  }, [
+    title,
+    description,
+    yieldAmount,
+    prepTimeMinutes,
+    cookTimeMinutes,
+    imageUrl,
+    instructionsHtml,
+    ingredients,
+    tags,
+    initialState,
+  ])
+
+  const handleDiscard = () => {
+    setTitle(initialState.title)
+    setDescription(initialState.description)
+    setYieldAmount(initialState.yieldAmount)
+    setPrepTimeMinutes(initialState.prepTimeMinutes)
+    setCookTimeMinutes(initialState.cookTimeMinutes)
+    setImageUrl(initialState.imageUrl)
+    setIngredients(initialState.ingredients)
+    setInstructionsHtml(initialState.instructionsHtml)
+    setTags(initialState.tags)
+    setFieldErrors({})
+    setError(null)
+  }
 
   const mandatory = metadataConfig?.mandatoryFields || {
     title: true,
@@ -93,7 +229,6 @@ export function RecipeFormPage({
     yield_amount: false,
     prep_time_minutes: false,
     cook_time_minutes: false,
-    total_time_minutes: false,
   }
 
   const clearFieldError = (field: string) => {
@@ -139,8 +274,9 @@ export function RecipeFormPage({
     const finalTitle = title.trim()
     const finalDesc = description.trim()
     const finalYield = yieldAmount.trim()
-    const finalPrep = Number(prepTimeMinutes) || 0
-    const finalCook = Number(cookTimeMinutes) || 0
+    const finalPrep = timeTrackingMode !== 'no_cook' ? Number(prepTimeMinutes) || 0 : 0
+    const finalCook = timeTrackingMode === 'prep_and_cook' ? Number(cookTimeMinutes) || 0 : 0
+    const finalTotal = timeTrackingMode === 'prep_and_cook' ? finalPrep + finalCook : timeTrackingMode === 'total_only' ? finalPrep : 0
     const finalImage = imageUrl.trim()
     const finalIng = cleanIngredients
     const finalInst = instructionsHtml.trim()
@@ -155,10 +291,13 @@ export function RecipeFormPage({
     if (mandatory.description && !finalDesc) {
       nextErrors.description = 'Description is required.'
     }
-    if (mandatory.prep_time_minutes && !finalPrep) {
-      nextErrors.prep_time_minutes = 'Prep time is required.'
+    if (timeTrackingMode !== 'no_cook' && mandatory.prep_time_minutes && !finalPrep) {
+      nextErrors.prep_time_minutes =
+        timeTrackingMode === 'total_only'
+          ? 'Total time is required.'
+          : 'Prep time is required.'
     }
-    if (mandatory.cook_time_minutes && !finalCook) {
+    if (timeTrackingMode === 'prep_and_cook' && mandatory.cook_time_minutes && !finalCook) {
       nextErrors.cook_time_minutes = 'Cook time is required.'
     }
     if (mandatory.yield_amount && !finalYield) {
@@ -217,44 +356,92 @@ export function RecipeFormPage({
 
     if (Object.keys(nextErrors).length > 0) {
       setFieldErrors(nextErrors)
-      const firstErrorMessage = Object.values(nextErrors)[0]
-      setError(firstErrorMessage || 'Please complete all required fields.')
+      setError('Some choices are invalid')
+      const firstField = Object.keys(nextErrors)[0]
+      if (firstField) {
+        setTimeout(() => {
+          const el = document.querySelector(`[data-field="${firstField}"]`)
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            const focusable = el.querySelector<HTMLElement>('input, textarea, button, [tabindex="0"]')
+            if (focusable) {
+              focusable.focus()
+            }
+          }
+        }, 50)
+      }
       return
     }
 
     try {
       setSubmitting(true)
+      const activeId = currentRecipe?.id ?? recipe?.id
       const payload: CreateRecipeDTO = {
         title: finalTitle || 'Untitled Recipe',
         description: finalDesc,
         yield_amount: finalYield,
         prep_time_minutes: finalPrep,
         cook_time_minutes: finalCook,
-        total_time_minutes: finalPrep + finalCook,
+        total_time_minutes: finalTotal,
         image_url: finalImage,
-        source_url: recipe?.source_url || '',
-        notes: recipe?.notes || '',
+        source_url: currentRecipe?.source_url || recipe?.source_url || '',
+        notes: currentRecipe?.notes || recipe?.notes || '',
         ingredients: finalIng,
         instructions: finalInst,
         tags: finalTags,
-        template_id: recipe?.template_id || 'tpl_default',
-        template_version_id: recipe?.template_version_id || 1,
+        template_id: currentRecipe?.template_id || recipe?.template_id || 'tpl_default',
+        template_version_id: currentRecipe?.template_version_id || recipe?.template_version_id || 1,
         field_values: {
           ...recipe?.field_values,
+          ...currentRecipe?.field_values,
           title: finalTitle,
           description: finalDesc,
           yield_amount: finalYield,
           prep_time_minutes: finalPrep,
           cook_time_minutes: finalCook,
-          total_time_minutes: finalPrep + finalCook,
+          total_time_minutes: finalTotal,
           image_url: finalImage,
           ingredients: finalIng,
           instructions: finalInst,
+          fld_instructions: finalInst,
           tags: finalTags,
         },
       }
 
-      await onSave(payload, recipe ? recipe.id : undefined)
+      const saved = await onSave(payload, activeId)
+      if (saved) {
+        setCurrentRecipe(saved)
+        const nextInit = getInitialValues(saved)
+        setInitialState(nextInit)
+        setTitle(nextInit.title)
+        setDescription(nextInit.description)
+        setYieldAmount(nextInit.yieldAmount)
+        setPrepTimeMinutes(nextInit.prepTimeMinutes)
+        setCookTimeMinutes(nextInit.cookTimeMinutes)
+        setImageUrl(nextInit.imageUrl)
+        setIngredients(nextInit.ingredients)
+        setInstructionsHtml(nextInit.instructionsHtml)
+        setTags(nextInit.tags)
+      } else {
+        const nextInit = getInitialValues({
+          id: activeId || 0,
+          title: finalTitle,
+          description: finalDesc,
+          yield_amount: finalYield,
+          prep_time_minutes: finalPrep,
+          cook_time_minutes: finalCook,
+          total_time_minutes: finalTotal,
+          image_url: finalImage,
+          source_url: currentRecipe?.source_url || recipe?.source_url || '',
+          notes: currentRecipe?.notes || recipe?.notes || '',
+          ingredients: finalIng,
+          instructions: finalInst,
+          tags: finalTags,
+          created_at: '',
+          updated_at: '',
+        })
+        setInitialState(nextInit)
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to save recipe.'
       setError(msg)
@@ -263,61 +450,33 @@ export function RecipeFormPage({
     }
   }
 
+  const handleBackClick = () => {
+    if (isDirty) {
+      setShowBackConfirm(true)
+    } else {
+      onBack()
+    }
+  }
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-16 animate-in fade-in duration-150">
+    <div className="max-w-7xl mx-auto space-y-6 pb-32 sm:pb-36 animate-in fade-in duration-150">
       {/* Top Action Bar */}
       {!hideTopBar && (
-        <div className="flex items-center justify-between border-b border-border pb-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button
               variant="outline"
               size="icon"
-              onClick={onBack}
+              onClick={handleBackClick}
               title="Back to Recipes"
               className="h-9 w-9 cursor-pointer border-border hover:bg-muted text-foreground"
             >
               <ArrowLeft className="h-4.5 w-4.5" />
             </Button>
             <h1 className="text-xl font-bold tracking-tight text-foreground">
-              {recipe ? 'Edit Recipe' : 'New Recipe'}
+              {recipe ? 'Edit' : 'New'}
             </h1>
           </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onBack}
-              className="cursor-pointer"
-            >
-              Cancel
-            </Button>
-
-            <Button
-              type="submit"
-              form="recipe-form"
-              variant="outline"
-              disabled={submitting}
-              className="cursor-pointer font-semibold min-w-28 border-border bg-card hover:bg-muted text-foreground"
-            >
-              {submitting ? (
-                'Saving...'
-              ) : (
-                <>
-                  <Check className="h-4 w-4 mr-1.5" />{' '}
-                  {recipe ? 'Save Changes' : 'Create Recipe'}
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Global Form Error Banner */}
-      {error && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs font-semibold text-destructive animate-in fade-in">
-          {error}
         </div>
       )}
 
@@ -333,16 +492,16 @@ export function RecipeFormPage({
           onPrepTimeChange={setPrepTimeMinutes}
           cookTimeMinutes={cookTimeMinutes}
           onCookTimeChange={setCookTimeMinutes}
-          calculatedTotalTime={calculatedTotalTime}
           yieldAmount={yieldAmount}
           onYieldChange={setYieldAmount}
           mandatory={mandatory}
           fieldErrors={fieldErrors}
           onClearFieldError={clearFieldError}
+          timeTrackingMode={timeTrackingMode}
         />
 
         {/* 2. Cover Photo */}
-        <div className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-xs">
+        <div data-field="image_url" className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-xs">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
               Cover Photo {mandatory.image_url && <span className="text-destructive">*</span>}
@@ -414,6 +573,7 @@ export function RecipeFormPage({
           onIngredientChange={handleIngredientChange}
           onAddRow={addIngredientRow}
           onRemoveRow={removeIngredientRow}
+          onReorder={setIngredients}
           isMandatory={Boolean(mandatory.ingredients !== false)}
           error={fieldErrors.ingredients}
         />
@@ -428,36 +588,28 @@ export function RecipeFormPage({
           isMandatory={Boolean(mandatory.instructions !== false)}
           error={fieldErrors.instructions}
         />
-
-        {/* Bottom Save Bar for easy access on long recipes */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onBack}
-            className="cursor-pointer"
-          >
-            Cancel
-          </Button>
-
-          <Button
-            type="submit"
-            variant="outline"
-            disabled={submitting}
-            className="cursor-pointer font-semibold min-w-28 border-border bg-card hover:bg-muted text-foreground"
-          >
-            {submitting ? (
-              'Saving...'
-            ) : (
-              <>
-                <Check className="h-4 w-4 mr-1.5" />{' '}
-                {recipe ? 'Save Changes' : 'Create Recipe'}
-              </>
-            )}
-          </Button>
-        </div>
       </form>
+
+      {/* Floating Sticky Save Bar */}
+      <SaveBar
+        isDirty={isDirty}
+        submitting={submitting}
+        error={error}
+        onDiscard={handleDiscard}
+        formId="recipe-form"
+      />
+
+      {/* Confirmation Dialog for Back Navigation */}
+      <ConfirmUnsavedDialog
+        open={showBackConfirm}
+        onOpenChange={setShowBackConfirm}
+        onConfirmDiscard={() => {
+          setShowBackConfirm(false)
+          onBack()
+        }}
+        title="Discard unsaved changes?"
+        description="You have unsaved recipe changes that will be lost if you leave this page."
+      />
     </div>
   )
 }

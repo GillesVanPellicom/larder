@@ -103,6 +103,7 @@ var metadataConfigTable = pgTable("metadata_config", {
   id: varchar("id", { length: 50 }).primaryKey(),
   mandatoryFields: jsonb("mandatory_fields").$type().notNull(),
   mandatoryCategories: jsonb("mandatory_categories").$type().default([]).notNull(),
+  timeTrackingMode: varchar("time_tracking_mode", { length: 50 }).default("prep_and_cook"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });
 
@@ -221,8 +222,11 @@ async function migrateDb(retries = 5, delayMs = 2e3) {
           id VARCHAR(50) PRIMARY KEY,
           mandatory_fields JSONB NOT NULL DEFAULT '{}'::jsonb,
           mandatory_categories JSONB NOT NULL DEFAULT '[]'::jsonb,
+          time_tracking_mode VARCHAR(50) DEFAULT 'prep_and_cook',
           updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+
+        ALTER TABLE metadata_config ADD COLUMN IF NOT EXISTS time_tracking_mode VARCHAR(50) DEFAULT 'prep_and_cook';
       `);
       const existingConfig = await db.select().from(metadataConfigTable).where(eq(metadataConfigTable.id, "global"));
       if (existingConfig.length === 0) {
@@ -237,10 +241,10 @@ async function migrateDb(retries = 5, delayMs = 2e3) {
             description: false,
             yield_amount: false,
             prep_time_minutes: false,
-            cook_time_minutes: false,
-            total_time_minutes: false
+            cook_time_minutes: false
           },
-          mandatoryCategories: []
+          mandatoryCategories: [],
+          timeTrackingMode: "prep_and_cook"
         });
       }
       const [categoryCount] = await db.select({ value: count() }).from(tagCategories);
@@ -634,34 +638,47 @@ router2.get("/:id", async (req, res) => {
 });
 function syncCoreColumnsFromFieldValues(body) {
   const fv = body.field_values || {};
-  const title = fv.fld_title || body.title || "";
-  const description = fv.fld_description || body.description || "";
-  const yieldAmount = fv.fld_yield || body.yield_amount || "";
-  const prep = Number(fv.fld_prep_time) || Number(body.prep_time_minutes) || 0;
-  const cook = Number(fv.fld_cook_time) || Number(body.cook_time_minutes) || 0;
-  const total = Number(fv.fld_total_time) || Number(body.total_time_minutes) || prep + cook;
-  const imageUrl = fv.fld_image || body.image_url || "";
+  const title = body.title !== void 0 ? body.title : fv.fld_title || "";
+  const description = body.description !== void 0 ? body.description : fv.fld_description || "";
+  const yieldAmount = body.yield_amount !== void 0 ? body.yield_amount : fv.fld_yield || "";
+  const prep = body.prep_time_minutes !== void 0 ? Number(body.prep_time_minutes) : Number(fv.fld_prep_time) || 0;
+  const cook = body.cook_time_minutes !== void 0 ? Number(body.cook_time_minutes) : Number(fv.fld_cook_time) || 0;
+  const total = body.total_time_minutes !== void 0 ? Number(body.total_time_minutes) : Number(fv.fld_total_time) || prep + cook;
+  const imageUrl = body.image_url !== void 0 ? body.image_url : fv.fld_image || "";
   const sourceUrl = body.source_url || "";
-  const notes = fv.fld_notes || body.notes || "";
-  const ingredients = fv.fld_ingredients || body.ingredients || [];
-  const instructions = fv.fld_instructions || body.instructions || "";
-  const tags = fv.fld_tags || body.tags || {};
+  const notes = body.notes !== void 0 ? body.notes : fv.fld_notes || "";
+  const ingredients = body.ingredients !== void 0 ? body.ingredients : fv.fld_ingredients || [];
+  const instructions = body.instructions !== void 0 ? body.instructions : fv.fld_instructions || "";
+  const tags = body.tags !== void 0 ? body.tags : fv.fld_tags || {};
   return {
-    title: title.trim(),
-    description: description.trim(),
-    yieldAmount: yieldAmount.trim(),
+    title: String(title).trim(),
+    description: String(description).trim(),
+    yieldAmount: String(yieldAmount).trim(),
     prepTimeMinutes: prep,
     cookTimeMinutes: cook,
     totalTimeMinutes: total,
-    imageUrl: imageUrl.trim(),
-    sourceUrl: sourceUrl.trim(),
-    notes: notes.trim(),
+    imageUrl: String(imageUrl).trim(),
+    sourceUrl: String(sourceUrl).trim(),
+    notes: String(notes).trim(),
     ingredients,
     instructions,
     tags,
     templateId: body.template_id || "tpl_default",
     templateVersionId: body.template_version_id || 1,
-    fieldValues: fv,
+    fieldValues: {
+      ...fv,
+      fld_title: title,
+      fld_description: description,
+      fld_yield: yieldAmount,
+      fld_prep_time: prep,
+      fld_cook_time: cook,
+      fld_total_time: total,
+      fld_image: imageUrl,
+      fld_notes: notes,
+      fld_ingredients: ingredients,
+      fld_instructions: instructions,
+      fld_tags: tags
+    },
     archivedValues: body.archived_values || {}
   };
 }
@@ -818,10 +835,10 @@ router3.get("/", async (_req, res) => {
           description: false,
           yield_amount: false,
           prep_time_minutes: false,
-          cook_time_minutes: false,
-          total_time_minutes: false
+          cook_time_minutes: false
         },
-        mandatoryCategories: []
+        mandatoryCategories: [],
+        timeTrackingMode: "prep_and_cook"
       };
       return res.json(defaultConfig);
     }
@@ -829,6 +846,7 @@ router3.get("/", async (_req, res) => {
     const config2 = {
       mandatoryFields: row.mandatoryFields,
       mandatoryCategories: row.mandatoryCategories,
+      timeTrackingMode: row.timeTrackingMode || "prep_and_cook",
       updated_at: row.updatedAt ? row.updatedAt.toISOString() : void 0
     };
     res.json(config2);
@@ -840,29 +858,38 @@ router3.get("/", async (_req, res) => {
 });
 router3.put("/", async (req, res) => {
   try {
-    const { mandatoryFields, mandatoryCategories } = req.body;
+    const { mandatoryFields, mandatoryCategories, timeTrackingMode } = req.body;
     if (!mandatoryFields) {
       return res.status(400).json({ error: "mandatoryFields is required" });
     }
     mandatoryFields.title = true;
     mandatoryFields.ingredients = true;
     mandatoryFields.instructions = true;
+    if (timeTrackingMode === "no_cook") {
+      mandatoryFields.prep_time_minutes = false;
+      mandatoryFields.cook_time_minutes = false;
+    } else if (timeTrackingMode === "total_only") {
+      mandatoryFields.cook_time_minutes = false;
+    }
     const [updated] = await db.insert(metadataConfigTable).values({
       id: "global",
       mandatoryFields,
       mandatoryCategories: mandatoryCategories || [],
+      timeTrackingMode: timeTrackingMode || "prep_and_cook",
       updatedAt: /* @__PURE__ */ new Date()
     }).onConflictDoUpdate({
       target: metadataConfigTable.id,
       set: {
         mandatoryFields,
         mandatoryCategories: mandatoryCategories || [],
+        timeTrackingMode: timeTrackingMode || "prep_and_cook",
         updatedAt: /* @__PURE__ */ new Date()
       }
     }).returning();
     res.json({
       mandatoryFields: updated.mandatoryFields,
       mandatoryCategories: updated.mandatoryCategories,
+      timeTrackingMode: updated.timeTrackingMode,
       updated_at: updated.updatedAt.toISOString()
     });
   } catch (err) {
@@ -927,7 +954,7 @@ router4.post("/categories", async (req, res) => {
 router4.put("/categories/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, color, exclusive, min_tags, max_tags } = req.body;
+    const { name, color, exclusive, min_tags, max_tags, tags } = req.body;
     const updatePayload = {
       updatedAt: /* @__PURE__ */ new Date()
     };
@@ -936,6 +963,7 @@ router4.put("/categories/:id", async (req, res) => {
     if (exclusive !== void 0) updatePayload.exclusive = Boolean(exclusive);
     if (min_tags !== void 0) updatePayload.minTags = min_tags;
     if (max_tags !== void 0) updatePayload.maxTags = max_tags;
+    if (tags !== void 0) updatePayload.tags = tags;
     const [updated] = await db.update(tagCategories).set(updatePayload).where(eq4(tagCategories.id, id)).returning();
     if (!updated) {
       return res.status(404).json({ error: "Tag category not found" });
@@ -1153,6 +1181,7 @@ router5.get("/", async (_req, res) => {
       total_time_minutes: false
     };
     const mandatoryCategories = (configRow == null ? void 0 : configRow.mandatoryCategories) || [];
+    const timeTrackingMode = (configRow == null ? void 0 : configRow.timeTrackingMode) || "prep_and_cook";
     const allCategories = await db.select().from(tagCategories);
     const categoryTagMap = /* @__PURE__ */ new Map();
     for (const cat of allCategories) {
@@ -1172,16 +1201,21 @@ router5.get("/", async (_req, res) => {
         violations.push({ field: "description", message: "Description is mandatory" });
       }
       if (mandatory.yield_amount && (!r.yieldAmount || !r.yieldAmount.trim())) {
-        violations.push({ field: "yield_amount", message: "Yield / Servings is mandatory" });
+        violations.push({ field: "yield_amount", message: "Yield is mandatory" });
       }
-      if (mandatory.prep_time_minutes && (!r.prepTimeMinutes || r.prepTimeMinutes <= 0)) {
-        violations.push({ field: "prep_time_minutes", message: "Preparation time is mandatory" });
-      }
-      if (mandatory.cook_time_minutes && (!r.cookTimeMinutes || r.cookTimeMinutes <= 0)) {
-        violations.push({ field: "cook_time_minutes", message: "Cooking time is mandatory" });
-      }
-      if (mandatory.total_time_minutes && (!r.totalTimeMinutes || r.totalTimeMinutes <= 0)) {
-        violations.push({ field: "total_time_minutes", message: "Total time is mandatory" });
+      if (timeTrackingMode !== "no_cook") {
+        if (timeTrackingMode === "total_only") {
+          if (mandatory.prep_time_minutes && (!r.prepTimeMinutes || r.prepTimeMinutes <= 0) && (!r.totalTimeMinutes || r.totalTimeMinutes <= 0)) {
+            violations.push({ field: "prep_time_minutes", message: "Total time is mandatory" });
+          }
+        } else if (timeTrackingMode === "prep_and_cook") {
+          if (mandatory.prep_time_minutes && (!r.prepTimeMinutes || r.prepTimeMinutes <= 0)) {
+            violations.push({ field: "prep_time_minutes", message: "Preparation time is mandatory" });
+          }
+          if (mandatory.cook_time_minutes && (!r.cookTimeMinutes || r.cookTimeMinutes <= 0)) {
+            violations.push({ field: "cook_time_minutes", message: "Cooking time is mandatory" });
+          }
+        }
       }
       if (mandatory.ingredients && (!r.ingredients || r.ingredients.length === 0)) {
         violations.push({ field: "ingredients", message: "At least one ingredient is required" });

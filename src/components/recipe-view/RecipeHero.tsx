@@ -1,18 +1,26 @@
-import type { Recipe } from '@/shared/types'
+import { Badge } from '@/components/ui/badge'
 import { formatGracefulNumber } from '@/lib/recipeMath'
-import { Clock, Users } from 'lucide-react'
+import type { Recipe, TagCategory, TimeTrackingMode } from '@/shared/types'
 
 interface RecipeHeroProps {
   recipe: Recipe
+  categories?: TagCategory[]
   scaledYield?: string
   yieldMultiplier?: number
+  timeTrackingMode?: TimeTrackingMode
+  onTagClick?: (catId: string, tag: string) => void
 }
 
 export function RecipeHero({
   recipe,
+  categories = [],
   scaledYield,
   yieldMultiplier = 1,
+  timeTrackingMode = 'prep_and_cook',
+  onTagClick,
 }: RecipeHeroProps) {
+  const hasTags = Object.keys(recipe.tags || {}).length > 0
+
   return (
     <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
       {recipe.image_url ? (
@@ -24,9 +32,6 @@ export function RecipeHero({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
           <div className="absolute bottom-6 left-6 right-6 text-white">
-            <span className="text-xs font-mono uppercase tracking-widest text-amber-300 font-bold block mb-1">
-              Recipe Details
-            </span>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
               {recipe.title}
             </h1>
@@ -38,11 +43,8 @@ export function RecipeHero({
           </div>
         </div>
       ) : (
-        <div className="p-8 border-b border-border">
-          <span className="text-xs font-mono uppercase tracking-widest text-amber-600 dark:text-amber-400 font-bold block mb-1">
-            Recipe Details
-          </span>
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+        <div className="p-6 sm:p-8">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
             {recipe.title}
           </h1>
           {recipe.description && (
@@ -53,61 +55,111 @@ export function RecipeHero({
         </div>
       )}
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-border border-t border-border bg-muted/20 text-center p-4">
-        <div className="py-2">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block">
-            Prep Time
-          </span>
-          <div className="flex items-center justify-center gap-1 mt-1">
-            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-sm font-bold text-foreground">
-              {recipe.prep_time_minutes > 0 ? `${recipe.prep_time_minutes} min` : '—'}
+      {/* Symmetrical Consolidated Metrics Grid */}
+      <div
+        className={`grid ${
+          timeTrackingMode === 'prep_and_cook'
+            ? 'grid-cols-2 sm:grid-cols-4'
+            : timeTrackingMode === 'total_only'
+            ? 'grid-cols-2'
+            : 'grid-cols-1'
+        } gap-px bg-border border-t border-border`}
+      >
+        {/* Prep Time (Shown in prep_and_cook only) */}
+        {timeTrackingMode === 'prep_and_cook' && (
+          <div className="bg-card py-3 px-2 sm:py-3.5 sm:px-4 text-center">
+            <span className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-semibold block">
+              Prep Time
             </span>
+            <div className="flex items-center justify-center gap-1 mt-1">
+              <span className="text-sm sm:text-base font-bold text-foreground">
+                {recipe.prep_time_minutes > 0 ? `${recipe.prep_time_minutes} min` : '—'}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="py-2">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block">
-            Cook Time
-          </span>
-          <div className="flex items-center justify-center gap-1 mt-1">
-            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-sm font-bold text-foreground">
-              {recipe.cook_time_minutes > 0 ? `${recipe.cook_time_minutes} min` : '—'}
+        {/* Cook Time (Shown in prep_and_cook only) */}
+        {timeTrackingMode === 'prep_and_cook' && (
+          <div className="bg-card py-3 px-2 sm:py-3.5 sm:px-4 text-center">
+            <span className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-semibold block">
+              Cook Time
             </span>
+            <div className="flex items-center justify-center gap-1 mt-1">
+              <span className="text-sm sm:text-base font-bold text-foreground">
+                {recipe.cook_time_minutes > 0 ? `${recipe.cook_time_minutes} min` : '—'}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="py-2">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block">
-            Total Time
-          </span>
-          <div className="flex items-center justify-center gap-1 mt-1">
-            <Clock className="h-3.5 w-3.5 text-amber-500" />
-            <span className="text-sm font-bold text-amber-600 dark:text-amber-400">
-              {recipe.total_time_minutes > 0 ? `${recipe.total_time_minutes} min` : '—'}
+        {/* Total Time (Shown in prep_and_cook and total_only) */}
+        {timeTrackingMode !== 'no_cook' && (
+          <div className="bg-card py-3 px-2 sm:py-3.5 sm:px-4 text-center">
+            <span className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-semibold block">
+              Total Time
             </span>
+            <div className="flex items-center justify-center gap-1 mt-1">
+              <span className="text-sm sm:text-base font-bold text-foreground">
+                {recipe.total_time_minutes > 0 ? `${recipe.total_time_minutes} min` : '—'}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="py-2">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block">
+        {/* Yield */}
+        <div className="bg-card py-3 px-2 sm:py-3.5 sm:px-4 text-center">
+          <span className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-semibold block">
             Yield
           </span>
-          <div className="flex items-center justify-center gap-1.5 mt-1 flex-wrap">
-            <Users className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-sm font-bold text-foreground">
+          <div className="flex items-center justify-center gap-1 mt-1 flex-wrap">
+            <span className="text-sm sm:text-base font-bold text-foreground">
               {scaledYield || recipe.yield_amount || '—'}
             </span>
             {Math.abs(yieldMultiplier - 1) > 0.001 && (
-              <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+              <span className="text-[11px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                 {formatGracefulNumber(yieldMultiplier)}×
               </span>
             )}
           </div>
         </div>
       </div>
+
+      {/* Integrated Tags Section */}
+      {hasTags && (
+        <div className="p-4 sm:p-5 border-t border-border bg-muted/20 flex flex-wrap items-center gap-x-6 gap-y-2.5">
+          {Object.entries(recipe.tags).map(([catId, tags]) => {
+            if (!tags || tags.length === 0) return null
+            const category = categories.find((c) => c.id === catId)
+            const categoryName = category?.name || catId
+
+            return (
+              <div key={catId} className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs font-semibold text-muted-foreground">
+                  {categoryName}:
+                </span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {tags.map((t) => (
+                    <Badge
+                      key={`${catId}-${t}`}
+                      variant="secondary"
+                      onClick={() => onTagClick?.(catId, t)}
+                      title={`Filter recipes by ${categoryName}: ${t}`}
+                      className={`text-xs sm:text-sm px-2.5 py-1 font-medium border border-border bg-card text-foreground shadow-2xs transition-all ${
+                        onTagClick
+                          ? 'cursor-pointer hover:bg-primary hover:text-primary-foreground hover:border-primary'
+                          : ''
+                      }`}
+                    >
+                      {t}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

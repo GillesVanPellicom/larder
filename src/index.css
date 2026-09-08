@@ -193,12 +193,14 @@
 
 /* Rich Recipe Instructions Display Styling */
 .recipe-instructions-content {
+  font-family: inherit;
   font-size: 0.9375rem;
   line-height: 1.75;
   color: var(--foreground);
 }
 
 .recipe-instructions-content p {
+  margin-top: 0;
   margin-bottom: 0.75em;
 }
 
@@ -206,27 +208,71 @@
   margin-bottom: 0;
 }
 
+/* Headings */
+.recipe-instructions-content h1 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+  color: var(--foreground);
+}
+
+.recipe-instructions-content h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  color: var(--foreground);
+}
+
+.recipe-instructions-content h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-top: 0.75em;
+  margin-bottom: 0.35em;
+  color: var(--foreground);
+}
+
+/* Ordered Lists */
 .recipe-instructions-content ol {
-  list-style-type: decimal;
-  padding-left: 1.5rem;
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin-top: 0.25em;
   margin-bottom: 0.75em;
 }
 
+/* Unordered / Bullet Lists */
 .recipe-instructions-content ul {
-  list-style-type: disc;
-  padding-left: 1.5rem;
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin-top: 0.25em;
   margin-bottom: 0.75em;
 }
 
+/* List Items */
 .recipe-instructions-content li {
   margin-bottom: 0.4em;
   padding-left: 0.25rem;
+  display: list-item !important;
 }
 
-.recipe-instructions-content li[data-list="checked"] {
-  list-style-type: none;
+/* Quill-specific list types */
+.recipe-instructions-content ol li[data-list="bullet"],
+.recipe-instructions-content li[data-list="bullet"] {
+  list-style-type: disc !important;
+}
+
+.recipe-instructions-content ol li[data-list="ordered"],
+.recipe-instructions-content li[data-list="ordered"] {
+  list-style-type: decimal !important;
+}
+
+/* Quill Checklists */
+.recipe-instructions-content li[data-list="checked"],
+.recipe-instructions-content li[data-list="unchecked"] {
+  list-style-type: none !important;
   position: relative;
-  padding-left: 1.6rem;
+  padding-left: 1.6rem !important;
 }
 
 .recipe-instructions-content li[data-list="checked"]::before {
@@ -237,12 +283,6 @@
   font-size: 1.1em;
 }
 
-.recipe-instructions-content li[data-list="unchecked"] {
-  list-style-type: none;
-  position: relative;
-  padding-left: 1.6rem;
-}
-
 .recipe-instructions-content li[data-list="unchecked"]::before {
   content: "☐";
   position: absolute;
@@ -251,21 +291,96 @@
   font-size: 1.1em;
 }
 
+/* Bold / Strong */
+.recipe-instructions-content strong,
+.recipe-instructions-content b {
+  font-weight: 700 !important;
+  color: var(--foreground);
+}
+
+/* Italic / Em */
+.recipe-instructions-content em,
+.recipe-instructions-content i {
+  font-style: italic !important;
+}
+
+/* Underline */
+.recipe-instructions-content u {
+  text-decoration: underline !important;
+  text-underline-offset: 2px;
+}
+
+/* Links */
 .recipe-instructions-content a {
-  color: oklch(0.6 0.18 250);
-  text-decoration: underline;
+  color: var(--primary) !important;
+  text-decoration: underline !important;
   text-underline-offset: 3px;
+  font-weight: 500;
 }
 
-.recipe-instructions-content strong {
-  font-weight: 700;
+.recipe-instructions-content a:hover {
+  opacity: 0.8;
 }
 
-.recipe-instructions-content em {
+/* Blockquotes & Code */
+.recipe-instructions-content blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 1rem;
+  margin: 0.75em 0;
+  color: var(--muted-foreground);
   font-style: italic;
 }
 
-.recipe-instructions-content u {
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.recipe-instructions-content code {
+  background-color: var(--muted);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.875em;
+  font-family: monospace;
+}
+
+@keyframes headShake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px); }
+  30% { transform: translateX(5px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(3px); }
+  75% { transform: translateX(-1px); }
+}
+
+.animate-head-shake {
+  animation: headShake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes smoothFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-circle-fade {
+  animation: smoothFadeIn 0.25s ease-out forwards;
+}
+
+@keyframes drawCheck {
+  0% {
+    stroke-dashoffset: 24;
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+.animate-check-draw {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 0;
+  animation: drawCheck 0.35s cubic-bezier(0.65, 0, 0.45, 1) forwards;
 }

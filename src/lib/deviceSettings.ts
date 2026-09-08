@@ -5,10 +5,12 @@ export type Theme = 'light' | 'dark'
 
 export interface DeviceSettings {
   theme: Theme
+  recipesPerPage: number
 }
 
 export const DEFAULT_DEVICE_SETTINGS: DeviceSettings = {
   theme: 'light',
+  recipesPerPage: 12,
 }
 
 const COOKIE_PREFIX = 'coquinaria_'
@@ -19,13 +21,13 @@ const listeners = new Set<SettingsListener>()
 /**
  * Apply DOM modifications based on active device settings (e.g. .dark class).
  */
-export function applyDeviceSettings(settings: DeviceSettings): void {
+export function applyDeviceSettings(settings: Partial<DeviceSettings>): void {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   if (settings.theme === 'dark') {
     root.classList.add('dark')
     root.style.colorScheme = 'dark'
-  } else {
+  } else if (settings.theme === 'light') {
     root.classList.remove('dark')
     root.style.colorScheme = 'light'
   }
@@ -62,6 +64,15 @@ export function getDeviceSetting<K extends keyof DeviceSettings>(key: K): Device
     return (prefersDark ? 'dark' : 'light') as DeviceSettings[K]
   }
 
+  if (key === 'recipesPerPage') {
+    const raw = getCookie(`${COOKIE_PREFIX}recipes_per_page`)
+    const parsed = parseInt(raw || '', 10)
+    if (!isNaN(parsed) && [6, 12, 24, 48, 96].includes(parsed)) {
+      return parsed as DeviceSettings[K]
+    }
+    return DEFAULT_DEVICE_SETTINGS.recipesPerPage as DeviceSettings[K]
+  }
+
   const raw = getCookie(`${COOKIE_PREFIX}${key}`)
   return (raw as DeviceSettings[K]) ?? DEFAULT_DEVICE_SETTINGS[key]
 }
@@ -72,6 +83,7 @@ export function getDeviceSetting<K extends keyof DeviceSettings>(key: K): Device
 export function getAllDeviceSettings(): DeviceSettings {
   return {
     theme: getDeviceSetting('theme'),
+    recipesPerPage: getDeviceSetting('recipesPerPage'),
   }
 }
 
@@ -103,7 +115,8 @@ export function setDeviceSetting<K extends keyof DeviceSettings>(
   key: K,
   value: DeviceSettings[K]
 ): void {
-  setCookie(`${COOKIE_PREFIX}${key}`, String(value))
+  const cookieKey = key === 'recipesPerPage' ? `${COOKIE_PREFIX}recipes_per_page` : `${COOKIE_PREFIX}${key}`
+  setCookie(cookieKey, String(value))
   const updatedSettings = getAllDeviceSettings()
   applyDeviceSettings(updatedSettings)
   notifySubscribers(updatedSettings)

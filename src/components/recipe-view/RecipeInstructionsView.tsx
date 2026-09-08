@@ -1,6 +1,5 @@
 import { normalizeInstructionsToHtml } from '@/lib/instructions'
 import type { InstructionStep } from '@/shared/types'
-import { BookOpen } from 'lucide-react'
 
 interface RecipeInstructionsViewProps {
   instructions?: string | InstructionStep[]
@@ -13,15 +12,14 @@ export function RecipeInstructionsView({
 
   return (
     <div className="space-y-3">
-      <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-        <BookOpen className="h-4 w-4 text-amber-500" />
-        <span>Instructions</span>
+      <h2 className="text-base font-bold text-foreground">
+        Instructions
       </h2>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs min-h-48">
         {instructionsHtml ? (
           <div
-            className="recipe-instructions-content text-sm text-foreground leading-relaxed"
+            className="recipe-instructions-content"
             dangerouslySetInnerHTML={{ __html: instructionsHtml }}
           />
         ) : (

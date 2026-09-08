@@ -34,7 +34,6 @@ export function validateRecipeForm(
     yield_amount: false,
     prep_time_minutes: false,
     cook_time_minutes: false,
-    total_time_minutes: false,
   }
 
   const mandatoryCategories = metadataConfig?.mandatoryCategories || []

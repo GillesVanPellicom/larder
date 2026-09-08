@@ -1,34 +1,45 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import type { MandatoryFieldsConfig, MetadataConfig, TagCategory } from '@/shared/types'
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import {
-  AlertCircle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import type { MandatoryFieldsConfig, MetadataConfig, TagCategory, TimeTrackingMode } from '@/shared/types'
+import {
   Check,
-  Edit2,
+  ChevronDown,
+  Clock,
   Layers,
   Plus,
-  Sliders,
+  Search,
+  Timer,
   Trash2,
+  UtensilsCrossed,
 } from 'lucide-react'
 import { tagsApi } from '@/services/api'
 import { TagConflictDialog, type DeleteConflictData } from './TagConflictDialog'
+import { SaveBar } from '@/components/ui/save-bar'
 
 export interface CategoriesAndRulesTabProps {
   categories: TagCategory[]
   metadataConfig: MetadataConfig | null
   onRefreshCategories: () => Promise<void>
   onSaveConfig: (config: MetadataConfig) => Promise<void>
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 export function CategoriesAndRulesTab({
@@ -36,198 +47,292 @@ export function CategoriesAndRulesTab({
   metadataConfig,
   onRefreshCategories,
   onSaveConfig,
+  onDirtyChange,
 }: CategoriesAndRulesTabProps) {
-  // Category state
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
-    categories[0]?.id || 'season'
-  )
-  const [isAddingCategory, setIsAddingCategory] = useState(false)
-  const [newCategoryName, setNewCategoryName] = useState('')
+  // Category state (defaults to '' so user selects what to edit)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
 
-  const [newTagName, setNewTagName] = useState('')
-  const [editingTag, setEditingTag] = useState<{ categoryId: string; oldName: string } | null>(
-    null
-  )
-  const [renamedTagText, setRenamedTagText] = useState('')
+  // Working local copy of categories so all changes trigger SaveBar
+  const [localCategories, setLocalCategories] = useState<TagCategory[]>(categories)
+
+  // Sync localCategories when incoming categories change and not dirty
+  useEffect(() => {
+    setLocalCategories(categories)
+  }, [categories])
+
+  // Combobox dropdown state
+  const [isSectionPickerOpen, setIsSectionPickerOpen] = useState(false)
+  const [sectionSearch, setSectionSearch] = useState('')
+  const sectionPickerRef = useRef<HTMLDivElement>(null)
+
+  // Close section picker on click outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (sectionPickerRef.current && !sectionPickerRef.current.contains(e.target as Node)) {
+        setIsSectionPickerOpen(false)
+      }
+    }
+    if (isSectionPickerOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isSectionPickerOpen])
+
+  // Tag Modal State (Edit Tag)
+  const [tagModal, setTagModal] = useState<{
+    categoryId: string
+    tag: string
+  } | null>(null)
+  const [tagModalName, setTagModalName] = useState('')
+
+  // Add Tag Modal State
+  const [isAddTagModalOpen, setIsAddTagModalOpen] = useState(false)
+  const [newTagNameInput, setNewTagNameInput] = useState('')
+
+  // Create Category Modal State
+  const [isCreateCategoryModalOpen, setIsCreateCategoryModalOpen] = useState(false)
+  const [newCategoryModalName, setNewCategoryModalName] = useState('')
 
   const [conflictData, setConflictData] = useState<DeleteConflictData | null>(null)
   const [reassignTarget, setReassignTarget] = useState<string>('')
   const [tagLoading, setTagLoading] = useState(false)
-  const [categoryFeedback, setCategoryFeedback] = useState<string | null>(null)
 
-  // Metadata mandatory fields state
-  const [fields, setFields] = useState<MandatoryFieldsConfig>(
-    metadataConfig?.mandatoryFields || {
+  const initialFields = useMemo<MandatoryFieldsConfig>(
+    () => ({
       title: true,
       ingredients: true,
       instructions: true,
-      image_url: false,
-      description: false,
-      yield_amount: false,
-      prep_time_minutes: false,
-      cook_time_minutes: false,
-      total_time_minutes: false,
-    }
+      image_url: Boolean(metadataConfig?.mandatoryFields?.image_url),
+      description: Boolean(metadataConfig?.mandatoryFields?.description),
+      yield_amount: Boolean(metadataConfig?.mandatoryFields?.yield_amount),
+      prep_time_minutes: Boolean(metadataConfig?.mandatoryFields?.prep_time_minutes),
+      cook_time_minutes: Boolean(metadataConfig?.mandatoryFields?.cook_time_minutes),
+    }),
+    [metadataConfig]
   )
-  const [savingFields, setSavingFields] = useState(false)
-  const [fieldSuccess, setFieldSuccess] = useState(false)
+
+  const initialTimeMode = useMemo<TimeTrackingMode>(
+    () => metadataConfig?.timeTrackingMode || 'prep_and_cook',
+    [metadataConfig]
+  )
+
+  // State
+  const [fields, setFields] = useState<MandatoryFieldsConfig>(initialFields)
+  const [timeTrackingMode, setTimeTrackingMode] = useState<TimeTrackingMode>(initialTimeMode)
+  const [savingConfig, setSavingConfig] = useState(false)
+
+  useEffect(() => {
+    setFields(initialFields)
+    setTimeTrackingMode(initialTimeMode)
+  }, [initialFields, initialTimeMode])
+
+  const isDirty = useMemo(() => {
+    const fieldsChanged = JSON.stringify(fields) !== JSON.stringify(initialFields)
+    const modeChanged = timeTrackingMode !== initialTimeMode
+    const categoriesChanged = JSON.stringify(localCategories) !== JSON.stringify(categories)
+    return fieldsChanged || modeChanged || categoriesChanged
+  }, [fields, initialFields, timeTrackingMode, initialTimeMode, localCategories, categories])
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+
+  const handleDiscard = () => {
+    setFields(initialFields)
+    setTimeTrackingMode(initialTimeMode)
+    setLocalCategories(categories)
+  }
+
+  const handleSave = async () => {
+    try {
+      setSavingConfig(true)
+      const adjustedFields = {
+        ...fields,
+        title: true,
+        ingredients: true,
+        instructions: true,
+        prep_time_minutes: timeTrackingMode !== 'no_cook' ? Boolean(fields.prep_time_minutes) : false,
+        cook_time_minutes: timeTrackingMode === 'prep_and_cook' ? Boolean(fields.cook_time_minutes) : false,
+      }
+      await onSaveConfig({
+        mandatoryFields: adjustedFields,
+        mandatoryCategories: metadataConfig?.mandatoryCategories || [],
+        timeTrackingMode,
+      })
+
+      // Persist local category updates to the server
+      for (const localCat of localCategories) {
+        const initialCat = categories.find((c) => c.id === localCat.id)
+        if (!initialCat) {
+          // New category created
+          await tagsApi.createCategory({
+            id: localCat.id,
+            name: localCat.name,
+            exclusive: localCat.exclusive,
+            min_tags: localCat.min_tags,
+            max_tags: localCat.max_tags,
+            tags: localCat.tags,
+          })
+        } else {
+          // Existing category: check if tags or range changed
+          const tagsChanged = JSON.stringify(localCat.tags) !== JSON.stringify(initialCat.tags)
+          const rangeChanged =
+            localCat.min_tags !== initialCat.min_tags ||
+            localCat.max_tags !== initialCat.max_tags ||
+            localCat.name !== initialCat.name
+
+          if (tagsChanged || rangeChanged) {
+            // Strip any tags deleted from recipes
+            const deletedTags = (initialCat.tags || []).filter(
+              (t) => !(localCat.tags || []).includes(t)
+            )
+            for (const deletedTag of deletedTags) {
+              await tagsApi.deleteTag(localCat.id, deletedTag, 'strip')
+            }
+
+            // Update category configuration
+            await tagsApi.updateCategory(localCat.id, {
+              name: localCat.name,
+              min_tags: localCat.min_tags,
+              max_tags: localCat.max_tags,
+              exclusive: localCat.exclusive,
+              tags: localCat.tags,
+            })
+          }
+        }
+      }
+
+      await onRefreshCategories()
+    } catch (err) {
+      console.error('Failed to save rules and categories:', err)
+      throw err
+    } finally {
+      setSavingConfig(false)
+    }
+  }
 
   const activeCategory =
-    categories.find((c) => c.id === selectedCategoryId) || categories[0]
+    selectedCategoryId && selectedCategoryId !== 'basic_details'
+      ? localCategories.find((c) => c.id === selectedCategoryId) || null
+      : null
 
-  const showCategoryFeedback = (msg: string) => {
-    setCategoryFeedback(msg)
-    setTimeout(() => setCategoryFeedback(null), 3500)
+  // Local Range Change
+  const handleLocalRangeChange = (categoryId: string, newMin: number, newMax: number) => {
+    setLocalCategories((prev) =>
+      prev.map((c) =>
+        c.id === categoryId
+          ? { ...c, min_tags: newMin, max_tags: newMax, exclusive: newMax === 1 }
+          : c
+      )
+    )
   }
 
-  // Update selection range for category
-  const handleRangeChange = async (categoryId: string, newMin: number, newMax: number) => {
-    try {
-      setTagLoading(true)
-      await tagsApi.updateCategory(categoryId, {
-        min_tags: newMin,
-        max_tags: newMax,
-        exclusive: newMax === 1,
-      })
-      await onRefreshCategories()
-      showCategoryFeedback(`Category "${activeCategory?.name || categoryId}" range set to [${newMin}, ${newMax}].`)
-    } catch (err) {
-      console.error(err)
-      showCategoryFeedback(err instanceof Error ? err.message : 'Failed to update category range')
-    } finally {
-      setTagLoading(false)
-    }
-  }
+  // Create Category from search combobox
+  const handleCreateCategory = (categoryName: string) => {
+    const trimmed = categoryName.trim()
+    if (!trimmed) return
 
-  // Create new category
-  const handleCreateCategory = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newCategoryName.trim()) return
-
-    const slug = newCategoryName
+    const slug = trimmed
       .toLowerCase()
-      .trim()
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
+      .replace(/^-|-$/g, '') || `category-${Date.now()}`
 
-    try {
-      setTagLoading(true)
-      await tagsApi.createCategory({
-        id: slug,
-        name: newCategoryName.trim(),
-        min_tags: 0,
-        max_tags: 0,
-        tags: [],
-      })
-      await onRefreshCategories()
+    if (localCategories.some((c) => c.id === slug)) {
       setSelectedCategoryId(slug)
-      setNewCategoryName('')
-      setIsAddingCategory(false)
-      showCategoryFeedback(`Category "${newCategoryName.trim()}" created successfully!`)
-    } catch (err: unknown) {
-      showCategoryFeedback(err instanceof Error ? err.message : 'Failed to create category')
-    } finally {
-      setTagLoading(false)
+      setIsSectionPickerOpen(false)
+      setSectionSearch('')
+      return
     }
+
+    const newCat: TagCategory = {
+      id: slug,
+      name: trimmed,
+      color: 'neutral',
+      min_tags: 0,
+      max_tags: 0,
+      exclusive: false,
+      tags: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
+    setLocalCategories((prev) => [...prev, newCat])
+    setSelectedCategoryId(slug)
+    setIsSectionPickerOpen(false)
+    setSectionSearch('')
   }
 
-  // Delete category (only if empty)
+  // Delete category immediately on the server with alert confirmation
   const handleDeleteCategory = async (categoryId: string) => {
-    if (!confirm('Are you sure you want to delete this category? It must be empty.')) return
+    const targetCat = localCategories.find((c) => c.id === categoryId)
+    const name = targetCat?.name || 'this category'
+    if (!confirm(`Are you sure you want to delete the category "${name}"?`)) return
+
     try {
       setTagLoading(true)
       await tagsApi.deleteCategory(categoryId)
       await onRefreshCategories()
-      const remaining = categories.filter((c) => c.id !== categoryId)
-      if (remaining.length > 0) {
-        setSelectedCategoryId(remaining[0].id)
-      }
-      showCategoryFeedback('Category removed.')
+      setSelectedCategoryId('')
+      setLocalCategories((prev) => prev.filter((c) => c.id !== categoryId))
     } catch (err: unknown) {
-      showCategoryFeedback(err instanceof Error ? err.message : 'Failed to delete category')
+      console.error(err)
     } finally {
       setTagLoading(false)
     }
   }
 
-  // Add tag to active category
-  const handleAddTag = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newTagName.trim() || !activeCategory) return
-
-    try {
-      setTagLoading(true)
-      await tagsApi.addTag(activeCategory.id, newTagName.trim())
-      await onRefreshCategories()
-      setNewTagName('')
-      showCategoryFeedback(`Added tag "${newTagName.trim()}".`)
-    } catch (err: unknown) {
-      showCategoryFeedback(err instanceof Error ? err.message : 'Failed to add tag')
-    } finally {
-      setTagLoading(false)
-    }
+  // Local Add Tag
+  const handleLocalAddTag = (categoryId: string, tag: string) => {
+    const trimmed = tag.trim()
+    if (!trimmed) return
+    setLocalCategories((prev) =>
+      prev.map((c) => {
+        if (c.id !== categoryId) return c
+        if ((c.tags || []).includes(trimmed)) return c
+        return {
+          ...c,
+          tags: [...(c.tags || []), trimmed],
+        }
+      })
+    )
   }
 
-  // Rename tag
-  const handleRenameTag = async () => {
-    if (!editingTag || !renamedTagText.trim()) return
-    try {
-      setTagLoading(true)
-      const res = await tagsApi.renameTag(
-        editingTag.categoryId,
-        editingTag.oldName,
-        renamedTagText.trim()
-      )
-      await onRefreshCategories()
-      showCategoryFeedback(
-        `Renamed tag to "${renamedTagText.trim()}" (${res.affectedRecipesCount} recipes updated).`
-      )
-      setEditingTag(null)
-      setRenamedTagText('')
-    } catch (err: unknown) {
-      showCategoryFeedback(err instanceof Error ? err.message : 'Failed to rename tag')
-    } finally {
-      setTagLoading(false)
-    }
+  // Local Rename Tag
+  const handleLocalRenameTag = (categoryId: string, oldTag: string, newTag: string) => {
+    const trimmed = newTag.trim()
+    if (!trimmed || trimmed === oldTag) return
+    setLocalCategories((prev) =>
+      prev.map((c) => {
+        if (c.id !== categoryId) return c
+        return {
+          ...c,
+          tags: (c.tags || []).map((t) => (t === oldTag ? trimmed : t)),
+        }
+      })
+    )
   }
 
-  // Delete tag
-  const handleDeleteTag = async (categoryId: string, tag: string) => {
-    try {
-      setTagLoading(true)
-      const targetCat = categories.find((c) => c.id === categoryId) || activeCategory
-      const oldTotal = targetCat?.tags?.length || 0
-      const currentMin = targetCat?.min_tags !== undefined ? targetCat.min_tags : (targetCat?.exclusive ? 1 : 0)
-      const currentMax = targetCat?.max_tags !== undefined ? targetCat.max_tags : (targetCat?.exclusive ? 1 : oldTotal)
-
-      const res = await tagsApi.deleteTag(categoryId, tag)
-
-      if ('usageCount' in res) {
-        setConflictData({
-          categoryId,
-          tag,
-          usageCount: res.usageCount,
-          recipes: res.recipes,
-          availableTags: res.availableTags,
-        })
-        setReassignTarget(res.availableTags[0] || '')
-        return
-      }
-
-      // If a tag is removed and range was set at max (e.g. 9), decrement max (max--)
-      if (currentMax >= oldTotal && oldTotal > 0) {
-        const nextMax = Math.max(0, oldTotal - 1)
+  // Local Delete Tag
+  const handleLocalDeleteTag = (categoryId: string, tagToDelete: string) => {
+    setLocalCategories((prev) =>
+      prev.map((c) => {
+        if (c.id !== categoryId) return c
+        const newTags = (c.tags || []).filter((t) => t !== tagToDelete)
+        const currentMin = c.min_tags !== undefined ? c.min_tags : (c.exclusive ? 1 : 0)
+        const currentMax = c.max_tags !== undefined ? c.max_tags : (c.exclusive ? 1 : (c.tags?.length || 0))
+        const nextMax = Math.min(currentMax, newTags.length)
         const nextMin = Math.min(currentMin, nextMax)
-        await tagsApi.updateCategory(categoryId, { min_tags: nextMin, max_tags: nextMax })
-      }
-
-      await onRefreshCategories()
-      showCategoryFeedback(`Deleted tag "${tag}".`)
-    } catch (err: unknown) {
-      showCategoryFeedback(err instanceof Error ? err.message : 'Failed to delete tag')
-    } finally {
-      setTagLoading(false)
-    }
+        return {
+          ...c,
+          tags: newTags,
+          min_tags: nextMin,
+          max_tags: nextMax,
+          exclusive: nextMax === 1,
+        }
+      })
+    )
   }
 
   // Conflict Resolution: Strip and remove
@@ -235,25 +340,11 @@ export function CategoriesAndRulesTab({
     if (!conflictData) return
     try {
       setTagLoading(true)
-      const targetCat = categories.find((c) => c.id === conflictData.categoryId) || activeCategory
-      const oldTotal = targetCat?.tags?.length || 0
-      const currentMin = targetCat?.min_tags !== undefined ? targetCat.min_tags : (targetCat?.exclusive ? 1 : 0)
-      const currentMax = targetCat?.max_tags !== undefined ? targetCat.max_tags : (targetCat?.exclusive ? 1 : oldTotal)
-
       await tagsApi.deleteTag(conflictData.categoryId, conflictData.tag, 'strip')
-
-      // If a tag is removed and range was set at max (e.g. 9), decrement max (max--)
-      if (currentMax >= oldTotal && oldTotal > 0) {
-        const nextMax = Math.max(0, oldTotal - 1)
-        const nextMin = Math.min(currentMin, nextMax)
-        await tagsApi.updateCategory(conflictData.categoryId, { min_tags: nextMin, max_tags: nextMax })
-      }
-
       await onRefreshCategories()
-      showCategoryFeedback(`Tag removed and stripped from ${conflictData.usageCount} recipe(s).`)
       setConflictData(null)
     } catch (err: unknown) {
-      showCategoryFeedback(err instanceof Error ? err.message : 'Failed to resolve conflict')
+      console.error(err)
     } finally {
       setTagLoading(false)
     }
@@ -271,12 +362,9 @@ export function CategoriesAndRulesTab({
         reassignTarget
       )
       await onRefreshCategories()
-      showCategoryFeedback(
-        `Tag deleted and recipes reassigned to "${reassignTarget}".`
-      )
       setConflictData(null)
     } catch (err: unknown) {
-      showCategoryFeedback(err instanceof Error ? err.message : 'Failed to resolve conflict')
+      console.error(err)
     } finally {
       setTagLoading(false)
     }
@@ -288,35 +376,23 @@ export function CategoriesAndRulesTab({
     setFields((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
-  const handleSaveFields = async () => {
-    try {
-      setSavingFields(true)
-      await onSaveConfig({
-        mandatoryFields: {
-          ...fields,
-          title: true,
-          ingredients: true,
-          instructions: true,
-        },
-        mandatoryCategories: metadataConfig?.mandatoryCategories || [],
-      })
-      setFieldSuccess(true)
-      setTimeout(() => setFieldSuccess(false), 2500)
-    } finally {
-      setSavingFields(false)
-    }
-  }
-
   const fieldList: { key: keyof MandatoryFieldsConfig; label: string; desc: string; locked?: boolean }[] = [
     { key: 'title', label: 'Recipe Title', desc: 'Primary identifier for any recipe', locked: true },
-    { key: 'ingredients', label: 'Ingredients', desc: 'Required listing of ingredients', locked: true },
+    { key: 'ingredients', label: 'Ingredients', desc: 'Required listing of ingredients and quantities', locked: true },
     { key: 'instructions', label: 'Instructions', desc: 'Directions or preparation steps', locked: true },
-    { key: 'description', label: 'Description / Summary', desc: 'Short synopsis of dish' },
-    { key: 'prep_time_minutes', label: 'Prep Time', desc: 'Minutes to prepare ingredients' },
-    { key: 'cook_time_minutes', label: 'Cook Time', desc: 'Minutes to cook dish' },
-    { key: 'total_time_minutes', label: 'Total Time', desc: 'Calculated overall duration requirement' },
+    { key: 'description', label: 'Description / Summary', desc: 'Short synopsis or backstory for the dish' },
     { key: 'yield_amount', label: 'Yield', desc: 'Portion or serving count' },
-    { key: 'image_url', label: 'Cover Photo', desc: 'Disallow recipes without hero photos' },
+    { key: 'image_url', label: 'Cover Photo', desc: 'Disallow recipes without a hero photo' },
+    ...(timeTrackingMode === 'prep_and_cook'
+      ? [
+          { key: 'prep_time_minutes' as const, label: 'Prep Time', desc: 'Minutes to prepare ingredients' },
+          { key: 'cook_time_minutes' as const, label: 'Cook Time', desc: 'Minutes to cook dish' },
+        ]
+      : timeTrackingMode === 'total_only'
+      ? [
+          { key: 'prep_time_minutes' as const, label: 'Total Time', desc: 'Overall total time requirement' },
+        ]
+      : []),
   ]
 
   const totalTags = activeCategory?.tags?.length || 0
@@ -336,349 +412,610 @@ export function CategoriesAndRulesTab({
       )
     : 0
 
+  const isDeleteCategoryDisabled = Boolean(activeCategory?.tags && activeCategory.tags.length > 0)
+
+  const deleteCategoryButton = activeCategory ? (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      disabled={isDeleteCategoryDisabled}
+      onClick={() => handleDeleteCategory(activeCategory.id)}
+      className="text-xs text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer disabled:pointer-events-none self-start sm:self-auto"
+    >
+      <Trash2 className="h-4 w-4 mr-1.5" /> Delete
+    </Button>
+  ) : null
+
+  // Filtered categories for combobox
+  const filteredCategories = useMemo(() => {
+    const q = sectionSearch.toLowerCase().trim()
+    if (!q) return localCategories
+    return localCategories.filter((c) => c.name.toLowerCase().includes(q))
+  }, [localCategories, sectionSearch])
+
+  const basicDetailsMatch = useMemo(() => {
+    const q = sectionSearch.toLowerCase().trim()
+    if (!q) return true
+    return 'basic recipe details'.includes(q)
+  }, [sectionSearch])
+
+  const exactCategoryMatch = useMemo(() => {
+    const q = sectionSearch.toLowerCase().trim()
+    if (!q) return true
+    return localCategories.some((c) => c.name.toLowerCase() === q)
+  }, [localCategories, sectionSearch])
+
+  const selectedDisplayLabel = useMemo(() => {
+    if (!selectedCategoryId) return 'Choose section to edit...'
+    if (selectedCategoryId === 'basic_details') return 'Basic Recipe Details'
+    const cat = localCategories.find((c) => c.id === selectedCategoryId)
+    return cat ? cat.name : selectedCategoryId
+  }, [selectedCategoryId, localCategories])
+
   return (
-    <div className="space-y-8">
-      {/* SECTION 1: Category & Tag Taxonomy */}
-      <div className="space-y-6">
-        {/* Category Feedback Banner */}
-        {categoryFeedback && (
-          <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-xs text-foreground animate-in fade-in">
-            <AlertCircle className="h-4 w-4 text-primary shrink-0" />
-            <span>{categoryFeedback}</span>
+    <div className="space-y-6">
+      {/* Top Searchable Combobox Selector */}
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+        <div className="space-y-1.5 max-w-md" ref={sectionPickerRef}>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Section
+            </label>
+            <InfoTooltip content="Search or select a section to configure rules, time tracking, or tags. Type a new name to create a category." />
           </div>
-        )}
 
-        {/* Category Selection Bar */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Select Category
-              </label>
-              <div className="flex items-center gap-2">
-                <Select
-                  value={activeCategory?.id || ''}
-                  onValueChange={(val) => val && setSelectedCategoryId(val)}
-                >
-                  <SelectTrigger className="w-56 font-semibold">
-                    <SelectValue placeholder="Choose Category..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name} {c.exclusive && '(Exclusive)'}
-                      </SelectItem>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsSectionPickerOpen((prev) => !prev)}
+              className="flex h-10 w-full items-center justify-between rounded-xl border border-input bg-card px-3.5 py-2 text-sm font-semibold text-foreground shadow-2xs hover:bg-accent/40 focus:outline-hidden focus:ring-2 focus:ring-ring/50 cursor-pointer transition-colors"
+            >
+              <span className={!selectedCategoryId ? 'text-muted-foreground font-normal' : ''}>
+                {selectedDisplayLabel}
+              </span>
+              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 opacity-60" />
+            </button>
+
+            {/* Combobox Dropdown */}
+            {isSectionPickerOpen && (
+              <div className="absolute left-0 top-full mt-1.5 z-50 w-full min-w-72 rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-lg backdrop-blur-md animate-in fade-in zoom-in-95 duration-100">
+                {/* Search Bar */}
+                <div className="relative mb-1">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  <Input
+                    placeholder="Search or create..."
+                    value={sectionSearch}
+                    onChange={(e) => setSectionSearch(e.target.value)}
+                    autoFocus
+                    className="h-8 pl-8 text-xs bg-muted/40 border-border"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && sectionSearch.trim() && !exactCategoryMatch) {
+                        e.preventDefault()
+                        handleCreateCategory(sectionSearch)
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="max-h-60 overflow-y-auto py-1 space-y-2">
+                  {/* General Section */}
+                  {basicDetailsMatch && (
+                    <div>
+                      <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                        General
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategoryId('basic_details')
+                          setIsSectionPickerOpen(false)
+                          setSectionSearch('')
+                        }}
+                        className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-semibold cursor-pointer transition-colors ${
+                          selectedCategoryId === 'basic_details'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'hover:bg-accent hover:text-accent-foreground text-foreground'
+                        }`}
+                      >
+                        <span>Basic Recipe Details</span>
+                        {selectedCategoryId === 'basic_details' && (
+                          <Check className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Categories Section */}
+                  <div>
+                    <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                      Tag Categories
+                    </span>
+
+                    {/* First option is always Create New Category */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (sectionSearch.trim()) {
+                          handleCreateCategory(sectionSearch)
+                        } else {
+                          setIsSectionPickerOpen(false)
+                          setNewCategoryModalName('')
+                          setIsCreateCategoryModalOpen(true)
+                        }
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 cursor-pointer transition-colors"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>
+                        {sectionSearch.trim()
+                          ? `Create category "${sectionSearch.trim()}"`
+                          : 'Create new category'}
+                      </span>
+                    </button>
+
+                    {filteredCategories.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategoryId(c.id)
+                          setIsSectionPickerOpen(false)
+                          setSectionSearch('')
+                        }}
+                        className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium cursor-pointer transition-colors ${
+                          selectedCategoryId === c.id
+                            ? 'bg-primary text-primary-foreground font-semibold'
+                            : 'hover:bg-accent hover:text-accent-foreground text-foreground'
+                        }`}
+                      >
+                        <span>{c.name}</span>
+                        {selectedCategoryId === c.id && <Check className="h-3.5 w-3.5" />}
+                      </button>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
 
+                  {!basicDetailsMatch && filteredCategories.length === 0 && !sectionSearch.trim() && (
+                    <p className="py-3 text-center text-xs text-muted-foreground">
+                      No categories found.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* VIEW: Nothing Selected (No border, clean vertically centered) */}
+      {!selectedCategoryId && (
+        <div className="py-20 text-center flex flex-col items-center justify-center animate-in fade-in duration-150">
+          <Layers className="h-10 w-10 text-muted-foreground/35 mb-3" />
+          <h3 className="text-base font-semibold text-foreground">Choose section to edit</h3>
+          <p className="text-sm text-muted-foreground mt-1.5 max-w-sm">
+            Select an option from the menu above to manage its settings.
+          </p>
+        </div>
+      )}
+
+      {/* VIEW A: Basic Recipe Details */}
+      {selectedCategoryId === 'basic_details' && (
+        <div className="space-y-6 animate-in fade-in duration-150">
+          {/* 1. Time Tracking Configuration */}
+          <div className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-xs">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                Time Tracking
+              </h2>
+              <InfoTooltip content="Control how preparation, cooking, and total durations are captured in recipes and displayed across recipe cards and details." />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              {/* Option 1: Prep & Cook Time */}
+              <div
+                onClick={() => setTimeTrackingMode('prep_and_cook')}
+                className={`flex flex-col justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  timeTrackingMode === 'prep_and_cook'
+                    ? 'border-primary bg-primary/5 shadow-xs'
+                    : 'border-border bg-muted/20 hover:border-border/80 hover:bg-muted/40'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary mb-2">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                  {timeTrackingMode === 'prep_and_cook' && (
+                    <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
+                      <Check className="h-3 w-3" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <span className="text-sm font-bold text-foreground block">
+                    Prep &amp; Cook Time
+                  </span>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
+                    Capture prep time and cook time separately; total time is calculated automatically.
+                  </p>
+                </div>
+              </div>
+
+              {/* Option 2: Only Total Time */}
+              <div
+                onClick={() => setTimeTrackingMode('total_only')}
+                className={`flex flex-col justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  timeTrackingMode === 'total_only'
+                    ? 'border-primary bg-primary/5 shadow-xs'
+                    : 'border-border bg-muted/20 hover:border-border/80 hover:bg-muted/40'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary mb-2">
+                    <Timer className="h-5 w-5" />
+                  </div>
+                  {timeTrackingMode === 'total_only' && (
+                    <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
+                      <Check className="h-3 w-3" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <span className="text-sm font-bold text-foreground block">
+                    Only Total Time
+                  </span>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
+                    Capture a single overall total duration for recipes without separate prep or cook steps.
+                  </p>
+                </div>
+              </div>
+
+              {/* Option 3: No Cooking Time */}
+              <div
+                onClick={() => setTimeTrackingMode('no_cook')}
+                className={`flex flex-col justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  timeTrackingMode === 'no_cook'
+                    ? 'border-primary bg-primary/5 shadow-xs'
+                    : 'border-border bg-muted/20 hover:border-border/80 hover:bg-muted/40'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary mb-2">
+                    <UtensilsCrossed className="h-5 w-5" />
+                  </div>
+                  {timeTrackingMode === 'no_cook' && (
+                    <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
+                      <Check className="h-3 w-3" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <span className="text-sm font-bold text-foreground block">
+                    No Cooking Time
+                  </span>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
+                    Do not capture or display any preparation, cooking, or total time fields across recipes.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Required Information List */}
+          <div className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-xs">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                Required Information
+              </h2>
+              <InfoTooltip content="Fields enabled here will be enforced as required whenever recipes are created or updated." />
+            </div>
+
+            <div className="divide-y divide-border">
+              {fieldList.map(({ key, label, desc, locked }) => (
+                <div key={key} className="flex items-center justify-between py-3.5 first:pt-1 last:pb-1">
+                  <div>
+                    <span className="text-sm font-semibold text-foreground">{label}</span>
+                    <p className="text-xs text-muted-foreground">{desc}</p>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    {locked && (
+                      <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground select-none">
+                        Always Required
+                      </Badge>
+                    )}
+                    <Switch
+                      checked={locked ? true : Boolean(fields[key])}
+                      disabled={Boolean(locked)}
+                      onCheckedChange={() => toggleField(key)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW B: Tag Category Taxonomy & Rules */}
+      {selectedCategoryId !== 'basic_details' && activeCategory && (
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-6 animate-in fade-in duration-150">
+          {/* Header with Title and Delete button */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+            <div>
+              <h3 className="text-lg font-bold text-foreground">
+                {activeCategory.name}
+              </h3>
+            </div>
+
+            {isDeleteCategoryDisabled ? (
+              <Tooltip>
+                <TooltipTrigger render={<span className="inline-block">{deleteCategoryButton}</span>} />
+                <TooltipContent>
+                  Cannot delete category that contains tags. Delete all tags first.
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              deleteCategoryButton
+            )}
+          </div>
+
+          {/* Selection Range Slider Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Allowed Tags per Recipe
+                </span>
+                <InfoTooltip content="Set the minimum and maximum number of tags that recipes can have in this category. Min 1 means required; Min 0 means optional." />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">
+                From <span className="font-bold text-foreground">{currentMin}</span> to{' '}
+                <span className="font-bold text-foreground">{currentMax}</span>
+              </span>
+            </div>
+
+            {totalTags > 0 ? (
+              <div className="py-2">
+                <Slider
+                  min={0}
+                  max={totalTags}
+                  step={1}
+                  ticks={totalTags + 1}
+                  value={[currentMin, currentMax]}
+                  onValueChange={(val) => {
+                    const [minVal, maxVal] = Array.isArray(val) ? val : [val, val]
+                    if (minVal !== undefined && maxVal !== undefined) {
+                      handleLocalRangeChange(activeCategory.id, minVal, maxVal)
+                    }
+                  }}
+                  disabled={tagLoading}
+                  className="cursor-pointer"
+                />
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground italic py-1">
+                Add tags below to configure the selection range.
+              </p>
+            )}
+          </div>
+
+          {/* Tags Management Section */}
+          <div className="space-y-4 pt-2 border-t border-border">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Tags in {activeCategory.name}
+              </span>
+            </div>
+
+            {/* Tag Chips + Add Tag '+' button */}
+            <div className="flex flex-wrap items-center gap-2.5 pt-1">
+              {activeCategory.tags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => {
+                    setTagModal({ categoryId: activeCategory.id, tag })
+                    setTagModalName(tag)
+                  }}
+                  className="inline-flex items-center px-3.5 py-2 rounded-xl text-sm font-medium bg-muted/40 hover:bg-muted/80 text-foreground border border-border/70 hover:border-border transition-colors cursor-pointer select-none"
+                >
+                  <span>{tag}</span>
+                </button>
+              ))}
+
+              {/* '+' Button to open Add Tag Modal with identical tag chip styling */}
+              <button
+                type="button"
+                onClick={() => {
+                  setNewTagNameInput('')
+                  setIsAddTagModalOpen(true)
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium bg-muted/40 hover:bg-muted/80 text-foreground border border-border/70 hover:border-border transition-colors cursor-pointer select-none"
+                title="Add new tag"
+              >
+                <Plus className="h-4 w-4 text-muted-foreground" />
+                <span>Add tag</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Tag Modal */}
+      {isAddTagModalOpen && activeCategory && (
+        <Dialog open={isAddTagModalOpen} onOpenChange={(open) => !open && setIsAddTagModalOpen(false)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add Tag</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Add a new tag to {activeCategory.name}.
+              </DialogDescription>
+            </DialogHeader>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (!newTagNameInput.trim()) return
+                handleLocalAddTag(activeCategory.id, newTagNameInput.trim())
+                setNewTagNameInput('')
+                setIsAddTagModalOpen(false)
+              }}
+              className="space-y-4 py-2"
+            >
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">Tag Name</label>
+                <Input
+                  value={newTagNameInput}
+                  onChange={(e) => setNewTagNameInput(e.target.value)}
+                  placeholder="e.g. Vegetarian, Quick, Italian..."
+                  autoFocus
+                  className="text-sm"
+                />
+              </div>
+
+              <DialogFooter className="flex-row justify-end gap-2 pt-3">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setIsAddingCategory((prev) => !prev)}
-                  className="cursor-pointer"
+                  onClick={() => setIsAddTagModalOpen(false)}
                 >
-                  <Plus className="h-4 w-4 mr-1" /> New Category
+                  Cancel
                 </Button>
-              </div>
-            </div>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!newTagNameInput.trim()}
+                >
+                  Add Tag
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
 
-            {activeCategory && (
-              <div className="flex items-center gap-3">
+      {/* Create Category Modal */}
+      {isCreateCategoryModalOpen && (
+        <Dialog open={isCreateCategoryModalOpen} onOpenChange={(open) => !open && setIsCreateCategoryModalOpen(false)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create New Category</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Add a new taxonomy category to organize your recipes.
+              </DialogDescription>
+            </DialogHeader>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (!newCategoryModalName.trim()) return
+                handleCreateCategory(newCategoryModalName.trim())
+                setNewCategoryModalName('')
+                setIsCreateCategoryModalOpen(false)
+              }}
+              className="space-y-4 py-2"
+            >
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">Category Name</label>
+                <Input
+                  value={newCategoryModalName}
+                  onChange={(e) => setNewCategoryModalName(e.target.value)}
+                  placeholder="e.g. Cuisine, Season, Course, Dietary..."
+                  autoFocus
+                  className="text-sm"
+                />
+              </div>
+
+              <DialogFooter className="flex-row justify-end gap-2 pt-3">
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  disabled={activeCategory.tags && activeCategory.tags.length > 0}
-                  onClick={() => handleDeleteCategory(activeCategory.id)}
-                  title={
-                    activeCategory.tags && activeCategory.tags.length > 0
-                      ? 'Cannot delete category that contains tags. Delete tags first.'
-                      : 'Delete empty category'
-                  }
-                  className="text-xs text-destructive hover:bg-destructive/10 cursor-pointer disabled:opacity-30"
+                  onClick={() => setIsCreateCategoryModalOpen(false)}
                 >
-                  <Trash2 className="h-4 w-4 mr-1" /> Delete Category
+                  Cancel
                 </Button>
-              </div>
-            )}
-          </div>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!newCategoryModalName.trim()}
+                >
+                  Create
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
 
-          {/* Add Category Form */}
-          {isAddingCategory && (
+      {/* Tag Edit & Delete Modal (No nested confirm dialog; SaveBar serves as confirmation) */}
+      {tagModal && (
+        <Dialog open={!!tagModal} onOpenChange={(open) => !open && setTagModal(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Tag</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Update the tag name or remove it from {activeCategory?.name || 'this category'}.
+              </DialogDescription>
+            </DialogHeader>
+
             <form
-              onSubmit={handleCreateCategory}
-              className="rounded-xl border border-border bg-muted/30 p-4 space-y-3 animate-in fade-in"
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (!tagModal || !tagModalName.trim()) return
+                handleLocalRenameTag(tagModal.categoryId, tagModal.tag, tagModalName.trim())
+                setTagModal(null)
+              }}
+              className="space-y-4 py-2"
             >
-              <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-                Create New Tag Category
-              </span>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">Tag Name</label>
                 <Input
-                  placeholder="e.g. Cuisine, Season, Dietary"
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  className="max-w-xs text-sm"
+                  value={tagModalName}
+                  onChange={(e) => setTagModalName(e.target.value)}
+                  placeholder="Tag name"
+                  autoFocus
+                  className="text-sm"
                 />
+              </div>
+
+              <DialogFooter className="flex-row justify-between items-center gap-2 pt-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (!tagModal) return
+                    handleLocalDeleteTag(tagModal.categoryId, tagModal.tag)
+                    setTagModal(null)
+                  }}
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                >
+                  <Trash2 className="h-4 w-4 mr-1.5" /> Delete
+                </Button>
 
                 <div className="flex gap-2">
-                  <Button type="submit" size="sm" disabled={tagLoading || !newCategoryName.trim()}>
-                    Create
-                  </Button>
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    onClick={() => setIsAddingCategory(false)}
+                    onClick={() => setTagModal(null)}
                   >
                     Cancel
                   </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={!tagModalName.trim() || tagModalName.trim() === tagModal.tag}
+                  >
+                    Save
+                  </Button>
                 </div>
-              </div>
+              </DialogFooter>
             </form>
-          )}
-        </div>
-
-        {/* Active Category Details & Tag List */}
-        {activeCategory && (
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-              <div className="flex items-center gap-2.5">
-                <Layers className="h-4 w-4 text-amber-500" />
-                <h3 className="text-base font-bold text-foreground">
-                  {activeCategory.name}
-                </h3>
-                <Badge variant="secondary" className="text-xs font-normal">
-                  {totalTags} {totalTags === 1 ? 'tag' : 'tags'}
-                </Badge>
-              </div>
-
-              {/* Selection Range Slider - clean live display above, neutral indents below */}
-              <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-2.5 w-full sm:w-80">
-                <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="font-semibold text-foreground">Selection Range</span>
-                  <span className="text-muted-foreground">
-                    From <span className="font-semibold text-foreground">{currentMin}</span> to{' '}
-                    <span className="font-semibold text-foreground">{currentMax}</span>
-                  </span>
-                </div>
-
-                {totalTags > 0 ? (
-                  <div className="space-y-1.5 pt-1">
-                    <Slider
-                      min={0}
-                      max={totalTags}
-                      step={1}
-                      value={[currentMin, currentMax]}
-                      onValueChange={(val) => {
-                        const [minVal, maxVal] = Array.isArray(val) ? val : [val, val]
-                        if (minVal !== undefined && maxVal !== undefined) {
-                          handleRangeChange(activeCategory.id, minVal, maxVal)
-                        }
-                      }}
-                      disabled={tagLoading}
-                      className="cursor-pointer py-1"
-                    />
-                    {/* Neutral indents and tick labels from 0 to N */}
-                    <div className="flex justify-between items-center px-0.5 select-none pt-0.5">
-                      {Array.from({ length: totalTags + 1 }, (_, i) => (
-                        <div
-                          key={i}
-                          className="flex flex-col items-center cursor-pointer py-0.5 opacity-60 hover:opacity-100 transition-opacity"
-                          onClick={() => {
-                            if (i < currentMin) {
-                              handleRangeChange(activeCategory.id, i, currentMax)
-                            } else if (i > currentMax) {
-                              handleRangeChange(activeCategory.id, currentMin, i)
-                            }
-                          }}
-                          title={`Set bound to ${i}`}
-                        >
-                          <div className="w-0.5 h-1 rounded-full mb-1 bg-border" />
-                          <span className="text-[10px] font-mono text-muted-foreground">
-                            {i}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground italic">
-                    Add tags to configure selection range.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Add Tag Form */}
-            <form onSubmit={handleAddTag} className="flex gap-2 max-w-md">
-              <Input
-                placeholder={`Add tag to ${activeCategory.name}...`}
-                value={newTagName}
-                onChange={(e) => setNewTagName(e.target.value)}
-                className="text-sm"
-              />
-              <Button
-                type="submit"
-                size="sm"
-                disabled={tagLoading || !newTagName.trim()}
-                className="cursor-pointer shrink-0"
-              >
-                <Plus className="h-4 w-4 mr-1" /> Add Tag
-              </Button>
-            </form>
-
-            {/* Tag Badges List */}
-            <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Configured Tags ({totalTags})
-              </span>
-
-              {totalTags === 0 ? (
-                <p className="text-xs text-muted-foreground italic py-2">
-                  No tags added to this category yet.
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {activeCategory.tags.map((tag) => {
-                    const isEditing =
-                      editingTag?.categoryId === activeCategory.id &&
-                      editingTag?.oldName === tag
-
-                    if (isEditing) {
-                      return (
-                        <div
-                          key={tag}
-                          className="flex items-center gap-1 rounded-lg border border-primary bg-card p-1 shadow-xs"
-                        >
-                          <Input
-                            value={renamedTagText}
-                            onChange={(e) => setRenamedTagText(e.target.value)}
-                            className="h-7 w-32 text-xs"
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleRenameTag()
-                              if (e.key === 'Escape') setEditingTag(null)
-                            }}
-                          />
-                          <Button
-                            type="button"
-                            size="icon-sm"
-                            onClick={handleRenameTag}
-                            disabled={tagLoading || !renamedTagText.trim()}
-                            className="h-7 w-7"
-                          >
-                            <Check className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => setEditingTag(null)}
-                            className="h-7 w-7"
-                          >
-                            ✕
-                          </Button>
-                        </div>
-                      )
-                    }
-
-                    return (
-                      <Badge
-                        key={tag}
-                        variant="secondary"
-                        className="flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium group transition-all"
-                      >
-                        <span>{tag}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingTag({ categoryId: activeCategory.id, oldName: tag })
-                            setRenamedTagText(tag)
-                          }}
-                          className="opacity-40 group-hover:opacity-100 hover:text-foreground cursor-pointer transition-opacity"
-                          title="Rename tag"
-                        >
-                          <Edit2 className="h-3 w-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteTag(activeCategory.id, tag)}
-                          className="opacity-40 group-hover:opacity-100 hover:text-destructive cursor-pointer transition-opacity ml-0.5"
-                          title="Delete tag"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* SECTION 2: Mandatory Recipe Fields */}
-      <div className="rounded-2xl border border-border bg-card p-6 space-y-6 shadow-xs">
-        <div>
-          <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-            Mandatory Recipe Fields
-          </h2>
-          <p className="text-xs text-muted-foreground mt-1">
-            Configure which fields are required when adding or updating recipes.
-          </p>
-        </div>
-
-        <div className="space-y-2 divide-y divide-border rounded-xl border border-border bg-muted/20 p-4">
-          {fieldList.map(({ key, label, desc, locked }) => (
-            <div key={key} className="flex items-center justify-between pt-2.5 first:pt-0">
-              <div>
-                <span className="text-sm font-semibold text-foreground">{label}</span>
-                <p className="text-xs text-muted-foreground">{desc}</p>
-              </div>
-              {locked ? (
-                <Badge variant="outline" className="text-xs font-normal">
-                  Always Required
-                </Badge>
-              ) : (
-                <Switch
-                  checked={Boolean(fields[key])}
-                  onCheckedChange={() => toggleField(key)}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Save Field Rules Button */}
-        <div className="flex items-center justify-between pt-2">
-          {fieldSuccess ? (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 animate-in fade-in">
-              <Check className="h-4 w-4" /> Recipe field rules saved successfully!
-            </span>
-          ) : (
-            <span className="text-xs text-muted-foreground">
-              Required fields will be enforced whenever recipes are saved.
-            </span>
-          )}
-
-          <Button
-            onClick={handleSaveFields}
-            disabled={savingFields}
-            className="min-w-32 cursor-pointer font-semibold"
-          >
-            {savingFields ? (
-              'Saving...'
-            ) : (
-              <>
-                <Sliders className="h-4 w-4 mr-1.5" /> Save Field Rules
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Tag Conflict Dialog */}
       <TagConflictDialog
@@ -690,6 +1027,16 @@ export function CategoriesAndRulesTab({
         onStripAndRemove={handleResolveStrip}
         onReassignAndRemove={handleResolveReassign}
       />
+
+      {/* Floating Sticky Save Bar */}
+      <SaveBar
+        isDirty={isDirty}
+        submitting={savingConfig}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
+      />
     </div>
   )
 }
+
+

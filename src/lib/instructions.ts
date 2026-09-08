@@ -23,7 +23,7 @@ export function normalizeInstructionsToHtml(
 
     // If already contains HTML markup
     if (/<[a-z][\s\S]*>/i.test(trimmed)) {
-      return trimmed
+      return trimmed.replace(/<span class="ql-ui"[^>]*>[\s\S]*?<\/span>/gi, '')
     }
 
     // Handle plain text with newlines or numbered lists

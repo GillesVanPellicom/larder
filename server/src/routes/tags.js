@@ -61,7 +61,7 @@ router.post('/categories', async (req, res) => {
 router.put('/categories/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, color, exclusive, min_tags, max_tags } = req.body;
+        const { name, color, exclusive, min_tags, max_tags, tags } = req.body;
         const updatePayload = {
             updatedAt: new Date(),
         };
@@ -75,6 +75,8 @@ router.put('/categories/:id', async (req, res) => {
             updatePayload.minTags = min_tags;
         if (max_tags !== undefined)
             updatePayload.maxTags = max_tags;
+        if (tags !== undefined)
+            updatePayload.tags = tags;
         const [updated] = await db
             .update(tagCategories)
             .set(updatePayload)

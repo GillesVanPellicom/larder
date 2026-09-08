@@ -77,14 +77,6 @@ export function Stepper({
   // Ensure effective value is always clamped if a range is set
   const effectiveValue = clamp(value)
 
-  // Clamp programmatic updates if out of bounds
-  useEffect(() => {
-    const clamped = clamp(value)
-    if (clamped !== value) {
-      onChange(clamped)
-    }
-  }, [value, clamp, onChange])
-
   // Stepping logic
   const handleStep = (direction: 'up' | 'down') => {
     if (disabled) return
@@ -138,7 +130,7 @@ export function Stepper({
   if (variant === 'small') {
     return (
       <div className={cn('flex items-center gap-1.5 w-full', className)}>
-        <div className="relative flex-1 min-w-0 flex items-center h-8 rounded-lg border border-input bg-transparent px-2.5 py-1 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+        <div className="relative flex-1 min-w-0 flex items-center h-10 sm:h-9 rounded-lg border border-input bg-transparent px-3 py-1.5 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
           <input
             ref={inputRef}
             type="text"
@@ -158,7 +150,7 @@ export function Stepper({
             }}
             disabled={disabled}
             aria-label={ariaLabel || `Value ${formatGracefulNumber(effectiveValue)}`}
-            className="w-full min-w-0 bg-transparent text-sm font-medium outline-none text-foreground placeholder:text-muted-foreground disabled:opacity-50"
+            className="w-full min-w-0 bg-transparent text-base md:text-sm font-medium outline-none text-foreground placeholder:text-muted-foreground disabled:opacity-50"
           />
           {symbol && (
             <span className="text-xs text-muted-foreground font-medium ml-1 select-none pointer-events-none shrink-0">
@@ -174,10 +166,10 @@ export function Stepper({
             size="icon"
             onClick={() => handleStep('down')}
             disabled={isMinusDisabled}
-            className="h-8 w-8 cursor-pointer border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+            className="h-10 w-10 sm:h-9 sm:w-9 cursor-pointer border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
             title={step ? `Decrease by ${step}` : 'Decrease'}
           >
-            <Minus className="h-3.5 w-3.5" />
+            <Minus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
           </Button>
           <Button
             type="button"
@@ -185,10 +177,10 @@ export function Stepper({
             size="icon"
             onClick={() => handleStep('up')}
             disabled={isPlusDisabled}
-            className="h-8 w-8 cursor-pointer border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+            className="h-10 w-10 sm:h-9 sm:w-9 cursor-pointer border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
             title={step ? `Increase by ${step}` : 'Increase'}
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
           </Button>
         </ButtonGroup>
       </div>
@@ -204,16 +196,16 @@ export function Stepper({
         size="icon"
         onClick={() => handleStep('down')}
         disabled={isMinusDisabled}
-        className="h-10 w-10 rounded-xl cursor-pointer border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+        className="h-12 w-12 sm:h-11 sm:w-11 rounded-2xl cursor-pointer border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
         title={step ? `Decrease by ${step}` : 'Decrease'}
       >
-        <Minus className="h-4 w-4" />
+        <Minus className="h-5 w-5 sm:h-4 sm:w-4" />
       </Button>
 
       {/* Number Display or Inline Input */}
-      <div className="h-10 min-w-32 flex items-center justify-center text-center">
+      <div className="h-12 sm:h-11 min-w-32 flex items-center justify-center text-center">
         {isEditing ? (
-          <div className="h-10 flex items-center justify-center">
+          <div className="h-12 sm:h-11 flex items-center justify-center">
             <input
               ref={inputRef}
               type="text"
@@ -229,10 +221,10 @@ export function Stepper({
                 }
               }}
               style={{ width: `${Math.max(3, draftValue.length + 1)}ch` }}
-              className="h-10 min-w-16 max-w-44 text-4xl font-extrabold tracking-tight text-foreground font-mono text-center bg-background border border-primary/40 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 px-1.5 py-0 leading-10"
+              className="h-12 sm:h-11 min-w-16 max-w-44 text-4xl font-extrabold tracking-tight text-foreground font-mono text-center bg-background border border-primary/40 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 px-2 py-0 leading-none"
             />
             {symbol && (
-              <span className="text-2xl font-bold text-amber-500 ml-1 select-none leading-10">
+              <span className="text-2xl font-bold text-amber-500 ml-1.5 select-none leading-none">
                 {symbol}
               </span>
             )}
@@ -242,15 +234,15 @@ export function Stepper({
             type="button"
             onClick={handleStartEditing}
             disabled={disabled}
-            className="group h-10 flex items-baseline justify-center px-2 rounded-xl cursor-pointer hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="group h-12 sm:h-11 flex items-center justify-center px-3 rounded-xl cursor-pointer hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             title="Click to edit number"
             aria-label={ariaLabel || `Value ${formatGracefulNumber(effectiveValue)}, click to edit`}
           >
-            <span className="text-4xl font-extrabold tracking-tight text-foreground font-mono leading-10 group-hover:opacity-80 transition-opacity">
+            <span className="text-4xl font-extrabold tracking-tight text-foreground font-mono leading-none group-hover:opacity-80 transition-opacity">
               {formatGracefulNumber(effectiveValue)}
             </span>
             {symbol && (
-              <span className="text-2xl font-bold text-amber-500 ml-1 select-none leading-10">
+              <span className="text-2xl font-bold text-amber-500 ml-1.5 select-none leading-none">
                 {symbol}
               </span>
             )}
@@ -265,10 +257,10 @@ export function Stepper({
         size="icon"
         onClick={() => handleStep('up')}
         disabled={isPlusDisabled}
-        className="h-10 w-10 rounded-xl cursor-pointer border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+        className="h-12 w-12 sm:h-11 sm:w-11 rounded-2xl cursor-pointer border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
         title={step ? `Increase by ${step}` : 'Increase'}
       >
-        <Plus className="h-4 w-4" />
+        <Plus className="h-5 w-5 sm:h-4 sm:w-4" />
       </Button>
     </div>
   )

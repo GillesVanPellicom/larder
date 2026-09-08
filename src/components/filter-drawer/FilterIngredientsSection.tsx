@@ -35,7 +35,7 @@ export function FilterIngredientsSection({
           <button
             type="button"
             onClick={() => onMatchModeChange('any')}
-            className={`px-2 py-0.5 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
+            className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
               matchMode === 'any'
                 ? 'bg-foreground text-background shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
@@ -46,7 +46,7 @@ export function FilterIngredientsSection({
           <button
             type="button"
             onClick={() => onMatchModeChange('all')}
-            className={`px-2 py-0.5 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
+            className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
               matchMode === 'all'
                 ? 'bg-foreground text-background shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'

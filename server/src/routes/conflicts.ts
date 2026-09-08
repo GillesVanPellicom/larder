@@ -28,6 +28,7 @@ router.get('/', async (_req, res) => {
     }
 
     const mandatoryCategories = configRow?.mandatoryCategories || []
+    const timeTrackingMode = (configRow?.timeTrackingMode as string) || 'prep_and_cook'
 
     // 2. Get all tag categories for orphaned tags detection
     const allCategories = await db.select().from(tagCategories)
@@ -58,19 +59,27 @@ router.get('/', async (_req, res) => {
       }
 
       if (mandatory.yield_amount && (!r.yieldAmount || !r.yieldAmount.trim())) {
-        violations.push({ field: 'yield_amount', message: 'Yield / Servings is mandatory' })
+        violations.push({ field: 'yield_amount', message: 'Yield is mandatory' })
       }
 
-      if (mandatory.prep_time_minutes && (!r.prepTimeMinutes || r.prepTimeMinutes <= 0)) {
-        violations.push({ field: 'prep_time_minutes', message: 'Preparation time is mandatory' })
-      }
+      if (timeTrackingMode !== 'no_cook') {
+        if (timeTrackingMode === 'total_only') {
+          if (
+            mandatory.prep_time_minutes &&
+            (!r.prepTimeMinutes || r.prepTimeMinutes <= 0) &&
+            (!r.totalTimeMinutes || r.totalTimeMinutes <= 0)
+          ) {
+            violations.push({ field: 'prep_time_minutes', message: 'Total time is mandatory' })
+          }
+        } else if (timeTrackingMode === 'prep_and_cook') {
+          if (mandatory.prep_time_minutes && (!r.prepTimeMinutes || r.prepTimeMinutes <= 0)) {
+            violations.push({ field: 'prep_time_minutes', message: 'Preparation time is mandatory' })
+          }
 
-      if (mandatory.cook_time_minutes && (!r.cookTimeMinutes || r.cookTimeMinutes <= 0)) {
-        violations.push({ field: 'cook_time_minutes', message: 'Cooking time is mandatory' })
-      }
-
-      if (mandatory.total_time_minutes && (!r.totalTimeMinutes || r.totalTimeMinutes <= 0)) {
-        violations.push({ field: 'total_time_minutes', message: 'Total time is mandatory' })
+          if (mandatory.cook_time_minutes && (!r.cookTimeMinutes || r.cookTimeMinutes <= 0)) {
+            violations.push({ field: 'cook_time_minutes', message: 'Cooking time is mandatory' })
+          }
+        }
       }
 
       if (mandatory.ingredients && (!r.ingredients || r.ingredients.length === 0)) {

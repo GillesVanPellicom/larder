@@ -18,6 +18,25 @@ const TOOLBAR_OPTIONS = [
   ['link'],
 ]
 
+function normalizeQuillHtml(html: string): string {
+  if (!html) return ''
+  return html
+    .replace(/<span class="ql-ui"[^>]*>[\s\S]*?<\/span>/gi, '')
+    .replace(/<p><br\s*\/?><\/p>|<p><\/p>/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function setQuillContent(quill: Quill, html: string) {
+  const trimmed = (html || '').trim()
+  if (!trimmed || trimmed === '<p><br></p>' || trimmed === '<p></p>') {
+    quill.setText('', 'silent')
+  } else {
+    quill.setText('', 'silent')
+    quill.clipboard.dangerouslyPasteHTML(0, trimmed, 'silent')
+  }
+}
+
 export function QuillEditor({
   value,
   onChange,
@@ -30,7 +49,8 @@ export function QuillEditor({
   const quillRef = useRef<Quill | null>(null)
   const isInternalChangeRef = useRef(false)
   const onChangeRef = useRef(onChange)
-  const initialValueRef = useRef(value)
+  const lastEmittedValueRef = useRef<string>(value || '')
+  const initialValueRef = useRef(value || '')
 
   useEffect(() => {
     onChangeRef.current = onChange
@@ -59,18 +79,16 @@ export function QuillEditor({
     quillRef.current = quill
 
     if (initialValueRef.current) {
-      quill.root.innerHTML = initialValueRef.current
+      setQuillContent(quill, initialValueRef.current)
+      lastEmittedValueRef.current = quill.getSemanticHTML().trim()
     }
 
-    const handleTextChange = () => {
-      if (isInternalChangeRef.current) return
-      const html = quill.root.innerHTML
-      // Normalize empty paragraph placeholders to empty string
-      const cleanValue =
-        html === '<p><br></p>' || html === '<p></p>' || html === '' ? '' : html
-      isInternalChangeRef.current = true
+    const handleTextChange = (_delta: unknown, _oldDelta: unknown, source: string) => {
+      if (isInternalChangeRef.current || source !== 'user') return
+      const isQuillEmpty = quill.getText().trim() === ''
+      const cleanValue = isQuillEmpty ? '' : quill.getSemanticHTML().trim()
+      lastEmittedValueRef.current = cleanValue
       onChangeRef.current(cleanValue)
-      isInternalChangeRef.current = false
     }
 
     quill.on('text-change', handleTextChange)
@@ -82,19 +100,18 @@ export function QuillEditor({
     }
   }, [placeholder, disabled])
 
-  // Sync external value updates without resetting cursor position
+  // Sync external value updates (e.g. discard or switching recipe) without breaking cursor or state
   useEffect(() => {
     const quill = quillRef.current
     if (!quill || isInternalChangeRef.current) return
 
-    const currentHtml = quill.root.innerHTML
-    const normCurrent =
-      currentHtml === '<p><br></p>' || currentHtml === '<p></p>' ? '' : currentHtml
-    const normNew = value === '<p><br></p>' || value === '<p></p>' ? '' : value
+    if (value === lastEmittedValueRef.current) return
 
-    if (normCurrent !== normNew) {
+    const currentSemantic = quill.getSemanticHTML()
+    if (normalizeQuillHtml(currentSemantic) !== normalizeQuillHtml(value)) {
       isInternalChangeRef.current = true
-      quill.root.innerHTML = normNew || ''
+      setQuillContent(quill, value)
+      lastEmittedValueRef.current = (value || '').trim()
       isInternalChangeRef.current = false
     }
   }, [value])

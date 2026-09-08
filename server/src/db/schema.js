@@ -63,5 +63,6 @@ export const metadataConfigTable = pgTable('metadata_config', {
     id: varchar('id', { length: 50 }).primaryKey(),
     mandatoryFields: jsonb('mandatory_fields').$type().notNull(),
     mandatoryCategories: jsonb('mandatory_categories').$type().default([]).notNull(),
+    timeTrackingMode: varchar('time_tracking_mode', { length: 50 }).default('prep_and_cook'),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

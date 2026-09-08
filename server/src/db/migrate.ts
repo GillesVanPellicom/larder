@@ -92,8 +92,11 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
           id VARCHAR(50) PRIMARY KEY,
           mandatory_fields JSONB NOT NULL DEFAULT '{}'::jsonb,
           mandatory_categories JSONB NOT NULL DEFAULT '[]'::jsonb,
+          time_tracking_mode VARCHAR(50) DEFAULT 'prep_and_cook',
           updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+
+        ALTER TABLE metadata_config ADD COLUMN IF NOT EXISTS time_tracking_mode VARCHAR(50) DEFAULT 'prep_and_cook';
       `)
 
       // Seed global metadata configuration via Drizzle ORM
@@ -115,9 +118,9 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
             yield_amount: false,
             prep_time_minutes: false,
             cook_time_minutes: false,
-            total_time_minutes: false,
           },
           mandatoryCategories: [],
+          timeTrackingMode: 'prep_and_cook',
         })
       }
 

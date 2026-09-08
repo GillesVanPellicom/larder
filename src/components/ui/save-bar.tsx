@@ -1,0 +1,277 @@
+import { useEffect, useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Check, RotateCcw } from 'lucide-react'
+import { cn } from 'cn'
+
+export interface SaveBarProps {
+  isDirty: boolean
+  submitting?: boolean
+  error?: string | null
+  saveLabel?: string
+  discardLabel?: string
+  statusLabel?: string
+  onSave?: () => void | Promise<void>
+  onDiscard: () => void
+  formId?: string
+  className?: string
+}
+
+export function SaveBar({
+  isDirty,
+  submitting = false,
+  error = null,
+  saveLabel = 'Save',
+  discardLabel = 'Discard',
+  statusLabel = 'Unsaved changes',
+  onSave,
+  onDiscard,
+  formId,
+  className = '',
+}: SaveBarProps) {
+  const [phase, setPhase] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [activeError, setActiveError] = useState<string | null>(null)
+  const [isShaking, setIsShaking] = useState(false)
+  const saveStartRef = useRef<number | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Trigger error phase when error prop is passed
+  useEffect(() => {
+    if (error) {
+      setActiveError(error)
+      setPhase('error')
+      setIsShaking(true)
+      const shakeTimer = setTimeout(() => setIsShaking(false), 500)
+
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => {
+        setPhase('idle')
+        setActiveError(null)
+      }, 2800)
+
+      return () => clearTimeout(shakeTimer)
+    }
+  }, [error])
+
+  // Track submitting state changes from parent
+  useEffect(() => {
+    if (submitting) {
+      saveStartRef.current = Date.now()
+      setPhase('saving')
+    } else if (saveStartRef.current !== null) {
+      const elapsed = Date.now() - saveStartRef.current
+      const delay = Math.max(0, 1000 - elapsed)
+
+      timerRef.current = setTimeout(() => {
+        setPhase('saved')
+        saveStartRef.current = null
+
+        timerRef.current = setTimeout(() => {
+          setPhase('idle')
+        }, 1400)
+      }, delay)
+    }
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [submitting])
+
+  // Reset phase when isDirty drops to false outside of active saving
+  useEffect(() => {
+    if (!isDirty && phase !== 'saving' && phase !== 'saved') {
+      setPhase('idle')
+      saveStartRef.current = null
+      setActiveError(null)
+    }
+  }, [isDirty, phase])
+
+  const handleSaveClick = async () => {
+    if (phase === 'saving' || phase === 'saved' || submitting) return
+
+    if (formId) {
+      const form = document.getElementById(formId) as HTMLFormElement | null
+      if (form) {
+        if (typeof form.requestSubmit === 'function') {
+          form.requestSubmit()
+        } else {
+          form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))
+        }
+      }
+    }
+
+    if (onSave) {
+      saveStartRef.current = Date.now()
+      setPhase('saving')
+      try {
+        await onSave()
+        const elapsed = Date.now() - (saveStartRef.current || 0)
+        const delay = Math.max(0, 1000 - elapsed)
+
+        timerRef.current = setTimeout(() => {
+          setPhase('saved')
+          saveStartRef.current = null
+
+          timerRef.current = setTimeout(() => {
+            setPhase('idle')
+          }, 1400)
+        }, delay)
+      } catch (err: unknown) {
+        console.error(err)
+        saveStartRef.current = null
+        const msg = err instanceof Error ? err.message : 'Some choices are invalid'
+        setActiveError(msg)
+        setPhase('error')
+        setIsShaking(true)
+        setTimeout(() => setIsShaking(false), 500)
+
+        timerRef.current = setTimeout(() => {
+          setPhase('idle')
+          setActiveError(null)
+        }, 2800)
+      }
+    }
+  }
+
+  const isVisible = isDirty || phase === 'saving' || phase === 'saved' || phase === 'error'
+  const isButtonsDisabled = submitting || phase === 'saving' || phase === 'saved'
+  const isOverlayActive = phase === 'saving' || phase === 'saved'
+
+  return (
+    <div
+      className={cn(
+        'fixed bottom-6 inset-x-0 mx-auto w-full max-w-2xl px-4 z-50 transition-all duration-400 ease-out',
+        isVisible
+          ? 'translate-y-0 opacity-100 pointer-events-auto'
+          : 'translate-y-24 opacity-0 pointer-events-none',
+        isShaking ? 'animate-head-shake' : '',
+        className
+      )}
+    >
+      <div className="relative overflow-hidden flex items-center justify-between gap-2 sm:gap-3 p-1.5 sm:p-2.5 rounded-full border border-border bg-card/85 backdrop-blur-md shadow-xl">
+        {/* Full Bar Blur & Central Morph Animation Overlay */}
+        <div
+          className={cn(
+            'absolute inset-0 z-20 rounded-full flex items-center justify-center bg-card/75 backdrop-blur-md transition-opacity duration-300',
+            isOverlayActive ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          )}
+        >
+          {phase === 'saving' && (
+            <div className="flex items-center justify-center animate-in fade-in duration-200">
+              <svg
+                className="h-8 w-8 animate-spin text-foreground"
+                viewBox="0 0 36 36"
+                fill="none"
+              >
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="14"
+                  stroke="currentColor"
+                  strokeOpacity="0.2"
+                  strokeWidth="3.5"
+                />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="14"
+                  stroke="currentColor"
+                  strokeWidth="3.5"
+                  strokeDasharray="60 100"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+          )}
+          {phase === 'saved' && (
+            <div className="flex items-center justify-center animate-circle-fade">
+              <div className="relative flex items-center justify-center h-8 w-8 rounded-full bg-emerald-500 text-white shadow-md">
+                <svg
+                  className="h-4.5 w-4.5 text-white"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path
+                    d="M 5 12.5 L 9.5 17 L 19 7"
+                    className="animate-check-draw"
+                  />
+                </svg>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Left Side: Status indicator */}
+        <div className="flex items-center gap-2 pl-2.5 sm:pl-4 min-w-0 shrink">
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
+            {phase === 'saved' ? (
+              <>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 transition-colors duration-300" />
+              </>
+            ) : phase === 'error' ? (
+              <>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 transition-colors duration-300" />
+              </>
+            ) : (
+              <>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500 transition-colors duration-300" />
+              </>
+            )}
+          </span>
+          <span
+            className={cn(
+              'text-xs sm:text-sm font-semibold select-none transition-colors duration-300 truncate',
+              phase === 'error' ? 'text-destructive' : 'text-foreground'
+            )}
+          >
+            {phase === 'saved'
+              ? 'Saved'
+              : phase === 'saving'
+              ? 'Saving...'
+              : phase === 'error'
+              ? activeError || 'Some choices are invalid'
+              : statusLabel}
+          </span>
+        </div>
+
+        {/* Right Side: Discard & Save Actions */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onDiscard}
+            disabled={isButtonsDisabled}
+            title={discardLabel}
+            aria-label={discardLabel}
+            className="rounded-full text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer p-2 sm:px-3.5 h-8 sm:h-9 shrink-0 disabled:opacity-40 flex items-center justify-center"
+          >
+            <RotateCcw className="h-3.5 w-3.5 sm:mr-1.5 shrink-0" />
+            <span className="hidden sm:inline">{discardLabel}</span>
+          </Button>
+
+          <Button
+            type="button"
+            onClick={handleSaveClick}
+            variant="default"
+            size="sm"
+            disabled={isButtonsDisabled}
+            className="rounded-full text-xs font-semibold shrink-0 cursor-pointer shadow-md bg-primary text-primary-foreground hover:opacity-90 px-3.5 sm:px-4 h-8 sm:h-9 disabled:opacity-40 flex items-center justify-center min-w-16 sm:min-w-24"
+          >
+            <Check className="h-3.5 w-3.5 mr-1 sm:mr-1.5 shrink-0" />
+            <span>{phase === 'saved' ? 'Saved' : saveLabel}</span>
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+

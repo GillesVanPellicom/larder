@@ -1,6 +1,6 @@
 import { formatGracefulNumber } from '@/lib/recipeMath'
 import type { IngredientItem } from '@/shared/types'
-import { CheckCircle2, Utensils } from 'lucide-react'
+import { Check } from 'lucide-react'
 
 interface RecipeIngredientsListProps {
   ingredients: IngredientItem[]
@@ -23,12 +23,11 @@ export function RecipeIngredientsList({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-            <Utensils className="h-4 w-4 text-amber-500" />
-            <span>Ingredients</span>
+          <h2 className="text-base font-bold text-foreground">
+            Ingredients
           </h2>
-          <span className="text-xs text-muted-foreground font-mono">
-            ({ingredients.length})
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-mono">
+            {ingredients.length}
           </span>
 
           {isScaled && onOpenYieldModal && (
@@ -44,7 +43,7 @@ export function RecipeIngredientsList({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-4 shadow-xs space-y-2">
+      <div className="rounded-2xl border border-border bg-card p-3 sm:p-4 shadow-xs space-y-1">
         {ingredients.length === 0 ? (
           <p className="text-xs text-muted-foreground italic py-2">No ingredients specified.</p>
         ) : (
@@ -54,10 +53,10 @@ export function RecipeIngredientsList({
               <div
                 key={item.id || index}
                 onClick={() => onToggleIngredient(item.id || String(index))}
-                className={`flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-colors select-none ${
+                className={`flex items-start gap-2.5 py-1.5 px-2.5 rounded-xl cursor-pointer transition-colors select-none ${
                   isChecked
-                    ? 'bg-muted/40 text-muted-foreground line-through opacity-70'
-                    : 'hover:bg-muted/30 text-foreground'
+                    ? 'bg-muted/60 text-muted-foreground line-through opacity-80'
+                    : 'hover:bg-muted/40 text-foreground'
                 }`}
               >
                 <button
@@ -65,10 +64,10 @@ export function RecipeIngredientsList({
                   className={`mt-0.5 h-4.5 w-4.5 rounded flex items-center justify-center shrink-0 transition-colors border ${
                     isChecked
                       ? 'bg-primary border-primary text-primary-foreground'
-                      : 'border-border bg-card'
+                      : 'border-border bg-card hover:border-primary/50'
                   }`}
                 >
-                  {isChecked && <CheckCircle2 className="h-3.5 w-3.5" />}
+                  {isChecked && <Check className="h-3.5 w-3.5 stroke-[2.5]" />}
                 </button>
 
                 <div className="text-sm flex-1 leading-snug">
@@ -87,3 +86,4 @@ export function RecipeIngredientsList({
     </div>
   )
 }
+

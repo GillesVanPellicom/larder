@@ -15,7 +15,7 @@ export function RecipeInstructionsEditor({
   error,
 }: RecipeInstructionsEditorProps) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-xs">
+    <div data-field="instructions" className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-xs">
       <div className="flex items-center gap-2">
         <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
           Preparation & Cooking Instructions {isMandatory && <span className="text-destructive">*</span>}

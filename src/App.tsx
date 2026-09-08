@@ -19,9 +19,9 @@ export function App() {
   const {
     currentView,
     selectedRecipe,
+    setSelectedRecipe,
     navigateTo,
     handleBack,
-    handleSavedTransition,
     handleDeletedTransition,
   } = useNavigation()
 
@@ -53,9 +53,8 @@ export function App() {
   const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null)
   const [deleting, setDeleting] = useState(false)
 
-  // Global Keyboard Shortcuts (Cmd+K, Cmd+F, Cmd+N)
+  // Global Keyboard Shortcuts (Cmd+F / Ctrl+F, Cmd+N / Ctrl+N)
   useAppKeyboardShortcuts({
-    onOpenFilters: () => setFilterDrawerOpen(true),
     onToggleFilters: () => setFilterDrawerOpen((prev) => !prev),
     onNewRecipe: () => navigateTo('recipe-form', null),
   })
@@ -63,7 +62,8 @@ export function App() {
   // Save recipe wrapper
   const handleSaveRecipe = async (data: CreateRecipeDTO, id?: number) => {
     const saved = await saveRecipe(data, id)
-    handleSavedTransition(saved)
+    setSelectedRecipe(saved)
+    return saved
   }
 
   // Delete recipe confirmation
@@ -79,6 +79,45 @@ export function App() {
     } finally {
       setDeleting(false)
     }
+  }
+
+  // Toggle tag filter selection from card
+  const handleToggleTagFilter = (catId: string, tag: string) => {
+    setFilterCriteria((prev) => {
+      const currentTags = prev.selectedTags[catId] || []
+      const isSelected = currentTags.includes(tag)
+      const nextTags = isSelected
+        ? currentTags.filter((t) => t !== tag)
+        : [...currentTags, tag]
+
+      const nextSelectedTags = { ...prev.selectedTags }
+      if (nextTags.length === 0) {
+        delete nextSelectedTags[catId]
+      } else {
+        nextSelectedTags[catId] = nextTags
+      }
+
+      return {
+        ...prev,
+        selectedTags: nextSelectedTags,
+      }
+    })
+  }
+
+  // Filter by tag and navigate to search/catalog from details page
+  const handleFilterByTagAndNavigate = (catId: string, tag: string) => {
+    setFilterCriteria((prev) => {
+      const currentTags = prev.selectedTags[catId] || []
+      const nextTags = currentTags.includes(tag) ? currentTags : [...currentTags, tag]
+      return {
+        ...prev,
+        selectedTags: {
+          ...prev.selectedTags,
+          [catId]: nextTags,
+        },
+      }
+    })
+    navigateTo('recipes', null)
   }
 
   return (
@@ -97,7 +136,9 @@ export function App() {
               loading={loading}
               filterCriteria={filterCriteria}
               activeFiltersCount={activeFiltersCount}
+              timeTrackingMode={metadataConfig?.timeTrackingMode || 'prep_and_cook'}
               onFilterCriteriaChange={setFilterCriteria}
+              onToggleTag={handleToggleTagFilter}
               onResetFilters={resetFilters}
               onOpenFilterDrawer={() => setFilterDrawerOpen(true)}
               onNewRecipe={() => navigateTo('recipe-form', null)}
@@ -118,6 +159,8 @@ export function App() {
                   (t) => t.id === (selectedRecipe.template_id || 'tpl_default')
                 ) || templates[0] || null
               }
+              timeTrackingMode={metadataConfig?.timeTrackingMode || 'prep_and_cook'}
+              onTagClick={handleFilterByTagAndNavigate}
               onBack={handleBack}
               onEdit={(recipe) => navigateTo('recipe-form', recipe)}
               onDeleteRequest={(recipe) => setRecipeToDelete(recipe)}
@@ -127,6 +170,7 @@ export function App() {
           {/* VIEW 3: Recipe Form (Create / Edit) */}
           {currentView === 'recipe-form' && (
             <RecipeFormPage
+              key={selectedRecipe ? `recipe-edit-${selectedRecipe.id}` : 'recipe-new'}
               recipe={selectedRecipe}
               categories={categories}
               metadataConfig={metadataConfig}

@@ -52,7 +52,7 @@ export function FilterTagsSection({
                 <button
                   type="button"
                   onClick={() => onCategoryMatchModeChange(cat.id, 'any')}
-                  className={`px-1.5 py-0.5 text-[10px] font-semibold rounded cursor-pointer transition-colors ${
+                  className={`px-2.5 py-1 text-xs font-semibold rounded cursor-pointer transition-colors ${
                     mode === 'any'
                       ? 'bg-foreground text-background shadow-xs'
                       : 'text-muted-foreground hover:text-foreground'
@@ -63,7 +63,7 @@ export function FilterTagsSection({
                 <button
                   type="button"
                   onClick={() => onCategoryMatchModeChange(cat.id, 'all')}
-                  className={`px-1.5 py-0.5 text-[10px] font-semibold rounded cursor-pointer transition-colors ${
+                  className={`px-2.5 py-1 text-xs font-semibold rounded cursor-pointer transition-colors ${
                     mode === 'all'
                       ? 'bg-foreground text-background shadow-xs'
                       : 'text-muted-foreground hover:text-foreground'

@@ -43,14 +43,15 @@ export function MultiCombobox({
   const anchor = useComboboxAnchor()
 
   const handleValueChange = (nextValues: string[]) => {
+    let resolved = nextValues
     if (maxSelected === 1 && nextValues.length > 1) {
-      onValuesChange([nextValues[nextValues.length - 1]])
+      resolved = [nextValues[nextValues.length - 1]]
+    } else if (maxSelected !== undefined && nextValues.length > maxSelected) {
       return
     }
-    if (maxSelected !== undefined && nextValues.length > maxSelected) {
-      return
+    if (JSON.stringify(resolved) !== JSON.stringify(values)) {
+      onValuesChange(resolved)
     }
-    onValuesChange(nextValues)
   }
 
   const isAtLimit = maxSelected !== undefined && values.length >= maxSelected

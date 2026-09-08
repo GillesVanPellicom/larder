@@ -6,7 +6,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Filter, Plus, RotateCcw, Search, Settings, X } from 'lucide-react'
+import { getShortcutLabel } from '@/lib/shortcuts'
+import { Filter, RotateCcw, Search, Settings, X } from 'lucide-react'
 
 interface CatalogToolbarProps {
   searchQuery: string
@@ -14,7 +15,6 @@ interface CatalogToolbarProps {
   activeFiltersCount: number
   onResetFilters: () => void
   onOpenFilterDrawer: () => void
-  onNewRecipe: () => void
   onOpenSettings: () => void
 }
 
@@ -24,7 +24,6 @@ export function CatalogToolbar({
   activeFiltersCount,
   onResetFilters,
   onOpenFilterDrawer,
-  onNewRecipe,
   onOpenSettings,
 }: CatalogToolbarProps) {
   return (
@@ -33,16 +32,16 @@ export function CatalogToolbar({
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         <Input
-          placeholder="Search recipes, ingredients, instructions... (Cmd+F)"
+          placeholder="Search recipes, ingredients, instructions..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-9 pr-9 h-9 text-sm bg-card border-border shadow-2xs"
+          className="pl-9.5 pr-9 text-base md:text-sm bg-card border-border shadow-2xs"
         />
         {searchQuery && (
           <button
             type="button"
             onClick={() => onSearchChange('')}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-1"
             title="Clear search"
           >
             <X className="h-4 w-4" />
@@ -50,27 +49,8 @@ export function CatalogToolbar({
         )}
       </div>
 
-      {/* ButtonGroup: [Reset Filters] [Filter Drawer Trigger] */}
+      {/* ButtonGroup: [Reset Filters] [Filters Trigger] */}
       <ButtonGroup orientation="horizontal" className="shrink-0 shadow-2xs">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={onResetFilters}
-                disabled={activeFiltersCount === 0}
-                className="h-9 w-9 border-border text-foreground hover:bg-muted cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                aria-label="Reset filters"
-              >
-                <RotateCcw className="h-4 w-4" />
-              </Button>
-            }
-          />
-          <TooltipContent>Reset all filters</TooltipContent>
-        </Tooltip>
-
         <Tooltip>
           <TooltipTrigger
             render={
@@ -78,9 +58,28 @@ export function CatalogToolbar({
                 type="button"
                 variant={activeFiltersCount > 0 ? 'default' : 'outline'}
                 size="icon"
+                onClick={onResetFilters}
+                disabled={activeFiltersCount === 0}
+                className="border-border cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="Reset filters"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            }
+          />
+          <TooltipContent>Reset filters</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
                 onClick={onOpenFilterDrawer}
-                className="relative h-9 w-9 border-border cursor-pointer hover:bg-muted"
-                aria-label="Filter drawer"
+                className="relative border-border cursor-pointer hover:bg-muted"
+                aria-label="Filters"
               >
                 <Filter className="h-4 w-4" />
                 {activeFiltersCount > 0 && (
@@ -93,23 +92,11 @@ export function CatalogToolbar({
           />
           <TooltipContent>
             {activeFiltersCount > 0
-              ? `${activeFiltersCount} active filter${activeFiltersCount > 1 ? 's' : ''} (Cmd+F or F)`
-              : 'Filters Drawer (Cmd+F or F)'}
+              ? `${activeFiltersCount} active filter${activeFiltersCount > 1 ? 's' : ''}${getShortcutLabel('f')}`
+              : `Filters${getShortcutLabel('f')}`}
           </TooltipContent>
         </Tooltip>
       </ButtonGroup>
-
-      {/* New Recipe Action */}
-      <Button
-        type="button"
-        size="sm"
-        onClick={onNewRecipe}
-        className="h-9 px-3 text-xs font-semibold cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 shadow-2xs gap-1.5 shrink-0"
-        title="New Recipe (N or Cmd+N)"
-      >
-        <Plus className="h-4 w-4" />
-        <span className="hidden sm:inline">New Recipe</span>
-      </Button>
 
       {/* Settings Navigation Action */}
       <Tooltip>
@@ -120,7 +107,7 @@ export function CatalogToolbar({
               variant="outline"
               size="icon"
               onClick={onOpenSettings}
-              className="h-9 w-9 border-border text-foreground hover:bg-muted cursor-pointer shrink-0 shadow-2xs"
+              className="border-border text-foreground hover:bg-muted cursor-pointer shrink-0 shadow-2xs"
               aria-label="Settings"
               title="Settings"
             >

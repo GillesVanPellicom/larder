@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -13,15 +12,16 @@ import { ArrowLeft, ExternalLink, ListTodo, MoreHorizontal, Pencil, RotateCcw, S
 import { RecipeHero } from './RecipeHero'
 import { RecipeIngredientsList } from './RecipeIngredientsList'
 import { RecipeInstructionsView } from './RecipeInstructionsView'
-import { RecipeFieldsView } from '@/components/template-engine/RecipeFieldsView'
 import { YieldMultiplierDialog } from './YieldMultiplierDialog'
 import { scaleIngredients, scaleYield } from '@/lib/recipeMath'
-import type { Recipe, RecipeTemplate, TagCategory } from '@/shared/types'
+import type { Recipe, RecipeTemplate, TagCategory, TimeTrackingMode } from '@/shared/types'
 
 export interface RecipeViewPageProps {
   recipe: Recipe
   categories: TagCategory[]
   template?: RecipeTemplate | null
+  timeTrackingMode?: TimeTrackingMode
+  onTagClick?: (catId: string, tag: string) => void
   onBack: () => void
   onEdit: (recipe: Recipe) => void
   onDeleteRequest: (recipe: Recipe) => void
@@ -31,7 +31,8 @@ export interface RecipeViewPageProps {
 export function RecipeViewPage({
   recipe,
   categories,
-  template,
+  timeTrackingMode = 'prep_and_cook',
+  onTagClick,
   onBack,
   onEdit,
   onDeleteRequest,
@@ -60,15 +61,15 @@ export function RecipeViewPage({
     <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-in fade-in duration-150">
       {/* Top Action Bar */}
       {!hideTopBar && (
-        <div className="flex items-center justify-between border-b border-border pb-4">
+        <div className="flex items-center justify-between">
           <Button
             variant="outline"
             size="icon"
             onClick={onBack}
             title="Back"
-            className="h-9 w-9 cursor-pointer border-border hover:bg-muted text-foreground"
+            className="cursor-pointer border-border hover:bg-muted text-foreground"
           >
-            <ArrowLeft className="h-4.5 w-4.5" />
+            <ArrowLeft className="h-5 w-5 sm:h-4.5 sm:w-4.5" />
           </Button>
 
           <DropdownMenu>
@@ -77,10 +78,10 @@ export function RecipeViewPage({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-9 w-9 cursor-pointer border-border hover:bg-muted text-foreground"
+                  className="cursor-pointer border-border hover:bg-muted text-foreground"
                   title="Recipe options"
                 >
-                  <MoreHorizontal className="h-4.5 w-4.5" />
+                  <MoreHorizontal className="h-5 w-5 sm:h-4.5 sm:w-4.5" />
                 </Button>
               }
             />
@@ -119,7 +120,7 @@ export function RecipeViewPage({
                 className="cursor-pointer gap-2 py-2 text-xs font-medium text-foreground"
               >
                 <Pencil className="h-4 w-4" />
-                <span>Edit recipe</span>
+                <span>Edit</span>
               </DropdownMenuItem>
 
               <DropdownMenuItem
@@ -127,37 +128,22 @@ export function RecipeViewPage({
                 className="cursor-pointer gap-2 py-2 text-xs font-medium text-destructive focus:text-destructive focus:bg-destructive/10"
               >
                 <Trash2 className="h-4 w-4 text-destructive" />
-                <span>Delete recipe</span>
+                <span>Delete</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       )}
 
-      {/* Hero Media & Metrics */}
+      {/* Hero Media, Metrics & Integrated Tags */}
       <RecipeHero
         recipe={recipe}
+        categories={categories}
         scaledYield={scaledYield}
         yieldMultiplier={yieldMultiplier}
+        timeTrackingMode={timeTrackingMode}
+        onTagClick={onTagClick}
       />
-
-      {/* Tags Section */}
-      {Object.keys(recipe.tags || {}).length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 p-4 rounded-xl border border-border bg-card">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mr-1">
-            Tags:
-          </span>
-          {Object.entries(recipe.tags).map(([catId, tags]) => {
-            const category = categories.find((c) => c.id === catId)
-            return tags.map((t) => (
-              <Badge key={`${catId}-${t}`} variant="secondary" className="text-xs px-2.5 py-1">
-                <span className="opacity-50 mr-1.5">{category?.name || catId}:</span>
-                <strong>{t}</strong>
-              </Badge>
-            ))
-          })}
-        </div>
-      )}
 
       {/* Two Column Layout: Ingredients & Method */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -205,13 +191,6 @@ export function RecipeViewPage({
           )}
         </div>
       </div>
-
-      {/* Additional Template Fields */}
-      <RecipeFieldsView
-        template={template}
-        fieldValues={recipe.field_values}
-        categories={categories}
-      />
 
       {/* Microsoft To Do Integration Dialog */}
       <AddToTodoDialog

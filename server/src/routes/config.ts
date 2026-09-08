@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { eq } from 'drizzle-orm'
 import { db } from '../db'
 import { metadataConfigTable } from '../db/schema'
-import type { MetadataConfig } from '../../../shared/types'
+import type { MetadataConfig, TimeTrackingMode } from '../../../shared/types'
 
 const router = Router()
 
@@ -25,9 +25,9 @@ router.get('/', async (_req, res) => {
           yield_amount: false,
           prep_time_minutes: false,
           cook_time_minutes: false,
-          total_time_minutes: false,
         },
         mandatoryCategories: [],
+        timeTrackingMode: 'prep_and_cook',
       }
       return res.json(defaultConfig)
     }
@@ -36,6 +36,7 @@ router.get('/', async (_req, res) => {
     const config: MetadataConfig = {
       mandatoryFields: row.mandatoryFields,
       mandatoryCategories: row.mandatoryCategories,
+      timeTrackingMode: (row.timeTrackingMode as TimeTrackingMode) || 'prep_and_cook',
       updated_at: row.updatedAt ? row.updatedAt.toISOString() : undefined,
     }
 
@@ -50,7 +51,7 @@ router.get('/', async (_req, res) => {
 // PUT /api/config
 router.put('/', async (req, res) => {
   try {
-    const { mandatoryFields, mandatoryCategories } = req.body as Partial<MetadataConfig>
+    const { mandatoryFields, mandatoryCategories, timeTrackingMode } = req.body as Partial<MetadataConfig>
 
     if (!mandatoryFields) {
       return res.status(400).json({ error: 'mandatoryFields is required' })
@@ -61,12 +62,20 @@ router.put('/', async (req, res) => {
     mandatoryFields.ingredients = true
     mandatoryFields.instructions = true
 
+    if (timeTrackingMode === 'no_cook') {
+      mandatoryFields.prep_time_minutes = false
+      mandatoryFields.cook_time_minutes = false
+    } else if (timeTrackingMode === 'total_only') {
+      mandatoryFields.cook_time_minutes = false
+    }
+
     const [updated] = await db
       .insert(metadataConfigTable)
       .values({
         id: 'global',
         mandatoryFields,
         mandatoryCategories: mandatoryCategories || [],
+        timeTrackingMode: timeTrackingMode || 'prep_and_cook',
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
@@ -74,6 +83,7 @@ router.put('/', async (req, res) => {
         set: {
           mandatoryFields,
           mandatoryCategories: mandatoryCategories || [],
+          timeTrackingMode: timeTrackingMode || 'prep_and_cook',
           updatedAt: new Date(),
         },
       })
@@ -82,6 +92,7 @@ router.put('/', async (req, res) => {
     res.json({
       mandatoryFields: updated.mandatoryFields,
       mandatoryCategories: updated.mandatoryCategories,
+      timeTrackingMode: updated.timeTrackingMode,
       updated_at: updated.updatedAt.toISOString(),
     })
   } catch (err: unknown) {

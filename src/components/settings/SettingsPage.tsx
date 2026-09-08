@@ -4,6 +4,7 @@ import { CategoriesAndRulesTab } from './CategoriesAndRulesTab'
 import { useTheme } from '@/hooks/useTheme'
 import { usePwa } from '@/hooks/usePwa'
 import type { MetadataConfig, TagCategory } from '@/shared/types'
+import { ConfirmUnsavedDialog } from '@/components/ConfirmUnsavedDialog'
 import {
   ArrowLeft,
   Check,
@@ -30,11 +31,31 @@ export function SettingsPage({
   onBack,
 }: SettingsPageProps) {
   const [activeSubTab, setActiveSubTab] = useState<'rules' | 'appearance'>('rules')
+  const [isRulesDirty, setIsRulesDirty] = useState(false)
+  const [showConfirmBack, setShowConfirmBack] = useState(false)
+  const [pendingTab, setPendingTab] = useState<'rules' | 'appearance' | null>(null)
   const { theme, setTheme } = useTheme()
   const { canInstall, triggerInstall } = usePwa()
 
+  const handleBackClick = () => {
+    if (isRulesDirty) {
+      setShowConfirmBack(true)
+    } else {
+      onBack?.()
+    }
+  }
+
+  const handleTabChange = (newTab: 'rules' | 'appearance') => {
+    if (newTab === activeSubTab) return
+    if (isRulesDirty) {
+      setPendingTab(newTab)
+    } else {
+      setActiveSubTab(newTab)
+    }
+  }
+
   return (
-    <div className="space-y-6 w-full max-w-7xl mx-auto animate-in fade-in duration-150">
+    <div className="space-y-6 w-full max-w-7xl mx-auto pb-32 sm:pb-36 animate-in fade-in duration-150">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -42,7 +63,7 @@ export function SettingsPage({
             <Button
               variant="outline"
               size="icon"
-              onClick={onBack}
+              onClick={handleBackClick}
               title="Back to Recipes"
               className="h-9 w-9 cursor-pointer border-border hover:bg-muted text-foreground shrink-0"
             >
@@ -61,7 +82,7 @@ export function SettingsPage({
       <div className="flex items-center gap-2 sm:gap-6 border-b border-border">
         <button
           type="button"
-          onClick={() => setActiveSubTab('rules')}
+          onClick={() => handleTabChange('rules')}
           className={`group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer ${
             activeSubTab === 'rules'
               ? 'border-foreground text-foreground'
@@ -69,12 +90,12 @@ export function SettingsPage({
           }`}
         >
           <SlidersHorizontal className="h-4 w-4" />
-          <span>Categories &amp; Rules</span>
+          <span>Recipe Rules</span>
         </button>
 
         <button
           type="button"
-          onClick={() => setActiveSubTab('appearance')}
+          onClick={() => handleTabChange('appearance')}
           className={`group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer ${
             activeSubTab === 'appearance'
               ? 'border-foreground text-foreground'
@@ -92,7 +113,11 @@ export function SettingsPage({
           categories={categories}
           metadataConfig={metadataConfig}
           onRefreshCategories={onRefreshCategories}
-          onSaveConfig={onSaveConfig}
+          onSaveConfig={async (config) => {
+            await onSaveConfig(config)
+            setIsRulesDirty(false)
+          }}
+          onDirtyChange={setIsRulesDirty}
         />
       )}
 
@@ -200,6 +225,33 @@ export function SettingsPage({
           )}
         </div>
       )}
+
+      {/* Confirmation Dialog for Back Navigation */}
+      <ConfirmUnsavedDialog
+        open={showConfirmBack}
+        onOpenChange={setShowConfirmBack}
+        onConfirmDiscard={() => {
+          setIsRulesDirty(false)
+          onBack?.()
+        }}
+        title="Discard unsaved settings?"
+        description="You have unsaved changes to your rules and configuration that will be lost."
+      />
+
+      {/* Confirmation Dialog for Tab Switching */}
+      <ConfirmUnsavedDialog
+        open={pendingTab !== null}
+        onOpenChange={(open) => !open && setPendingTab(null)}
+        onConfirmDiscard={() => {
+          if (pendingTab) {
+            setIsRulesDirty(false)
+            setActiveSubTab(pendingTab)
+            setPendingTab(null)
+          }
+        }}
+        title="Discard unsaved settings?"
+        description="You have unsaved changes to your rules and configuration that will be lost if you switch tabs."
+      />
     </div>
   )
 }

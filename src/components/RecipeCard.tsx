@@ -12,11 +12,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import type { Recipe, RecipeTemplate, RecipeViolation, TagCategory } from '@/shared/types'
+import type { Recipe, RecipeTemplate, RecipeViolation, TagCategory, TimeTrackingMode } from '@/shared/types'
 import {
   AlertTriangle,
   Clock,
   Pencil,
+  ShoppingBasket,
   Trash2,
   Users,
   Utensils,
@@ -27,6 +28,9 @@ interface RecipeCardProps {
   violations?: RecipeViolation[]
   categories: TagCategory[]
   template?: RecipeTemplate | null
+  timeTrackingMode?: TimeTrackingMode
+  selectedTags?: Record<string, string[]>
+  onToggleTag?: (catId: string, tag: string) => void
   onView: (recipe: Recipe) => void
   onEdit: (recipe: Recipe) => void
   onDeleteRequest: (recipe: Recipe) => void
@@ -36,6 +40,9 @@ export function RecipeCard({
   recipe,
   violations = [],
   categories,
+  timeTrackingMode = 'prep_and_cook',
+  selectedTags,
+  onToggleTag,
   onView,
   onEdit,
   onDeleteRequest,
@@ -65,7 +72,7 @@ export function RecipeCard({
             <TooltipContent side="bottom" align="start" className="w-64">
               <div className="font-bold text-destructive flex items-center gap-1.5 mb-1">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
-                <span>{violations.length} Metadata Violation{violations.length > 1 ? 's' : ''}</span>
+                <span>{violations.length} Data Rule Violation{violations.length > 1 ? 's' : ''}</span>
               </div>
               <ul className="space-y-1 text-muted-foreground list-disc list-inside text-xs leading-relaxed">
                 {violations.map((v, i) => (
@@ -87,7 +94,7 @@ export function RecipeCard({
             variant="ghost"
             size="icon-sm"
             onClick={() => onEdit(recipe)}
-            title="Edit recipe"
+            title="Edit"
             className="h-8 w-8 text-white hover:bg-white/20 hover:text-white cursor-pointer"
           >
             <Pencil className="h-4 w-4" />
@@ -96,7 +103,7 @@ export function RecipeCard({
             variant="ghost"
             size="icon-sm"
             onClick={() => onDeleteRequest(recipe)}
-            title="Delete recipe"
+            title="Delete"
             className="h-8 w-8 text-red-400 hover:bg-red-500/20 hover:text-red-300 cursor-pointer"
           >
             <Trash2 className="h-4 w-4" />
@@ -105,40 +112,46 @@ export function RecipeCard({
       </div>
 
       <div>
-          {/* Media Container: Flush to top edge with rounded top corners */}
-          <div className="relative h-48 w-full overflow-hidden bg-muted/60 rounded-t-2xl">
-            {recipe.image_url ? (
-              <img
-                src={recipe.image_url}
-                alt={recipe.title}
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center bg-muted/30">
-                <Utensils className="h-8 w-8 text-muted-foreground/40" />
-                <span className="mt-1.5 text-xs text-muted-foreground">
-                  No image
-                </span>
-              </div>
-            )}
-
-            {/* Time & Yield Badges on Image */}
-            <div className="absolute bottom-2.5 left-2.5 flex flex-wrap gap-1.5">
-              {recipe.total_time_minutes > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-black/75 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur-xs shadow-xs">
-                  <Clock className="h-3.5 w-3.5 text-amber-400" />
-                  <span>{recipe.total_time_minutes}m</span>
-                </span>
-              )}
-              {recipe.yield_amount && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-black/75 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur-xs shadow-xs">
-                  <Users className="h-3.5 w-3.5 text-blue-300" />
-                  <span>{recipe.yield_amount}</span>
-                </span>
-              )}
+        {/* Media Container: Flush to top edge with rounded top corners */}
+        <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-muted/60 rounded-t-2xl">
+          {recipe.image_url ? (
+            <img
+              src={recipe.image_url}
+              alt={recipe.title}
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center bg-muted/30">
+              <Utensils className="h-8 w-8 text-muted-foreground/40" />
+              <span className="mt-1.5 text-xs text-muted-foreground">
+                No image
+              </span>
             </div>
+          )}
+
+          {/* Time, Servings & Ingredients Badges over Image */}
+          <div className="absolute bottom-2.5 left-2.5 right-2.5 flex flex-wrap items-center gap-1.5 pointer-events-none">
+            {timeTrackingMode !== 'no_cook' && recipe.total_time_minutes > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/80 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md shadow-md border border-white/10">
+                <Clock className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                <span>{recipe.total_time_minutes} min</span>
+              </span>
+            )}
+            {Boolean(recipe.yield_amount) && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/80 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md shadow-md border border-white/10">
+                <Users className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                <span>{recipe.yield_amount}</span>
+              </span>
+            )}
+            {ingredientCount > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/80 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md shadow-md border border-white/10">
+                <ShoppingBasket className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                <span>{ingredientCount} {ingredientCount === 1 ? 'item' : 'items'}</span>
+              </span>
+            )}
           </div>
+        </div>
 
         {/* Card Body */}
         <CardHeader className="p-4 pb-2">
@@ -147,65 +160,56 @@ export function RecipeCard({
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="p-4 pt-1 space-y-3">
-          {/* Prominent Cook Time & Ingredients Feature Block */}
-          <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted/40 p-2.5 border border-border/60">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                <Clock className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block truncate">
-                  Cook Time
-                </span>
-                <span className="text-xs font-bold text-foreground truncate block">
-                  {recipe.cook_time_minutes > 0
-                    ? `${recipe.cook_time_minutes} min`
-                    : recipe.total_time_minutes > 0
-                    ? `${recipe.total_time_minutes} min`
-                    : '—'}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Utensils className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block truncate">
-                  Ingredients
-                </span>
-                <span className="text-xs font-bold text-foreground truncate block">
-                  {ingredientCount} item{ingredientCount === 1 ? '' : 's'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Prominent Ingredients Summary */}
-          {recipe.ingredients && recipe.ingredients.length > 0 && (
-            <p className="text-xs text-muted-foreground line-clamp-1 leading-relaxed">
-              <strong className="text-foreground font-semibold">Ingredients: </strong>
-              {recipe.ingredients.map((i) => i.name).filter(Boolean).join(', ')}
-            </p>
-          )}
-
+        <CardContent className="p-4 pt-0">
           {/* Tags */}
           {recipe.tags && Object.keys(recipe.tags).length > 0 && (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               {Object.entries(recipe.tags).map(([catId, tags]) => {
+                if (!tags || tags.length === 0) return null
                 const category = categories.find((c) => c.id === catId)
-                return tags.map((tag) => (
-                  <Badge
-                    key={`${catId}-${tag}`}
-                    variant="secondary"
-                    className="text-[10px] font-normal px-1.5 py-0 h-4.5"
-                  >
-                    <span className="opacity-50 mr-1">{category?.name || catId}:</span>
-                    <strong>{tag}</strong>
-                  </Badge>
-                ))
+                const categoryName = category?.name || catId
+
+                return (
+                  <div key={catId} className="flex flex-wrap items-center gap-1">
+                    <span className="text-[11px] font-semibold text-muted-foreground">
+                      {categoryName}:
+                    </span>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {tags.map((tag) => {
+                        const isSelected = Boolean(selectedTags?.[catId]?.includes(tag))
+
+                        return (
+                          <Badge
+                            key={`${catId}-${tag}`}
+                            variant="secondary"
+                            onClick={(e) => {
+                              if (onToggleTag) {
+                                e.stopPropagation()
+                                onToggleTag(catId, tag)
+                              }
+                            }}
+                            title={
+                              onToggleTag
+                                ? isSelected
+                                  ? `Deselect ${categoryName}: ${tag} filter`
+                                  : `Filter by ${categoryName}: ${tag}`
+                                : undefined
+                            }
+                            className={`text-xs font-medium px-2.5 py-0.5 rounded-md border transition-all ${
+                              onToggleTag ? 'cursor-pointer' : ''
+                            } ${
+                              isSelected
+                                ? 'bg-primary text-primary-foreground border-primary shadow-xs hover:bg-primary/90'
+                                : 'border-border/70 bg-muted/50 text-foreground hover:bg-muted hover:border-border'
+                            }`}
+                          >
+                            {tag}
+                          </Badge>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
               })}
             </div>
           )}
@@ -214,3 +218,4 @@ export function RecipeCard({
     </Card>
   )
 }
+
