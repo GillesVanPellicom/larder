@@ -7,7 +7,6 @@ import type {
   MetadataConfig,
   Recipe,
   RecipeTags,
-  RecipeTemplate,
   TagCategory,
 } from '@/shared/types'
 import { ArrowLeft } from 'lucide-react'
@@ -23,7 +22,6 @@ export interface RecipeFormPageProps {
   recipe?: Recipe | null
   categories: TagCategory[]
   metadataConfig: MetadataConfig | null
-  templates?: RecipeTemplate[]
   onBack: () => void
   onSave: (data: CreateRecipeDTO, id?: number) => Promise<Recipe | void>
   hideTopBar?: boolean

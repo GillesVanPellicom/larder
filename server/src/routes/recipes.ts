@@ -1,14 +1,13 @@
 import { Router } from 'express'
 import { and, eq, isNull } from 'drizzle-orm'
-import { db } from '../db'
-import { recipes } from '../db/schema'
+import { db, pool } from '../db'
+import { recipes, type RecipeRow } from '../db/schema'
 import { recipeViolationService } from '../services/recipeViolationService'
-import { recipeQueryService } from '../services/recipeQueryService'
+import { formatRecipeRow, recipeQueryService } from '../services/recipeQueryService'
 import type {
   CreateRecipeDTO,
-  InstructionStep,
+  IngredientItem,
   MatchMode,
-  Recipe,
   RecipeQueryParams,
   RecipeSortOption,
   TriStateFilter,
@@ -16,49 +15,39 @@ import type {
 
 const router = Router()
 
-function formatRecipe(r: typeof recipes.$inferSelect): Recipe {
-  let ingredients = r.ingredients || []
-  if (typeof (ingredients as unknown) === 'string') {
-    try {
-      ingredients = JSON.parse(ingredients as unknown as string)
-    } catch {
-      ingredients = (ingredients as unknown as string)
-        .split(',')
-        .map((name, i) => ({ id: String(i + 1), name: name.trim() }))
-    }
-  }
+async function getRecipeWithIngredients(id: number): Promise<{ row: RecipeRow; ingredients: IngredientItem[] } | null> {
+  const [row] = await db
+    .select()
+    .from(recipes)
+    .where(and(eq(recipes.id, id), isNull(recipes.deletedAt)))
 
-  let instructions: string | InstructionStep[] = r.instructions || ''
-  if (typeof (instructions as unknown) === 'string') {
-    try {
-      const parsed = JSON.parse(instructions as unknown as string)
-      if (typeof parsed === 'string' || Array.isArray(parsed)) {
-        instructions = parsed
-      }
-    } catch {
-      // HTML or plain text string
-    }
-  }
+  if (!row) return null
 
-  return {
-    id: r.id,
-    title: r.title,
-    description: r.description,
-    yield_amount: r.yieldAmount,
-    yield_unit: r.yieldUnit || 'servings',
-    prep_time_minutes: r.prepTimeMinutes,
-    cook_time_minutes: r.cookTimeMinutes,
-    total_time_minutes: r.totalTimeMinutes,
-    image_url: r.imageUrl,
-    source_url: r.sourceUrl,
-    ingredients,
-    instructions,
-    tags: r.tags || {},
-    has_violations: r.hasViolations ?? false,
-    violations: r.violations || [],
-    created_at: r.createdAt.toISOString(),
-    updated_at: r.updatedAt.toISOString(),
-  }
+  const ingResult = await pool.query<{
+    id: number
+    ingredient_id: number
+    name: string
+    amount: string
+    unit: string
+    sort_order: number
+  }>(
+    `SELECT ri.id, ri.ingredient_id, ing.name, ri.amount, ri.unit, ri.sort_order
+     FROM recipe_ingredients ri
+     JOIN ingredients ing ON ing.id = ri.ingredient_id
+     WHERE ri.recipe_id = $1
+     ORDER BY ri.sort_order ASC, ri.id ASC`,
+    [id]
+  )
+
+  const ingredients: IngredientItem[] = ingResult.rows.map((r) => ({
+    id: String(r.id),
+    ingredient_id: r.ingredient_id,
+    name: r.name,
+    amount: r.amount || '',
+    unit: r.unit || '',
+  }))
+
+  return { row, ingredients }
 }
 
 // GET /api/recipes/ingredients - Fetch distinct ingredient names for search/filter autocomplete
@@ -178,15 +167,12 @@ router.get('/:id', async (req, res) => {
       return res.status(400).json({ error: 'Invalid recipe ID' })
     }
 
-    const [row] = await db
-      .select()
-      .from(recipes)
-      .where(and(eq(recipes.id, id), isNull(recipes.deletedAt)))
-    if (!row) {
+    const recipeData = await getRecipeWithIngredients(id)
+    if (!recipeData) {
       return res.status(404).json({ error: 'Recipe not found' })
     }
 
-    res.json(formatRecipe(row))
+    res.json(formatRecipeRow(recipeData.row, recipeData.ingredients))
   } catch (err: unknown) {
     const details = err instanceof Error ? err.message : String(err)
     console.error('Failed to fetch recipe:', err)
@@ -194,7 +180,6 @@ router.get('/:id', async (req, res) => {
   }
 })
 
-// Helper to extract top-level search columns from field_values
 // Helper to extract core columns from request body
 function syncCoreColumns(body: Partial<CreateRecipeDTO>) {
   const title = body.title || ''
@@ -207,7 +192,6 @@ function syncCoreColumns(body: Partial<CreateRecipeDTO>) {
   const total = body.total_time_minutes !== undefined ? Number(body.total_time_minutes) : (prep + cook)
   const imageUrl = body.image_url || ''
   const sourceUrl = body.source_url || ''
-  const ingredients = body.ingredients || []
   const instructions = body.instructions || ''
   const tags = body.tags || {}
 
@@ -221,10 +205,70 @@ function syncCoreColumns(body: Partial<CreateRecipeDTO>) {
     totalTimeMinutes: total,
     imageUrl: String(imageUrl).trim(),
     sourceUrl: String(sourceUrl).trim(),
-    ingredients,
     instructions,
     tags,
   }
+}
+
+interface ValidatedIngredient {
+  ingredient_id: number
+  name: string
+  amount: string
+  unit: string
+  sort_order: number
+}
+
+async function validateAndResolveIngredients(
+  rawIngredients: IngredientItem[] | undefined
+): Promise<ValidatedIngredient[]> {
+  if (!rawIngredients || !Array.isArray(rawIngredients)) return []
+
+  const activeItems = rawIngredients.filter((i) => i && i.name && i.name.trim().length > 0)
+  const validated: ValidatedIngredient[] = []
+
+  for (let sort_order = 0; sort_order < activeItems.length; sort_order++) {
+    const item = activeItems[sort_order]
+    const trimmedName = item.name.trim()
+
+    // 1. Check by ID if provided, or by exact name match
+    let dbMatch: { id: number; name: string } | null = null
+
+    if (item.ingredient_id) {
+      const byId = await pool.query<{ id: number; name: string }>(
+        `SELECT id, name FROM ingredients WHERE id = $1 LIMIT 1`,
+        [item.ingredient_id]
+      )
+      if (byId.rows.length > 0) {
+        dbMatch = byId.rows[0]
+      }
+    }
+
+    if (!dbMatch) {
+      const byName = await pool.query<{ id: number; name: string }>(
+        `SELECT id, name FROM ingredients WHERE lower(name) = lower($1) LIMIT 1`,
+        [trimmedName]
+      )
+      if (byName.rows.length > 0) {
+        dbMatch = byName.rows[0]
+      }
+    }
+
+    if (!dbMatch) {
+      throw new Error(
+        `Ingredient "${trimmedName}" is not registered in the database. Please select an existing ingredient or create it first.`
+      )
+    }
+
+    validated.push({
+      ingredient_id: dbMatch.id,
+      name: dbMatch.name,
+      amount: item.amount ? String(item.amount).trim() : '',
+      unit: item.unit ? String(item.unit).trim() : '',
+      sort_order,
+    })
+  }
+
+  return validated
 }
 
 // POST /api/recipes
@@ -238,7 +282,13 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Recipe title is required' })
     }
 
-    const { hasViolations, violations } = await recipeViolationService.getViolationsForPayload(synced)
+    // Validate that all ingredients exist in the normalized ingredients database
+    const validatedIngredients = await validateAndResolveIngredients(body.ingredients)
+
+    const { hasViolations, violations } = await recipeViolationService.getViolationsForPayload({
+      ...synced,
+      ingredients: validatedIngredients,
+    })
 
     const [created] = await db
       .insert(recipes)
@@ -249,11 +299,21 @@ router.post('/', async (req, res) => {
       })
       .returning()
 
-    res.status(201).json(formatRecipe(created))
+    // Insert relational ingredient rows
+    for (const ing of validatedIngredients) {
+      await pool.query(
+        `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, amount, unit, sort_order)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [created.id, ing.ingredient_id, ing.amount, ing.unit, ing.sort_order]
+      )
+    }
+
+    const recipeData = await getRecipeWithIngredients(created.id)
+    res.status(201).json(formatRecipeRow(recipeData!.row, recipeData!.ingredients))
   } catch (err: unknown) {
     const details = err instanceof Error ? err.message : String(err)
     console.error('Failed to create recipe:', err)
-    res.status(500).json({ error: 'Failed to create recipe', details })
+    res.status(400).json({ error: details || 'Failed to create recipe' })
   }
 })
 
@@ -268,7 +328,16 @@ router.put('/:id', async (req, res) => {
     const body = req.body as Partial<CreateRecipeDTO>
     const synced = syncCoreColumns(body)
 
-    const { hasViolations, violations } = await recipeViolationService.getViolationsForPayload(synced)
+    // Validate ingredients if provided
+    let validatedIngredients: ValidatedIngredient[] | null = null
+    if (body.ingredients !== undefined) {
+      validatedIngredients = await validateAndResolveIngredients(body.ingredients)
+    }
+
+    const { hasViolations, violations } = await recipeViolationService.getViolationsForPayload({
+      ...synced,
+      ingredients: validatedIngredients !== null ? validatedIngredients : undefined,
+    })
 
     const updatePayload: Record<string, unknown> = {
       ...synced,
@@ -287,11 +356,24 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Recipe not found' })
     }
 
-    res.json(formatRecipe(updated))
+    // If ingredients were updated, replace recipe_ingredients records
+    if (validatedIngredients !== null) {
+      await pool.query(`DELETE FROM recipe_ingredients WHERE recipe_id = $1`, [id])
+      for (const ing of validatedIngredients) {
+        await pool.query(
+          `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, amount, unit, sort_order)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [id, ing.ingredient_id, ing.amount, ing.unit, ing.sort_order]
+        )
+      }
+    }
+
+    const recipeData = await getRecipeWithIngredients(id)
+    res.json(formatRecipeRow(recipeData!.row, recipeData!.ingredients))
   } catch (err: unknown) {
     const details = err instanceof Error ? err.message : String(err)
     console.error('Failed to update recipe:', err)
-    res.status(500).json({ error: 'Failed to update recipe', details })
+    res.status(400).json({ error: details || 'Failed to update recipe' })
   }
 })
 

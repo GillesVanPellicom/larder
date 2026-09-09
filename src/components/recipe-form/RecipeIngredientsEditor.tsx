@@ -18,6 +18,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { IngredientCombobox } from './IngredientCombobox'
 import type { IngredientItem } from '@/shared/types'
 import { GripVertical, Plus, Trash2 } from 'lucide-react'
 
@@ -55,7 +56,7 @@ function SortableIngredientRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: item.id })
+  } = useSortable({ id: String(item.id || index) })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -67,19 +68,20 @@ function SortableIngredientRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 bg-card rounded-xl transition-shadow ${
+      className={`flex items-stretch gap-2 bg-card rounded-xl transition-shadow ${
         isDragging ? 'shadow-lg opacity-80 ring-2 ring-primary/30 z-30' : ''
       }`}
     >
+      {/* Full-height drag handle */}
       <button
         type="button"
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing p-1.5 text-muted-foreground hover:text-foreground touch-none shrink-0 rounded-md hover:bg-muted/60 transition-colors"
+        className="self-stretch flex items-center justify-center px-2 sm:px-2.5 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none shrink-0 rounded-lg hover:bg-muted/60 transition-colors select-none"
         title="Reorder ingredient"
         aria-label="Reorder ingredient"
       >
-        <GripVertical className="h-4 w-4" />
+        <GripVertical className="h-4 w-4 pointer-events-none select-none" />
       </button>
 
       <Input
@@ -94,17 +96,11 @@ function SortableIngredientRow({
         onChange={(e) => onIngredientChange(index, 'unit', e.target.value)}
         className="w-28 shrink-0 text-sm"
       />
-      <Input
-        placeholder="Ingredient name"
+      <IngredientCombobox
         value={item.name}
-        onChange={(e) => onIngredientChange(index, 'name', e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            onAddRow()
-          }
-        }}
-        className="flex-1 text-sm font-medium"
+        onChange={(val) => onIngredientChange(index, 'name', val)}
+        onEnterPress={onAddRow}
+        className="flex-1"
       />
       <Button
         type="button"
@@ -113,7 +109,7 @@ function SortableIngredientRow({
         onClick={() => onRemoveRow(index)}
         disabled={totalCount <= 1}
         title="Remove ingredient"
-        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30 shrink-0 cursor-pointer"
+        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30 shrink-0 cursor-pointer self-center"
       >
         <Trash2 className="h-4.5 w-4.5 sm:h-4 sm:w-4" />
       </Button>
@@ -163,34 +159,30 @@ export function RecipeIngredientsEditor({
         <div className="text-xs text-destructive font-medium">{error}</div>
       )}
 
-      <div className="overflow-x-auto pb-2 -mx-2 px-2">
-        <div className="min-w-[540px]">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={ingredients.map((item) => item.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <div className="space-y-2">
-                {ingredients.map((item, idx) => (
-                  <SortableIngredientRow
-                    key={item.id}
-                    item={item}
-                    index={idx}
-                    totalCount={ingredients.length}
-                    onIngredientChange={onIngredientChange}
-                    onAddRow={onAddRow}
-                    onRemoveRow={onRemoveRow}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-        </div>
-      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={ingredients.map((item, i) => String(item.id || i))}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-2">
+            {ingredients.map((item, idx) => (
+              <SortableIngredientRow
+                key={item.id ? String(item.id) : idx}
+                item={item}
+                index={idx}
+                totalCount={ingredients.length}
+                onIngredientChange={onIngredientChange}
+                onAddRow={onAddRow}
+                onRemoveRow={onRemoveRow}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       <div className="flex justify-center pt-2">
         <Button

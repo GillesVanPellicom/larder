@@ -294,7 +294,7 @@ export function FilterDrawer({
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size="lg"
             onClick={() => onOpenChange(false)}
             className="cursor-pointer"
           >
@@ -302,7 +302,7 @@ export function FilterDrawer({
           </Button>
           <Button
             type="button"
-            size="sm"
+            size="lg"
             onClick={handleApply}
             className="cursor-pointer"
           >

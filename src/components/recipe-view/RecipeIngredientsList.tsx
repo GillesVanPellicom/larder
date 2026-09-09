@@ -80,11 +80,12 @@ export function RecipeIngredientsList({
           <p className="text-xs text-muted-foreground italic py-2">No ingredients specified.</p>
         ) : (
           ingredients.map((item, index) => {
-            const isChecked = Boolean(checkedIngredients[item.id || String(index)])
+            const itemKey = String(item.id ?? index)
+            const isChecked = Boolean(checkedIngredients[itemKey])
             return (
               <div
-                key={item.id || index}
-                onClick={() => onToggleIngredient(item.id || String(index))}
+                key={itemKey}
+                onClick={() => onToggleIngredient(itemKey)}
                 className={`flex items-start gap-2.5 py-1.5 px-2.5 rounded-xl cursor-pointer transition-colors select-none hover:bg-muted/40 ${
                   isChecked
                     ? 'text-muted-foreground line-through opacity-80'

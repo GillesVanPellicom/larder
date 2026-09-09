@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { CreateRecipeDTO, Recipe } from '@/shared/types'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { AppHeader } from '@/components/navigation/AppHeader'
 import { RecipesCatalogPage } from '@/components/catalog/RecipesCatalogPage'
 import { RecipeViewPage } from '@/components/recipe-view/RecipeViewPage'
 import { RecipeFormPage } from '@/components/recipe-form/RecipeFormPage'
@@ -9,7 +10,6 @@ import { FilterDrawer } from '@/components/filter-drawer/FilterDrawer'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { useNavigation } from '@/hooks/useNavigation'
 import { useRecipesData } from '@/hooks/useRecipesData'
-import { useTemplatesData } from '@/hooks/useTemplatesData'
 import { useTheme } from '@/hooks/useTheme'
 import { useAppKeyboardShortcuts } from '@/hooks/useAppKeyboardShortcuts'
 
@@ -23,8 +23,6 @@ export function App() {
     handleBack,
     handleDeletedTransition,
   } = useNavigation()
-
-  const { templates } = useTemplatesData()
 
   const {
     recipes,
@@ -126,7 +124,17 @@ export function App() {
     <TooltipProvider delay={200}>
       <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
         {/* Main Content Router */}
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-4 sm:px-6">
+          {/* Universal Sticky Header */}
+          <AppHeader
+            currentView={currentView}
+            onNavigate={navigateTo}
+            onOpenSettings={(tab) => {
+              if (tab) setSettingsTab(tab)
+              navigateTo('settings', null)
+            }}
+          />
+
           {/* VIEW 1: Recipes Catalog */}
           {currentView === 'recipes' && (
             <RecipesCatalogPage
@@ -136,7 +144,6 @@ export function App() {
               currentPage={currentPage}
               onPageChange={setCurrentPage}
               categories={categories}
-              templates={templates}
               violationsMap={violationsMap}
               loading={loading}
               isDatabaseConnected={isDatabaseConnected}
@@ -171,9 +178,6 @@ export function App() {
                   <RecipeViewPage
                     recipe={activeRecipe}
                     categories={categories}
-                    template={
-                      templates.find((t) => t.isDefault) || templates[0] || null
-                    }
                     timeTrackingMode={metadataConfig?.timeTrackingMode || 'prep_and_cook'}
                     onTagClick={handleFilterByTagAndNavigate}
                     onBack={handleBack}
@@ -189,7 +193,6 @@ export function App() {
                     recipe={activeRecipe}
                     categories={categories}
                     metadataConfig={metadataConfig}
-                    templates={templates}
                     onBack={handleBack}
                     onSave={handleSaveRecipe}
                   />

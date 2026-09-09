@@ -13,12 +13,11 @@ import { RecipeIngredientsList } from './RecipeIngredientsList'
 import { RecipeInstructionsView } from './RecipeInstructionsView'
 import { YieldMultiplierDialog } from './YieldMultiplierDialog'
 import { scaleIngredients, scaleYield } from '@/lib/recipeMath'
-import type { Recipe, RecipeTemplate, TagCategory, TimeTrackingMode } from '@/shared/types'
+import type { Recipe, TagCategory, TimeTrackingMode } from '@/shared/types'
 
 export interface RecipeViewPageProps {
   recipe: Recipe
   categories: TagCategory[]
-  template?: RecipeTemplate | null
   timeTrackingMode?: TimeTrackingMode
   onTagClick?: (catId: string, tag: string) => void
   onBack: () => void

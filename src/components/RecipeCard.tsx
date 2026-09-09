@@ -12,7 +12,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import type { Recipe, RecipeTemplate, RecipeViolation, TagCategory, TimeTrackingMode } from '@/shared/types'
+import type { Recipe, RecipeViolation, TagCategory, TimeTrackingMode } from '@/shared/types'
 import {
   AlertTriangle,
   Clock,
@@ -27,7 +27,6 @@ interface RecipeCardProps {
   recipe: Recipe
   violations?: RecipeViolation[]
   categories: TagCategory[]
-  template?: RecipeTemplate | null
   timeTrackingMode?: TimeTrackingMode
   selectedTags?: Record<string, string[]>
   onToggleTag?: (catId: string, tag: string) => void

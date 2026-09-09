@@ -1,6 +1,6 @@
 import { count } from 'drizzle-orm'
 import type { Pool } from 'pg'
-import { recipes } from '../schema'
+import { ingredients, recipeIngredients, recipes } from '../schema'
 
 export const devRecipes = [
   {
@@ -803,8 +803,49 @@ export const devRecipes = [
 export async function seedDev(db: any, _pool: Pool): Promise<void> {
   const [recipeCount] = await db.select({ value: count() }).from(recipes)
   if (Number(recipeCount.value) === 0) {
-    console.log('[Seed:Dev] Seeding 23 realistic culinary recipes...')
-    await db.insert(recipes).values(devRecipes)
-    console.log('[Seed:Dev] 23 development recipes seeded successfully.')
+    console.log('[Seed:Dev] Seeding 23 realistic culinary recipes with relational ingredients...')
+
+    // 1. First ensure all normalized ingredients exist in ingredients table
+    const allNames = Array.from(
+      new Set(
+        devRecipes.flatMap((r) => r.ingredients.map((i) => i.name.trim())).filter(Boolean)
+      )
+    )
+    for (const name of allNames) {
+      await db.insert(ingredients).values({ name }).onConflictDoNothing()
+    }
+
+    // 2. Fetch all ingredients to map name -> ingredient_id
+    const dbIngredients = await db.select().from(ingredients)
+    const ingredientMap = new Map<string, number>()
+    for (const ing of dbIngredients) {
+      ingredientMap.set(ing.name.toLowerCase(), ing.id)
+    }
+
+    // 3. Insert each recipe and its associated recipe_ingredients rows
+    for (const r of devRecipes) {
+      const { ingredients: recipeIngs, ...recipeFields } = r
+      const [insertedRecipe] = await db
+        .insert(recipes)
+        .values(recipeFields)
+        .returning({ id: recipes.id })
+
+      if (insertedRecipe && recipeIngs && recipeIngs.length > 0) {
+        for (let sortOrder = 0; sortOrder < recipeIngs.length; sortOrder++) {
+          const ingItem = recipeIngs[sortOrder]
+          const ingId = ingredientMap.get(ingItem.name.trim().toLowerCase())
+          if (ingId) {
+            await db.insert(recipeIngredients).values({
+              recipeId: insertedRecipe.id,
+              ingredientId: ingId,
+              amount: ingItem.amount || '',
+              unit: ingItem.unit || '',
+              sortOrder,
+            })
+          }
+        }
+      }
+    }
+    console.log('[Seed:Dev] 23 development recipes and relational ingredients seeded successfully.')
   }
 }

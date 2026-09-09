@@ -1,5 +1,13 @@
+export interface NormalizedIngredient {
+  id: number
+  name: string
+  created_at?: string
+  updated_at?: string
+}
+
 export interface IngredientItem {
-  id: string
+  id?: string | number
+  ingredient_id?: number
   name: string
   amount?: string
   unit?: string
@@ -10,6 +18,8 @@ export interface InstructionStep {
   step: number
   text: string
 }
+
+export type PageView = 'recipes' | 'recipe-view' | 'recipe-form' | 'settings'
 
 // Category ID -> Array of tag values (e.g. { season: ['Winter', 'Spring'], course: ['Main'] })
 export type RecipeTags = Record<string, string[]>
@@ -35,128 +45,6 @@ export interface Recipe {
 }
 
 export type CreateRecipeDTO = Omit<Recipe, 'id' | 'created_at' | 'updated_at'>
-
-// ==========================================
-// Template & Dynamic Component Architecture
-// ==========================================
-
-export type FieldType =
-  | 'recipe_details'
-  | 'text'
-  | 'rich_text'
-  | 'number'
-  | 'ingredient_table'
-  | 'tag_category'
-  | 'rating'
-  | 'boolean'
-  | 'image'
-  | 'separator'
-
-export interface FieldConfig {
-  multiline?: boolean
-  resizable?: boolean
-  placeholder?: string
-  maxLength?: number
-  min?: number
-  max?: number
-  step?: number
-  unit?: string // e.g. 'min', 'servings', 'g', '°C'
-  categoryId?: string // for 'tag_category'
-  exclusive?: boolean // for 'tag_category': single-select vs multi
-  separatorStyle?: 'line' | 'dashed' | 'heading'
-  isContainer?: boolean // allows nesting other fields
-  mandatoryDetails?: {
-    description?: boolean
-    prepTime?: boolean
-    cookTime?: boolean
-    yieldAmount?: boolean
-  }
-}
-
-export interface TemplateField {
-  id: string // Immutable unique identifier e.g. 'fld_prep_time_01'
-  name: string
-  type: FieldType
-  required: boolean
-  order: number
-  config: FieldConfig
-  isArchived?: boolean // Safe deprecation without data loss
-  parentId?: string // For fields nested inside a container separator
-}
-
-// Mobile-first 4-Column Card Grid System
-export type CardWidgetType =
-  | 'image_banner'
-  | 'title_header'
-  | 'description'
-  | 'prep_time'
-  | 'cook_time'
-  | 'total_time'
-  | 'yield'
-  | 'metric_chip'
-  | 'tag_chips'
-  | 'rating_stars'
-  | 'icon_badge'
-  | 'text_snippet'
-
-export interface CardGridWidget {
-  id: string
-  fieldId: string // References a TemplateField.id
-  widgetType: CardWidgetType
-  col: number // 1 to 4 (1-indexed start column)
-  row: number // 1-indexed start row
-  colSpan: number // 1 to 4 columns wide
-  rowSpan: number // 1 to 3 rows high
-  options?: {
-    showLabel?: boolean
-    variant?: 'subtle' | 'outline' | 'solid'
-    align?: 'left' | 'center' | 'right'
-    icon?: string
-    selectedTagGroups?: string[]
-  }
-}
-
-export interface CardGridLayoutConfig {
-  columns: number // Fixed at 4 for mobile-first equivalence
-  widgets: CardGridWidget[]
-}
-
-export interface TemplateVersion {
-  id: number
-  templateId: string
-  version: number
-  changeSummary?: string
-  fieldsSchema: TemplateField[]
-  cardLayout: CardGridLayoutConfig
-  createdAt: string
-}
-
-export interface RecipeTemplate {
-  id: string
-  name: string
-  description: string
-  isDefault: boolean
-  currentVersionId: number
-  currentVersion?: TemplateVersion
-  versions?: TemplateVersion[]
-  createdAt: string
-  updatedAt: string
-}
-
-export interface RecipeHistoryEntry {
-  id: number
-  recipeId: number
-  templateVersionId: number
-  snapshot: Record<string, unknown>
-  savedAt: string
-}
-
-export interface FieldUsageReport {
-  fieldId: string
-  inUse: boolean
-  usedByCount: number
-  recipeTitles: string[]
-}
 
 export interface TagCategory {
   id: string

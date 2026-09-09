@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import type { Recipe, RecipeTemplate } from '@/shared/types'
+import type { Recipe } from '@/shared/types'
 
 export type PageView =
   | 'recipes'
@@ -10,22 +10,19 @@ export type PageView =
 export interface HistoryEntry {
   view: PageView
   recipe: Recipe | null
-  template?: RecipeTemplate | null
   scrollY: number
 }
 
 export function useNavigation() {
   const [currentView, setCurrentView] = useState<PageView>('recipes')
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
-  const [selectedTemplate, setSelectedTemplate] = useState<RecipeTemplate | null>(null)
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const recipesScrollYRef = useRef<number>(0)
 
   const navigateTo = useCallback(
     (
       view: PageView,
-      recipe: Recipe | null = null,
-      template: RecipeTemplate | null = null
+      recipe: Recipe | null = null
     ) => {
       if (currentView === 'recipes') {
         recipesScrollYRef.current = window.scrollY
@@ -36,17 +33,15 @@ export function useNavigation() {
         {
           view: currentView,
           recipe: selectedRecipe,
-          template: selectedTemplate,
           scrollY: window.scrollY,
         },
       ])
 
       setSelectedRecipe(recipe)
-      setSelectedTemplate(template)
       setCurrentView(view)
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
     },
-    [currentView, selectedRecipe, selectedTemplate]
+    [currentView, selectedRecipe]
   )
 
   const updateRecipe = useCallback((updated: Recipe) => {
@@ -74,8 +69,6 @@ export function useNavigation() {
         setSelectedRecipe(previous.recipe)
       }
 
-      setSelectedTemplate(previous.template || null)
-
       const targetScroll =
         previous.view === 'recipes'
           ? (previous.scrollY ?? recipesScrollYRef.current)
@@ -87,7 +80,6 @@ export function useNavigation() {
     } else {
       setCurrentView('recipes')
       setSelectedRecipe(null)
-      setSelectedTemplate(null)
       setTimeout(() => {
         window.scrollTo({ top: recipesScrollYRef.current, behavior: 'instant' as ScrollBehavior })
       }, 10)
@@ -106,7 +98,6 @@ export function useNavigation() {
 
       setHistory([])
       setSelectedRecipe(null)
-      setSelectedTemplate(null)
       setCurrentView(view)
 
       if (view === 'recipes') {
@@ -134,7 +125,6 @@ export function useNavigation() {
 
   const handleDeletedTransition = useCallback(() => {
     setSelectedRecipe(null)
-    setSelectedTemplate(null)
     setCurrentView('recipes')
     setHistory([])
     setTimeout(() => {
@@ -147,8 +137,6 @@ export function useNavigation() {
     selectedRecipe,
     setSelectedRecipe,
     updateRecipe,
-    selectedTemplate,
-    setSelectedTemplate,
     navigateTo,
     handleBack,
     handleNavTab,

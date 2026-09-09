@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type { FilterCriteria, Recipe, RecipeTemplate, RecipeViolation, TagCategory, TimeTrackingMode } from '@/shared/types'
+import type { FilterCriteria, Recipe, RecipeViolation, TagCategory, TimeTrackingMode } from '@/shared/types'
 import { RecipeCard } from '@/components/RecipeCard'
 import { CatalogToolbar } from '@/components/catalog/CatalogToolbar'
 import { ActiveFiltersBar } from '@/components/catalog/ActiveFiltersBar'
@@ -19,7 +19,6 @@ interface RecipesCatalogPageProps {
   currentPage: number
   onPageChange: (page: number) => void
   categories: TagCategory[]
-  templates?: RecipeTemplate[]
   violationsMap: Map<number, RecipeViolation[]>
   loading: boolean
   isDatabaseConnected?: boolean
@@ -44,7 +43,6 @@ export function RecipesCatalogPage({
   currentPage,
   onPageChange,
   categories,
-  templates = [],
   violationsMap,
   loading,
   isDatabaseConnected = true,
@@ -190,7 +188,6 @@ export function RecipesCatalogPage({
                 recipe={recipe}
                 violations={violationsMap.get(recipe.id)}
                 categories={categories}
-                template={templates.find((t) => t.isDefault) || templates[0] || null}
                 timeTrackingMode={timeTrackingMode}
                 selectedTags={filterCriteria.selectedTags}
                 onToggleTag={onToggleTag}

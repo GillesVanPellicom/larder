@@ -1,19 +1,14 @@
 import type {
-  CardGridLayoutConfig,
   CreateRecipeDTO,
   DatabaseConfig,
-  FieldUsageReport,
   MetadataConfig,
   PaginatedRecipesResponse,
   Recipe,
   RecipeConflict,
-  RecipeHistoryEntry,
   RecipeQueryParams,
-  RecipeTemplate,
   StorageConfig,
   StorageConfigDTO,
   TagCategory,
-  TemplateField,
   UploadImageResponse,
 } from '@/shared/types'
 
@@ -109,112 +104,36 @@ export const recipesApi = {
     const res = await fetch(`/api/recipes/${id}`, { method: 'DELETE' })
     return handleResponse<{ success: boolean; id: number }>(res)
   },
-
-  async getHistory(id: number): Promise<RecipeHistoryEntry[]> {
-    const res = await fetch(`/api/recipes/${id}/history`)
-    return handleResponse<RecipeHistoryEntry[]>(res)
-  },
-
-  async restoreVersion(id: number, historyId: number): Promise<Recipe> {
-    const res = await fetch(`/api/recipes/${id}/restore-version/${historyId}`, {
-      method: 'POST',
-    })
-    return handleResponse<Recipe>(res)
-  },
 }
 
-export interface TemplateUpdateConflict {
-  error: string
-  requiresResolution: true
-  inUseFields: {
-    fieldId: string
-    name: string
-    usedByCount: number
-    recipeTitles: string[]
-  }[]
+export interface IngredientsSearchResponse {
+  items: { id: number; name: string; created_at?: string }[]
+  totalCount: number
+  hasMore: boolean
 }
 
-export const templatesApi = {
-  async getAll(): Promise<RecipeTemplate[]> {
-    const res = await fetch('/api/templates')
-    return handleResponse<RecipeTemplate[]>(res)
+export const ingredientsApi = {
+  async search(q: string, limit = 10, offset = 0): Promise<IngredientsSearchResponse> {
+    const params = new URLSearchParams()
+    if (q) params.set('q', q)
+    if (limit) params.set('limit', String(limit))
+    if (offset) params.set('offset', String(offset))
+    const res = await fetch(`/api/ingredients?${params.toString()}`)
+    return handleResponse<IngredientsSearchResponse>(res)
   },
 
-  async getById(id: string): Promise<RecipeTemplate> {
-    const res = await fetch(`/api/templates/${id}`)
-    return handleResponse<RecipeTemplate>(res)
+  async getAll(): Promise<{ id: number; name: string }[]> {
+    const res = await fetch('/api/ingredients/all')
+    return handleResponse<{ id: number; name: string }[]>(res)
   },
 
-  async create(data: {
-    name: string
-    description?: string
-    fieldsSchema: TemplateField[]
-    cardLayout: CardGridLayoutConfig
-    isDefault?: boolean
-  }): Promise<RecipeTemplate> {
-    const res = await fetch('/api/templates', {
+  async create(name: string): Promise<{ id: number; name: string }> {
+    const res = await fetch('/api/ingredients', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ name }),
     })
-    return handleResponse<RecipeTemplate>(res)
-  },
-
-  async update(
-    id: string,
-    data: {
-      name?: string
-      description?: string
-      isDefault?: boolean
-      changeSummary?: string
-      fieldsSchema: TemplateField[]
-      cardLayout: CardGridLayoutConfig
-      archiveRemovedFields?: boolean
-      confirmPurgeRemovedFields?: boolean
-    }
-  ): Promise<RecipeTemplate | TemplateUpdateConflict> {
-    const res = await fetch(`/api/templates/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-
-    if (res.status === 409) {
-      return res.json() as Promise<TemplateUpdateConflict>
-    }
-    return handleResponse<RecipeTemplate>(res)
-  },
-
-  async checkFieldUsage(id: string, fieldIds: string[]): Promise<FieldUsageReport[]> {
-    const res = await fetch(`/api/templates/${id}/check-field-usage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fieldIds }),
-    })
-    return handleResponse<FieldUsageReport[]>(res)
-  },
-
-  async rollback(id: string, targetVersionId: number): Promise<RecipeTemplate> {
-    const res = await fetch(`/api/templates/${id}/rollback`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ targetVersionId }),
-    })
-    return handleResponse<RecipeTemplate>(res)
-  },
-
-  async duplicate(id: string): Promise<RecipeTemplate> {
-    const res = await fetch(`/api/templates/${id}/duplicate`, {
-      method: 'POST',
-    })
-    return handleResponse<RecipeTemplate>(res)
-  },
-
-  async delete(id: string): Promise<{ success: boolean; message: string }> {
-    const res = await fetch(`/api/templates/${id}`, {
-      method: 'DELETE',
-    })
-    return handleResponse<{ success: boolean; message: string }>(res)
+    return handleResponse<{ id: number; name: string }>(res)
   },
 }
 

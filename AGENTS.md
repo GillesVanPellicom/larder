@@ -62,4 +62,7 @@
 - **Environment-Specific Seed**: Development mock recipes (`seedDev`) are only seeded when initializing an empty database in non-production mode (`process.env.NODE_ENV !== 'production'`). Production defaults (`seedProduction`) seed global metadata rules and core system templates on initial setup.
 - **DB Debug Logging**: Database query executions, route handlers, and error handlers must print descriptive debug and error information with full stack traces to the server console.
 
+### 13. Abstract Away Internal Workings & Technical Jargon
+- **No Technical Jargon in UI**: Users never have to know internal mechanics, database schemas, or technical jargon (e.g. no "normalized ingredients", "session only", "volatile state", "payloads", "database tables", etc.). All concepts are abstracted into clear, natural user benefits and familiar concepts to minimize cognitive friction.
+
 

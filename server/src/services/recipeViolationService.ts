@@ -242,16 +242,19 @@ export class RecipeViolationService {
   async recalculateAllViolations(): Promise<void> {
     try {
       const { config, categories } = await this.loadConfigAndCategories()
+      const { attachIngredientsToRecipes } = await import('./recipeQueryService')
       const allRecipes = await db
         .select()
         .from(recipes)
         .where(isNull(recipes.deletedAt))
 
-      for (const r of allRecipes) {
+      const formattedRecipes = await attachIngredientsToRecipes(allRecipes)
+
+      for (const r of formattedRecipes) {
         const violations = this.computeViolations(r, config, categories)
         const hasViolations = violations.length > 0
 
-        if (r.hasViolations !== hasViolations || JSON.stringify(r.violations) !== JSON.stringify(violations)) {
+        if (r.has_violations !== hasViolations || JSON.stringify(r.violations) !== JSON.stringify(violations)) {
           await db
             .update(recipes)
             .set({

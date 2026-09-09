@@ -65,34 +65,66 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
         ALTER TABLE recipes ADD COLUMN IF NOT EXISTS violations JSONB NOT NULL DEFAULT '[]'::jsonb;
         ALTER TABLE recipes ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
-        CREATE TABLE IF NOT EXISTS templates (
-          id VARCHAR(64) PRIMARY KEY,
-          name VARCHAR(255) NOT NULL,
-          description TEXT NOT NULL DEFAULT '',
-          is_default BOOLEAN NOT NULL DEFAULT FALSE,
-          current_version_id INTEGER NOT NULL DEFAULT 1,
+        CREATE TABLE IF NOT EXISTS ingredients (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL UNIQUE,
           created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          deleted_at TIMESTAMPTZ
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
-        CREATE TABLE IF NOT EXISTS template_versions (
+        CREATE TABLE IF NOT EXISTS recipe_ingredients (
           id SERIAL PRIMARY KEY,
-          template_id VARCHAR(64) NOT NULL,
-          version INTEGER NOT NULL,
-          change_summary VARCHAR(255) NOT NULL DEFAULT '',
-          fields_schema JSONB NOT NULL DEFAULT '[]'::jsonb,
-          card_layout JSONB NOT NULL DEFAULT '{}'::jsonb,
+          recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+          ingredient_id INTEGER NOT NULL REFERENCES ingredients(id) ON DELETE RESTRICT,
+          amount VARCHAR(50) NOT NULL DEFAULT '',
+          unit VARCHAR(50) NOT NULL DEFAULT '',
+          sort_order INTEGER NOT NULL DEFAULT 0,
           created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe_id ON recipe_ingredients(recipe_id);
+        CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_ingredient_id ON recipe_ingredients(ingredient_id);
 
-        CREATE TABLE IF NOT EXISTS recipe_history (
-          id SERIAL PRIMARY KEY,
-          recipe_id INTEGER NOT NULL,
-          template_version_id INTEGER NOT NULL,
-          snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
-          saved_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
+        -- If recipes table had an ingredients JSON column, backfill into recipe_ingredients
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'recipes' AND column_name = 'ingredients'
+          ) THEN
+            -- 1. Insert distinct ingredient names
+            INSERT INTO ingredients (name)
+            SELECT DISTINCT trim(elem->>'name')
+            FROM recipes, jsonb_array_elements(CASE WHEN jsonb_typeof(recipes.ingredients) = 'array' THEN recipes.ingredients ELSE '[]'::jsonb END) AS elem
+            WHERE recipes.deleted_at IS NULL
+              AND elem->>'name' IS NOT NULL
+              AND length(trim(elem->>'name')) > 0
+            ON CONFLICT (name) DO NOTHING;
+
+            -- 2. Populate recipe_ingredients if empty
+            IF NOT EXISTS (SELECT 1 FROM recipe_ingredients LIMIT 1) THEN
+              INSERT INTO recipe_ingredients (recipe_id, ingredient_id, amount, unit, sort_order)
+              SELECT 
+                r.id AS recipe_id,
+                i.id AS ingredient_id,
+                COALESCE(elem->>'amount', '') AS amount,
+                COALESCE(elem->>'unit', '') AS unit,
+                (ord - 1)::integer AS sort_order
+              FROM recipes r,
+              jsonb_array_elements(CASE WHEN jsonb_typeof(r.ingredients) = 'array' THEN r.ingredients ELSE '[]'::jsonb END) WITH ORDINALITY AS arr(elem, ord)
+              JOIN ingredients i ON lower(i.name) = lower(trim(elem->>'name'))
+              WHERE r.deleted_at IS NULL
+              ON CONFLICT DO NOTHING;
+            END IF;
+
+            -- 3. Drop obsolete JSON column from recipes table
+            ALTER TABLE recipes DROP COLUMN IF EXISTS ingredients;
+          END IF;
+        END $$;
+
+        -- Drop obsolete template tables
+        DROP TABLE IF EXISTS template_versions CASCADE;
+        DROP TABLE IF EXISTS templates CASCADE;
+        DROP TABLE IF EXISTS recipe_history CASCADE;
 
         CREATE TABLE IF NOT EXISTS tag_categories (
           id VARCHAR(100) PRIMARY KEY,
@@ -123,7 +155,7 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
 
       if (isInitialDatabase) {
         console.log('[Database] Empty database detected. Seeding initial data...')
-        // 1. Seed production schemas (metadata configuration, production tag categories, and system templates)
+        // 1. Seed production schemas (metadata configuration and production tag categories)
         await seedProduction(db, pool)
 
         // 2. Seed development mock recipes if non-production environment
