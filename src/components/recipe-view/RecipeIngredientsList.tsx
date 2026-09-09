@@ -7,7 +7,39 @@ interface RecipeIngredientsListProps {
   checkedIngredients: Record<string, boolean>
   onToggleIngredient: (id: string) => void
   yieldMultiplier?: number
-  onOpenYieldModal?: () => void
+  onResetYield?: () => void
+}
+
+function renderAmountValue(amount: string, isScaled: boolean, isChecked: boolean) {
+  if (!amount) return null
+  if (!isScaled || isChecked) {
+    return (
+      <span className={isChecked ? 'text-muted-foreground' : 'text-foreground'}>
+        {amount}
+      </span>
+    )
+  }
+
+  // Tokenize numbers (integers, decimals, fractions) to isolate numeric characters
+  const tokens = amount.split(/(\d+(?:\.\d+)?|\d+\/\d+)/g)
+  return (
+    <>
+      {tokens.map((token, i) => {
+        if (/\d/.test(token)) {
+          return (
+            <span key={i} className="text-amber-600 dark:text-amber-400">
+              {token}
+            </span>
+          )
+        }
+        return (
+          <span key={i} className="text-foreground">
+            {token}
+          </span>
+        )
+      })}
+    </>
+  )
 }
 
 export function RecipeIngredientsList({
@@ -15,7 +47,7 @@ export function RecipeIngredientsList({
   checkedIngredients,
   onToggleIngredient,
   yieldMultiplier = 1,
-  onOpenYieldModal,
+  onResetYield,
 }: RecipeIngredientsListProps) {
   const isScaled = Math.abs(yieldMultiplier - 1) > 0.001
 
@@ -30,14 +62,14 @@ export function RecipeIngredientsList({
             {ingredients.length}
           </span>
 
-          {isScaled && onOpenYieldModal && (
+          {onResetYield && isScaled && (
             <button
               type="button"
-              onClick={onOpenYieldModal}
-              className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25 transition-colors cursor-pointer ml-1"
-              title="Click to adjust multiplier"
+              onClick={onResetYield}
+              className="inline-flex items-center text-[11px] font-mono font-bold px-2 py-0.5 rounded-md transition-colors cursor-pointer select-none bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25 shadow-2xs"
+              title="Click to reset yield to 1×"
             >
-              {formatGracefulNumber(yieldMultiplier)}×
+              <span>{formatGracefulNumber(yieldMultiplier)}×</span>
             </button>
           )}
         </div>
@@ -72,9 +104,15 @@ export function RecipeIngredientsList({
 
                 <div className="text-sm flex-1 leading-snug">
                   {(item.amount || item.unit) && (
-                    <strong className="mr-1.5 font-semibold text-foreground">
-                      {[item.amount, item.unit].filter(Boolean).join(' ')}
-                    </strong>
+                    <span className="mr-1.5 font-semibold">
+                      {item.amount && renderAmountValue(item.amount, isScaled, isChecked)}
+                      {item.amount && item.unit ? ' ' : ''}
+                      {item.unit && (
+                        <span className={isChecked ? 'text-muted-foreground' : 'text-foreground'}>
+                          {item.unit}
+                        </span>
+                      )}
+                    </span>
                   )}
                   <span>{item.name}</span>
                 </div>

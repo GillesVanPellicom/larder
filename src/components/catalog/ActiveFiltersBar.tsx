@@ -12,20 +12,16 @@ export function ActiveFiltersBar({
   onChange,
 }: ActiveFiltersBarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3.5 text-xs shadow-2xs">
-      <span className="text-muted-foreground font-semibold text-xs sm:text-sm mr-1">
-        Active filters:
-      </span>
-
+    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
       {criteria.searchQuery && (
         <Badge
           variant="secondary"
           onClick={() => onChange({ ...criteria, searchQuery: '' })}
-          className="group gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border border-border bg-muted/50 text-foreground cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all select-none"
+          className="group gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-border bg-muted/60 text-foreground cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all select-none"
           title="Click to remove search filter"
         >
           <span>&ldquo;{criteria.searchQuery}&rdquo;</span>
-          <X className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors shrink-0" />
+          <X className="h-3 w-3 text-muted-foreground group-hover:text-destructive transition-colors shrink-0" />
         </Badge>
       )}
 
@@ -33,11 +29,11 @@ export function ActiveFiltersBar({
         <Badge
           variant="secondary"
           onClick={() => onChange({ ...criteria, maxTotalTime: undefined })}
-          className="group gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border border-border bg-muted/50 text-foreground cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all select-none"
+          className="group gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-border bg-muted/60 text-foreground cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all select-none"
           title="Click to remove max time filter"
         >
           <span>&le; {criteria.maxTotalTime} min</span>
-          <X className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors shrink-0" />
+          <X className="h-3 w-3 text-muted-foreground group-hover:text-destructive transition-colors shrink-0" />
         </Badge>
       )}
 
@@ -51,12 +47,12 @@ export function ActiveFiltersBar({
               selectedIngredients: criteria.selectedIngredients.filter((i) => i !== ing),
             })
           }
-          className="group gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border border-border bg-muted/50 text-foreground cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all select-none"
+          className="group gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-border bg-muted/60 text-foreground cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all select-none"
           title={`Click to remove ingredient filter "${ing}"`}
         >
           <span className="text-muted-foreground font-normal">Ingredient:</span>
           <span>{ing}</span>
-          <X className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors shrink-0" />
+          <X className="h-3 w-3 text-muted-foreground group-hover:text-destructive transition-colors shrink-0" />
         </Badge>
       ))}
 
@@ -72,12 +68,12 @@ export function ActiveFiltersBar({
               else delete next[catId]
               onChange({ ...criteria, selectedTags: next })
             }}
-            className="group gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border border-border bg-muted/50 text-foreground cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all select-none"
+            className="group gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-border bg-muted/60 text-foreground cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all select-none"
             title={`Click to remove tag filter "${tag}"`}
           >
             <span className="text-muted-foreground font-normal">{catId}:</span>
             <span>{tag}</span>
-            <X className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors shrink-0" />
+            <X className="h-3 w-3 text-muted-foreground group-hover:text-destructive transition-colors shrink-0" />
           </Badge>
         ))
       )}

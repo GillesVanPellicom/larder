@@ -4,9 +4,11 @@ import type {
   DatabaseConfig,
   FieldUsageReport,
   MetadataConfig,
+  PaginatedRecipesResponse,
   Recipe,
   RecipeConflict,
   RecipeHistoryEntry,
+  RecipeQueryParams,
   RecipeTemplate,
   StorageConfig,
   StorageConfigDTO,
@@ -24,9 +26,60 @@ async function handleResponse<T>(res: Response): Promise<T> {
 }
 
 export const recipesApi = {
-  async getAll(): Promise<Recipe[]> {
-    const res = await fetch('/api/recipes')
-    return handleResponse<Recipe[]>(res)
+  async getAll(params?: RecipeQueryParams): Promise<PaginatedRecipesResponse> {
+    const searchParams = new URLSearchParams()
+    if (params) {
+      if (params.searchQuery) searchParams.set('searchQuery', params.searchQuery)
+      if (params.selectedIngredients && params.selectedIngredients.length > 0) {
+        searchParams.set('selectedIngredients', JSON.stringify(params.selectedIngredients))
+      }
+      if (params.ingredientsMatchMode) {
+        searchParams.set('ingredientsMatchMode', params.ingredientsMatchMode)
+      }
+      if (params.selectedTags && Object.keys(params.selectedTags).length > 0) {
+        searchParams.set('selectedTags', JSON.stringify(params.selectedTags))
+      }
+      if (params.tagsMatchMode) {
+        searchParams.set('tagsMatchMode', params.tagsMatchMode)
+      }
+      if (params.categoryTagsMatchMode && Object.keys(params.categoryTagsMatchMode).length > 0) {
+        searchParams.set('categoryTagsMatchMode', JSON.stringify(params.categoryTagsMatchMode))
+      }
+      if (params.maxTotalTime !== undefined) {
+        searchParams.set('maxTotalTime', String(params.maxTotalTime))
+      }
+      if (params.maxPrepTime !== undefined) {
+        searchParams.set('maxPrepTime', String(params.maxPrepTime))
+      }
+      if (params.maxCookTime !== undefined) {
+        searchParams.set('maxCookTime', String(params.maxCookTime))
+      }
+      if (params.hasImage !== undefined && params.hasImage !== null) {
+        searchParams.set('hasImage', String(params.hasImage))
+      }
+      if (params.onlyConflicts) {
+        searchParams.set('onlyConflicts', 'true')
+      }
+      if (params.sortBy) {
+        searchParams.set('sortBy', params.sortBy)
+      }
+      if (params.page) {
+        searchParams.set('page', String(params.page))
+      }
+      if (params.pageSize) {
+        searchParams.set('pageSize', String(params.pageSize))
+      }
+    }
+
+    const qs = searchParams.toString()
+    const url = qs ? `/api/recipes?${qs}` : '/api/recipes'
+    const res = await fetch(url)
+    return handleResponse<PaginatedRecipesResponse>(res)
+  },
+
+  async getIngredients(): Promise<string[]> {
+    const res = await fetch('/api/recipes/ingredients')
+    return handleResponse<string[]>(res)
   },
 
   async getById(id: number): Promise<Recipe> {

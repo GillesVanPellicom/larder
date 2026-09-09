@@ -8,15 +8,7 @@ let currentDb: ReturnType<typeof drizzle> | null = null
 
 export function maskConnectionString(urlStr: string): string {
   if (!urlStr || !urlStr.trim()) return ''
-  try {
-    const parsed = new URL(urlStr)
-    if (parsed.password) {
-      parsed.password = '••••••••'
-    }
-    return parsed.toString()
-  } catch {
-    return urlStr.replace(/:([^:@/]+)@/, ':••••••••@')
-  }
+  return urlStr.replace(/(:\/\/[^:]+:)([^@]+)(@)/, '$1••••••••$3')
 }
 
 export function initDatabasePool(connString?: string): void {
@@ -103,12 +95,56 @@ export async function checkDatabaseHealth(): Promise<{
   }
 }
 
+function extractPassword(urlStr: string): string | null {
+  if (!urlStr || !urlStr.trim()) return null
+  const match = urlStr.match(/:\/\/[^:]*:([^@]+)@/)
+  if (match) return match[1]
+  try {
+    const parsed = new URL(urlStr)
+    return parsed.password || null
+  } catch {
+    return null
+  }
+}
+
+function isPasswordMasked(pwd: string): boolean {
+  if (!pwd) return false
+  if (/[•\u2022\u25cf*]/.test(pwd)) return true
+  if (pwd.includes('%E2%80%A2') || pwd.includes('%e2%80%a2') || pwd.includes('%2A') || pwd.includes('%2a')) return true
+  try {
+    const decoded = decodeURIComponent(pwd)
+    if (/[•\u2022\u25cf*]/.test(decoded)) return true
+  } catch {
+    // ignore
+  }
+  return false
+}
+
 export function resolveDatabaseUrl(connString?: string): string {
   const input = connString ? connString.trim() : ''
   if (!input) return ''
-  if (input.includes('••••••••')) {
-    return getDatabaseUrl().trim()
+
+  const savedUrl = getDatabaseUrl().trim()
+  const savedPassword = extractPassword(savedUrl)
+
+  // Check if input has a password portion matching /:\/\/([^:]*:)([^@]+)(@)/
+  const match = input.match(/(:\/\/)([^:]*:)([^@]+)(@)/)
+  if (match) {
+    const candidatePwd = match[3]
+    if (isPasswordMasked(candidatePwd)) {
+      if (savedPassword && !isPasswordMasked(savedPassword)) {
+        return input.replace(/(:\/\/)([^:]*:)([^@]+)(@)/, `$1$2${savedPassword}$4`)
+      }
+      return savedUrl
+    }
+    return input
   }
+
+  // Fallback: If input contains masked characters anywhere
+  if (isPasswordMasked(input) && savedUrl && !isPasswordMasked(savedUrl)) {
+    return savedUrl
+  }
+
   return input
 }
 

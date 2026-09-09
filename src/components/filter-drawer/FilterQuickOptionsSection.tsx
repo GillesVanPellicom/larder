@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { PresetStepper } from '@/components/ui/stepper'
 import { Clock, Sparkles } from 'lucide-react'
 
 interface FilterQuickOptionsSectionProps {
@@ -9,6 +10,14 @@ interface FilterQuickOptionsSectionProps {
   onToggleConflicts: () => void
   onToggleHasImage: () => void
 }
+
+const TIME_PRESETS = [
+  { label: '15m', value: 15 },
+  { label: '30m', value: 30 },
+  { label: '45m', value: 45 },
+  { label: '60m', value: 60 },
+  { label: '90m', value: 90 },
+]
 
 export function FilterQuickOptionsSection({
   maxTotalTime,
@@ -27,40 +36,29 @@ export function FilterQuickOptionsSection({
             <Clock className="h-3.5 w-3.5" />
             <span>Max Total Time</span>
           </label>
-          {maxTotalTime && (
-            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-              ≤ {maxTotalTime} mins
-            </span>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {[15, 30, 45, 60, 90].map((mins) => {
-            const isSelected = maxTotalTime === mins
-            return (
-              <Button
-                key={mins}
-                type="button"
-                variant={isSelected ? 'default' : 'outline'}
-                size="xs"
-                onClick={() => onMaxTimeChange(isSelected ? undefined : mins)}
-                className="text-xs font-medium cursor-pointer"
-              >
-                ≤ {mins}m
-              </Button>
-            )
-          })}
-          {maxTotalTime && (
-            <Button
+          {maxTotalTime !== undefined && maxTotalTime > 0 && (
+            <button
               type="button"
-              variant="ghost"
-              size="xs"
               onClick={() => onMaxTimeChange(undefined)}
-              className="text-xs text-neutral-400 cursor-pointer"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
             >
               Clear
-            </Button>
+            </button>
           )}
         </div>
+
+        <PresetStepper
+          value={maxTotalTime || 0}
+          onChange={(val) => onMaxTimeChange(val <= 0 ? undefined : val)}
+          min={0}
+          max={360}
+          step={15}
+          symbol="min"
+          variant="small"
+          allowClearPreset
+          onClear={() => onMaxTimeChange(undefined)}
+          presets={TIME_PRESETS}
+        />
       </div>
 
       {/* Special Views (Conflicts & Image Toggles) */}

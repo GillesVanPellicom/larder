@@ -9,10 +9,9 @@ import { FilterDrawer } from '@/components/filter-drawer/FilterDrawer'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { useNavigation } from '@/hooks/useNavigation'
 import { useRecipesData } from '@/hooks/useRecipesData'
-import { useRecipeFilters } from '@/hooks/useRecipeFilters'
-import { useAppKeyboardShortcuts } from '@/hooks/useAppKeyboardShortcuts'
 import { useTemplatesData } from '@/hooks/useTemplatesData'
 import { useTheme } from '@/hooks/useTheme'
+import { useAppKeyboardShortcuts } from '@/hooks/useAppKeyboardShortcuts'
 
 export function App() {
   useTheme()
@@ -29,6 +28,15 @@ export function App() {
 
   const {
     recipes,
+    totalCount,
+    totalPages,
+    currentPage,
+    setCurrentPage,
+    filterCriteria,
+    setFilterCriteria,
+    resetFilters,
+    activeFiltersCount,
+    allIngredients,
     categories,
     metadataConfig,
     violationsMap,
@@ -40,15 +48,6 @@ export function App() {
     saveConfig,
     fetchCategories,
   } = useRecipesData()
-
-  const {
-    filterCriteria,
-    setFilterCriteria,
-    resetFilters,
-    allIngredients,
-    filteredRecipes,
-    activeFiltersCount,
-  } = useRecipeFilters(recipes, violationsMap)
 
   // Drawer & Deletion Dialog States
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false)
@@ -132,7 +131,10 @@ export function App() {
           {currentView === 'recipes' && (
             <RecipesCatalogPage
               recipes={recipes}
-              filteredRecipes={filteredRecipes}
+              totalCount={totalCount}
+              totalPages={totalPages}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
               categories={categories}
               templates={templates}
               violationsMap={violationsMap}
@@ -211,8 +213,8 @@ export function App() {
           onChange={setFilterCriteria}
           categories={categories}
           allIngredients={allIngredients}
-          matchCount={filteredRecipes.length}
-          totalCount={recipes.length}
+          matchCount={totalCount}
+          totalCount={totalCount}
         />
 
         {/* Global Confirmation Modal for Recipe Deletion */}

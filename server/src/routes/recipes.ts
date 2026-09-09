@@ -59,15 +59,96 @@ function formatRecipe(r: typeof recipes.$inferSelect): Recipe {
   }
 }
 
-// GET /api/recipes
-router.get('/', async (_req, res) => {
+import { recipeQueryService } from '../services/recipeQueryService'
+import type { MatchMode, RecipeQueryParams, RecipeSortOption } from '../../../shared/types'
+
+// GET /api/recipes/ingredients - Fetch distinct ingredient names for search/filter autocomplete
+router.get('/ingredients', async (_req, res) => {
   try {
-    const rows = await db
-      .select()
-      .from(recipes)
-      .where(isNull(recipes.deletedAt))
-      .orderBy(desc(recipes.id))
-    res.json(rows.map(formatRecipe))
+    const list = await recipeQueryService.getDistinctIngredients()
+    res.json(list)
+  } catch (err: unknown) {
+    const details = err instanceof Error ? err.message : String(err)
+    console.error('Failed to fetch ingredients:', err)
+    res.status(500).json({ error: 'Failed to fetch ingredients', details })
+  }
+})
+
+// GET /api/recipes - Query recipes with server-side database filtering and pagination
+router.get('/', async (req, res) => {
+  try {
+    const query = req.query
+
+    // Parse ingredients array
+    let selectedIngredients: string[] = []
+    if (query.selectedIngredients) {
+      if (Array.isArray(query.selectedIngredients)) {
+        selectedIngredients = query.selectedIngredients as string[]
+      } else if (typeof query.selectedIngredients === 'string') {
+        try {
+          const parsed = JSON.parse(query.selectedIngredients)
+          selectedIngredients = Array.isArray(parsed) ? parsed : [query.selectedIngredients]
+        } catch {
+          selectedIngredients = query.selectedIngredients.split(',').map((s) => s.trim()).filter(Boolean)
+        }
+      }
+    }
+
+    // Parse selectedTags record
+    let selectedTags: Record<string, string[]> = {}
+    if (query.selectedTags) {
+      if (typeof query.selectedTags === 'object' && !Array.isArray(query.selectedTags)) {
+        selectedTags = query.selectedTags as Record<string, string[]>
+      } else if (typeof query.selectedTags === 'string') {
+        try {
+          selectedTags = JSON.parse(query.selectedTags)
+        } catch {
+          // ignore parsing error
+        }
+      }
+    }
+
+    // Parse categoryTagsMatchMode
+    let categoryTagsMatchMode: Record<string, MatchMode> = {}
+    if (query.categoryTagsMatchMode) {
+      if (typeof query.categoryTagsMatchMode === 'object' && !Array.isArray(query.categoryTagsMatchMode)) {
+        categoryTagsMatchMode = query.categoryTagsMatchMode as Record<string, MatchMode>
+      } else if (typeof query.categoryTagsMatchMode === 'string') {
+        try {
+          categoryTagsMatchMode = JSON.parse(query.categoryTagsMatchMode)
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    // Parse hasImage boolean
+    let hasImage: boolean | null = null
+    if (query.hasImage === 'true') {
+      hasImage = true
+    } else if (query.hasImage === 'false') {
+      hasImage = false
+    }
+
+    const params: RecipeQueryParams = {
+      searchQuery: typeof query.searchQuery === 'string' ? query.searchQuery : (typeof query.q === 'string' ? query.q : undefined),
+      selectedIngredients,
+      ingredientsMatchMode: (query.ingredientsMatchMode as MatchMode) || 'any',
+      selectedTags,
+      tagsMatchMode: (query.tagsMatchMode as MatchMode) || 'all',
+      categoryTagsMatchMode,
+      maxTotalTime: query.maxTotalTime ? Number(query.maxTotalTime) : undefined,
+      maxPrepTime: query.maxPrepTime ? Number(query.maxPrepTime) : undefined,
+      maxCookTime: query.maxCookTime ? Number(query.maxCookTime) : undefined,
+      hasImage,
+      onlyConflicts: query.onlyConflicts === 'true',
+      sortBy: (query.sortBy as RecipeSortOption) || 'created_desc',
+      page: query.page ? Number(query.page) : 1,
+      pageSize: query.pageSize ? Number(query.pageSize) : 12,
+    }
+
+    const result = await recipeQueryService.queryRecipes(params)
+    res.json(result)
   } catch (err: unknown) {
     const details = err instanceof Error ? err.message : String(err)
     console.error('Failed to fetch recipes:', err)

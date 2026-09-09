@@ -18,7 +18,7 @@ export function IntegrationsTab() {
   // 1. Database Connection State
   const [dbConfig, setDbConfig] = useState<DatabaseConfig | null>(null)
   const [connStringInput, setConnStringInput] = useState('')
-  const [showDbPassword, setShowDbPassword] = useState(false)
+  const [showDbPassword, setShowDbPassword] = useState(true)
   const [dbLoading, setDbLoading] = useState(true)
   const [dbTesting, setDbTesting] = useState(false)
   const [dbSaving, setDbSaving] = useState(false)

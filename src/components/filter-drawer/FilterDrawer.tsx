@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,8 +38,26 @@ export function FilterDrawer({
   totalCount,
 }: FilterDrawerProps) {
   const activeFiltersCount = countActiveFilters(criteria)
+  const [draftSearch, setDraftSearch] = useState(criteria.searchQuery)
+
+  useEffect(() => {
+    setDraftSearch(criteria.searchQuery)
+  }, [criteria.searchQuery])
+
+  const handleCommitSearch = () => {
+    const trimmed = draftSearch.trim()
+    if (trimmed !== criteria.searchQuery) {
+      onChange({ ...criteria, searchQuery: trimmed })
+    }
+  }
+
+  const handleClearSearch = () => {
+    setDraftSearch('')
+    onChange({ ...criteria, searchQuery: '' })
+  }
 
   const handleResetAll = () => {
+    setDraftSearch('')
     onChange(DEFAULT_FILTER_CRITERIA)
   }
 
@@ -133,17 +152,26 @@ export function FilterDrawer({
               Text Search
             </label>
             <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-400" />
+              <Search
+                className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-400 cursor-pointer hover:text-foreground"
+                onClick={handleCommitSearch}
+              />
               <Input
                 placeholder="Search titles, ingredients, source..."
-                value={criteria.searchQuery}
-                onChange={(e) => onChange({ ...criteria, searchQuery: e.target.value })}
+                value={draftSearch}
+                onChange={(e) => setDraftSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleCommitSearch()
+                  }
+                }}
                 className="pl-8 text-sm"
               />
-              {criteria.searchQuery && (
+              {draftSearch && (
                 <button
                   type="button"
-                  onClick={() => onChange({ ...criteria, searchQuery: '' })}
+                  onClick={handleClearSearch}
                   className="absolute right-2.5 top-2.5 text-neutral-400 hover:text-neutral-600 cursor-pointer"
                 >
                   <X className="h-4 w-4" />

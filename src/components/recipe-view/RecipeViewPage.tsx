@@ -162,6 +162,7 @@ export function RecipeViewPage({
         yieldMultiplier={yieldMultiplier}
         timeTrackingMode={timeTrackingMode}
         onTagClick={onTagClick}
+        onOpenYieldModal={() => setYieldModalOpen(true)}
       />
 
       {/* Two Column Layout: Ingredients & Method */}
@@ -173,7 +174,7 @@ export function RecipeViewPage({
             checkedIngredients={checkedIngredients}
             onToggleIngredient={toggleIngredient}
             yieldMultiplier={yieldMultiplier}
-            onOpenYieldModal={() => setYieldModalOpen(true)}
+            onResetYield={() => setYieldMultiplier(1)}
           />
         </div>
 

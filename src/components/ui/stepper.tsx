@@ -188,7 +188,7 @@ export function Stepper({
   }
 
   return (
-    <div className={`flex items-center gap-4 ${className}`}>
+    <div className={cn('flex items-center justify-center gap-4', className)}>
       {/* Minus Button */}
       <Button
         type="button"
@@ -262,6 +262,95 @@ export function Stepper({
       >
         <Plus className="h-5 w-5 sm:h-4 sm:w-4" />
       </Button>
+    </div>
+  )
+}
+
+export interface StepperPreset {
+  label: string
+  value: number
+}
+
+export interface PresetStepperProps extends StepperProps {
+  /**
+   * Quick preset shortcut buttons.
+   * Can be `{ label: string, value: number }` or a number.
+   */
+  presets?: Array<StepperPreset | number>
+  /** Whether clicking an already active preset clears/toggles it */
+  allowClearPreset?: boolean
+  /** Callback fired when a preset is cleared */
+  onClear?: () => void
+  /** Container class for the presets group */
+  presetsClassName?: string
+}
+
+export function PresetStepper({
+  presets = [],
+  allowClearPreset = false,
+  onClear,
+  presetsClassName = '',
+  className = '',
+  ...stepperProps
+}: PresetStepperProps) {
+  const normalizedPresets: StepperPreset[] = presets.map((p) =>
+    typeof p === 'number'
+      ? {
+          label: `${formatGracefulNumber(p)}${stepperProps.symbol ? ` ${stepperProps.symbol}` : ''}`,
+          value: p,
+        }
+      : p
+  )
+
+  const handlePresetClick = (presetValue: number) => {
+    if (allowClearPreset && Math.abs(stepperProps.value - presetValue) < 0.001) {
+      if (onClear) {
+        onClear()
+      } else {
+        stepperProps.onChange(0)
+      }
+      return
+    }
+    stepperProps.onChange(presetValue)
+  }
+
+  const isDefaultVariant = (stepperProps.variant ?? 'default') === 'default'
+
+  return (
+    <div className={cn('flex flex-col gap-3 w-full', className)}>
+      <div className={cn('w-full', isDefaultVariant ? 'flex justify-center items-center' : '')}>
+        <Stepper {...stepperProps} />
+      </div>
+
+      {normalizedPresets.length > 0 && (
+        <div
+          className={cn(
+            'grid gap-1.5 w-full',
+            normalizedPresets.length === 5 ? 'grid-cols-5' : 'grid-cols-4 sm:grid-cols-5',
+            presetsClassName
+          )}
+        >
+          {normalizedPresets.map((sc) => {
+            const isActive = Math.abs(stepperProps.value - sc.value) < 0.001
+            return (
+              <button
+                key={sc.value}
+                type="button"
+                onClick={() => handlePresetClick(sc.value)}
+                disabled={stepperProps.disabled}
+                className={cn(
+                  'px-1.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold border transition-all cursor-pointer text-center select-none disabled:opacity-50 disabled:cursor-not-allowed',
+                  isActive
+                    ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                    : 'bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted/50'
+                )}
+              >
+                {sc.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

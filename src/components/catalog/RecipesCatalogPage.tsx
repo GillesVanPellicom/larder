@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect } from 'react'
 import type { FilterCriteria, Recipe, RecipeTemplate, RecipeViolation, TagCategory, TimeTrackingMode } from '@/shared/types'
 import { RecipeCard } from '@/components/RecipeCard'
 import { CatalogToolbar } from '@/components/catalog/CatalogToolbar'
@@ -13,7 +13,10 @@ import { useDeviceSettings } from '@/lib/deviceSettings'
 
 interface RecipesCatalogPageProps {
   recipes: Recipe[]
-  filteredRecipes: Recipe[]
+  totalCount: number
+  totalPages: number
+  currentPage: number
+  onPageChange: (page: number) => void
   categories: TagCategory[]
   templates?: RecipeTemplate[]
   violationsMap: Map<number, RecipeViolation[]>
@@ -35,7 +38,10 @@ interface RecipesCatalogPageProps {
 
 export function RecipesCatalogPage({
   recipes,
-  filteredRecipes,
+  totalCount,
+  totalPages,
+  currentPage,
+  onPageChange,
   categories,
   templates = [],
   violationsMap,
@@ -55,33 +61,16 @@ export function RecipesCatalogPage({
   onDeleteRequest,
 }: RecipesCatalogPageProps) {
   const { settings, setSetting } = useDeviceSettings()
-  const [currentPage, setCurrentPage] = useState(1)
-
   const pageSize = settings.recipesPerPage || 12
-  const totalItems = filteredRecipes.length
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
-
-  // Reset to page 1 whenever filter criteria change
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [filterCriteria])
-
-  // Clamp current page if items change
-  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
-
-  const paginatedRecipes = useMemo(() => {
-    const start = (validCurrentPage - 1) * pageSize
-    return filteredRecipes.slice(start, start + pageSize)
-  }, [filteredRecipes, validCurrentPage, pageSize])
 
   const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage)
+    onPageChange(newPage)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handlePageSizeChange = (newSize: number) => {
     setSetting('recipesPerPage', newSize)
-    setCurrentPage(1)
+    onPageChange(1)
   }
 
   // Keyboard arrow keys navigation (Left Arrow: Prev, Right Arrow: Next)
@@ -89,7 +78,6 @@ export function RecipesCatalogPage({
     if (totalPages <= 1) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger when user is typing inside inputs, textareas, selects, or editable elements
       const target = e.target as HTMLElement | null
       const tagName = target?.tagName?.toLowerCase()
       if (
@@ -101,25 +89,24 @@ export function RecipesCatalogPage({
         return
       }
 
-      // Don't trigger if modifier keys (Cmd/Ctrl/Alt/Shift) are pressed
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
 
       if (e.key === 'ArrowLeft') {
-        if (validCurrentPage > 1) {
+        if (currentPage > 1) {
           e.preventDefault()
-          handlePageChange(validCurrentPage - 1)
+          handlePageChange(currentPage - 1)
         }
       } else if (e.key === 'ArrowRight') {
-        if (validCurrentPage < totalPages) {
+        if (currentPage < totalPages) {
           e.preventDefault()
-          handlePageChange(validCurrentPage + 1)
+          handlePageChange(currentPage + 1)
         }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [validCurrentPage, totalPages])
+  }, [currentPage, totalPages])
 
   // When no database is configured or connected, render isolated "No database connected" screen
   if (!isDatabaseConnected && !loading) {
@@ -142,7 +129,7 @@ export function RecipesCatalogPage({
   }
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-6.5rem)] space-y-6">
+    <div className="flex flex-col min-h-[calc(100vh-6.5rem)]">
       {/* Floating Action Button for New Recipe */}
       <FloatingActionButton
         icon={<Plus />}
@@ -162,24 +149,26 @@ export function RecipesCatalogPage({
         onOpenSettings={onOpenSettings}
       />
 
-      {/* Active Filter Chips Bar */}
-      {activeFiltersCount > 0 && (
-        <ActiveFiltersBar
-          criteria={filterCriteria}
-          onChange={onFilterCriteriaChange}
-        />
-      )}
+      {/* Active Filter Tags with equal top & bottom margins */}
+      <div className="my-3.5 min-h-7 flex items-center">
+        {activeFiltersCount > 0 && (
+          <ActiveFiltersBar
+            criteria={filterCriteria}
+            onChange={onFilterCriteriaChange}
+          />
+        )}
+      </div>
 
       {/* Content Area: Loading, Empty, or Recipes Grid */}
       {loading && recipes.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center py-24 my-auto">
           <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-          <p className="mt-3 text-sm text-muted-foreground">Loading culinary recipes...</p>
+          <p className="mt-3 text-sm text-muted-foreground">Loading...</p>
         </div>
-      ) : filteredRecipes.length === 0 ? (
+      ) : recipes.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center my-auto">
           <CatalogEmptyState
-            hasRecipes={recipes.length > 0}
+            hasRecipes={totalCount > 0 || activeFiltersCount > 0}
             onResetFilters={onResetFilters}
             onNewRecipe={onNewRecipe}
           />
@@ -187,7 +176,7 @@ export function RecipesCatalogPage({
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {paginatedRecipes.map((recipe) => (
+            {recipes.map((recipe) => (
               <RecipeCard
                 key={recipe.id}
                 recipe={recipe}
@@ -206,9 +195,9 @@ export function RecipesCatalogPage({
 
           {/* Pagination Controls */}
           <PaginationControl
-            currentPage={validCurrentPage}
+            currentPage={currentPage}
             totalPages={totalPages}
-            totalItems={totalItems}
+            totalItems={totalCount}
             pageSize={pageSize}
             pageSizeOptions={[6, 12, 24, 48, 96]}
             onPageChange={handlePageChange}
@@ -219,4 +208,3 @@ export function RecipesCatalogPage({
     </div>
   )
 }
-

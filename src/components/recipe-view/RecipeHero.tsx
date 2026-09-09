@@ -9,6 +9,32 @@ interface RecipeHeroProps {
   yieldMultiplier?: number
   timeTrackingMode?: TimeTrackingMode
   onTagClick?: (catId: string, tag: string) => void
+  onOpenYieldModal?: () => void
+}
+
+function renderYieldValue(yieldText: string, isScaled: boolean) {
+  if (!yieldText) return '—'
+  if (!isScaled) {
+    return yieldText
+  }
+
+  // Split on numbers (integers, decimals, fractions) to isolate numeric characters
+  const tokens = yieldText.split(/(\d+(?:\.\d+)?|\d+\/\d+)/g)
+
+  return (
+    <>
+      {tokens.map((token, i) => {
+        if (/\d/.test(token)) {
+          return (
+            <span key={i} className="text-amber-600 dark:text-amber-400">
+              {token}
+            </span>
+          )
+        }
+        return <span key={i}>{token}</span>
+      })}
+    </>
+  )
 }
 
 export function RecipeHero({
@@ -18,6 +44,7 @@ export function RecipeHero({
   yieldMultiplier = 1,
   timeTrackingMode = 'prep_and_cook',
   onTagClick,
+  onOpenYieldModal,
 }: RecipeHeroProps) {
   const hasTags = Object.keys(recipe.tags || {}).length > 0
 
@@ -107,14 +134,30 @@ export function RecipeHero({
           </div>
         )}
 
-        {/* Yield */}
-        <div className="bg-card py-3 px-2 sm:py-3.5 sm:px-4 text-center">
+        {/* Yield (Clickable to open Yield Multiplier) */}
+        <div
+          onClick={onOpenYieldModal}
+          role={onOpenYieldModal ? 'button' : undefined}
+          tabIndex={onOpenYieldModal ? 0 : undefined}
+          onKeyDown={(e) => {
+            if (onOpenYieldModal && (e.key === 'Enter' || e.key === ' ')) {
+              e.preventDefault()
+              onOpenYieldModal()
+            }
+          }}
+          className={`bg-card py-3 px-2 sm:py-3.5 sm:px-4 text-center select-none ${
+            onOpenYieldModal
+              ? 'cursor-pointer hover:bg-muted/40 transition-colors group focus:outline-none focus-visible:bg-muted/60'
+              : ''
+          }`}
+          title={onOpenYieldModal ? 'Click to adjust recipe yield' : undefined}
+        >
           <span className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-semibold block">
             Yield
           </span>
           <div className="flex items-center justify-center gap-1 mt-1 flex-wrap">
-            <span className="text-sm sm:text-base font-bold text-foreground">
-              {scaledYield || recipe.yield_amount || '—'}
+            <span className="text-sm sm:text-base font-bold text-foreground underline underline-offset-4 decoration-muted-foreground/50 group-hover:decoration-foreground transition-colors">
+              {renderYieldValue(scaledYield || recipe.yield_amount || '—', Math.abs(yieldMultiplier - 1) > 0.001)}
             </span>
             {Math.abs(yieldMultiplier - 1) > 0.001 && (
               <span className="text-[11px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">

@@ -222,6 +222,39 @@ export interface FilterCriteria {
   onlyConflicts?: boolean
 }
 
+export type RecipeSortOption =
+  | 'created_desc'
+  | 'created_asc'
+  | 'title_asc'
+  | 'title_desc'
+  | 'total_time_asc'
+  | 'total_time_desc'
+
+export interface RecipeQueryParams {
+  searchQuery?: string
+  selectedIngredients?: string[]
+  ingredientsMatchMode?: MatchMode
+  selectedTags?: Record<string, string[]>
+  tagsMatchMode?: MatchMode
+  categoryTagsMatchMode?: Record<string, MatchMode>
+  maxTotalTime?: number
+  maxPrepTime?: number
+  maxCookTime?: number
+  hasImage?: boolean | null
+  onlyConflicts?: boolean
+  sortBy?: RecipeSortOption
+  page?: number
+  pageSize?: number
+}
+
+export interface PaginatedRecipesResponse {
+  items: Recipe[]
+  totalCount: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
 export interface HealthCheckResponse {
   status: 'healthy' | 'unhealthy'
   database: 'connected' | 'disconnected'
