@@ -28,6 +28,8 @@ export interface Recipe {
   ingredients: IngredientItem[]
   instructions: string | InstructionStep[]
   tags: RecipeTags
+  has_violations?: boolean
+  violations?: RecipeViolation[]
   created_at: string
   updated_at: string
 }
@@ -199,7 +201,8 @@ export interface RecipeConflict {
   violations: RecipeViolation[]
 }
 
-export type MatchMode = 'any' | 'all'
+export type MatchMode = 'any' | 'all' | 'none'
+export type TriStateFilter = 'any' | 'none' | 'only'
 
 export interface FilterCriteria {
   searchQuery: string
@@ -213,8 +216,8 @@ export interface FilterCriteria {
   maxTotalTime?: number
   maxPrepTime?: number
   maxCookTime?: number
-  hasImage?: boolean | null
-  onlyConflicts?: boolean
+  hasImage?: TriStateFilter | boolean | null
+  onlyConflicts?: TriStateFilter | boolean
 }
 
 export type RecipeSortOption =
@@ -235,8 +238,8 @@ export interface RecipeQueryParams {
   maxTotalTime?: number
   maxPrepTime?: number
   maxCookTime?: number
-  hasImage?: boolean | null
-  onlyConflicts?: boolean
+  hasImage?: TriStateFilter | boolean | null
+  onlyConflicts?: TriStateFilter | boolean
   sortBy?: RecipeSortOption
   page?: number
   pageSize?: number

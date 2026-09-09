@@ -37,55 +37,93 @@ export function SaveBar({
   const [isShaking, setIsShaking] = useState(false)
   const saveStartRef = useRef<number | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isDirtyRef = useRef(isDirty)
+  isDirtyRef.current = isDirty
+
+  const clearPendingTimers = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }
 
   // Trigger error phase when error prop is passed
   useEffect(() => {
     if (error) {
+      clearPendingTimers()
       setActiveError(error)
       setPhase('error')
       setIsShaking(true)
       const shakeTimer = setTimeout(() => setIsShaking(false), 500)
 
-      if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(() => {
         setPhase('idle')
         setActiveError(null)
       }, 2800)
 
-      return () => clearTimeout(shakeTimer)
+      return () => {
+        clearTimeout(shakeTimer)
+        clearPendingTimers()
+      }
     }
   }, [error])
 
   // Track submitting state changes from parent
   useEffect(() => {
     if (submitting) {
+      clearPendingTimers()
       saveStartRef.current = Date.now()
       setPhase('saving')
     } else if (saveStartRef.current !== null) {
-      const elapsed = Date.now() - saveStartRef.current
-      const delay = Math.max(0, 1000 - elapsed)
-
-      timerRef.current = setTimeout(() => {
-        setPhase('saved')
+      // If the form has become dirty again while saving was in-flight, return to idle unsaved state immediately
+      if (isDirtyRef.current) {
+        clearPendingTimers()
         saveStartRef.current = null
+        setPhase('idle')
+      } else {
+        const elapsed = Date.now() - saveStartRef.current
+        const delay = Math.max(0, 800 - elapsed)
 
+        clearPendingTimers()
         timerRef.current = setTimeout(() => {
-          setPhase('idle')
-        }, 1400)
-      }, delay)
+          if (isDirtyRef.current) {
+            setPhase('idle')
+            saveStartRef.current = null
+            return
+          }
+          setPhase('saved')
+          saveStartRef.current = null
+
+          timerRef.current = setTimeout(() => {
+            setPhase('idle')
+          }, 1400)
+        }, delay)
+      }
     }
 
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
+      clearPendingTimers()
     }
   }, [submitting])
 
-  // Reset phase when isDirty drops to false outside of active saving
+  // React immediately to isDirty changes:
+  // If the form becomes dirty during 'saved', 'saving', or 'error' phase, immediately revert to idle unsaved state without blur
   useEffect(() => {
-    if (!isDirty && phase !== 'saving' && phase !== 'saved') {
-      setPhase('idle')
-      saveStartRef.current = null
-      setActiveError(null)
+    if (isDirty) {
+      if (phase === 'saved' || phase === 'error') {
+        clearPendingTimers()
+        saveStartRef.current = null
+        setPhase('idle')
+        setActiveError(null)
+      }
+    } else {
+      // Reset phase when isDirty drops to false outside of active saving/saved
+      if (phase !== 'saving' && phase !== 'saved') {
+        clearPendingTimers()
+        setPhase('idle')
+        saveStartRef.current = null
+        setActiveError(null)
+      }
     }
   }, [isDirty, phase])
 
@@ -104,21 +142,37 @@ export function SaveBar({
     }
 
     if (onSave) {
+      clearPendingTimers()
       saveStartRef.current = Date.now()
       setPhase('saving')
       try {
         await onSave()
-        const elapsed = Date.now() - (saveStartRef.current || 0)
-        const delay = Math.max(0, 1000 - elapsed)
-
-        timerRef.current = setTimeout(() => {
-          setPhase('saved')
-          saveStartRef.current = null
-
-          timerRef.current = setTimeout(() => {
+        // If submitting prop is not used, manage completion here
+        if (!submitting) {
+          if (isDirtyRef.current) {
+            clearPendingTimers()
+            saveStartRef.current = null
             setPhase('idle')
-          }, 1400)
-        }, delay)
+          } else {
+            const elapsed = Date.now() - (saveStartRef.current || 0)
+            const delay = Math.max(0, 800 - elapsed)
+
+            clearPendingTimers()
+            timerRef.current = setTimeout(() => {
+              if (isDirtyRef.current) {
+                setPhase('idle')
+                saveStartRef.current = null
+                return
+              }
+              setPhase('saved')
+              saveStartRef.current = null
+
+              timerRef.current = setTimeout(() => {
+                setPhase('idle')
+              }, 1400)
+            }, delay)
+          }
+        }
       } catch (err: unknown) {
         console.error(err)
         saveStartRef.current = null
@@ -128,6 +182,7 @@ export function SaveBar({
         setIsShaking(true)
         setTimeout(() => setIsShaking(false), 500)
 
+        clearPendingTimers()
         timerRef.current = setTimeout(() => {
           setPhase('idle')
           setActiveError(null)

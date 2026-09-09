@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { eq } from 'drizzle-orm'
 import { db } from '../db'
 import { recipes, tagCategories } from '../db/schema'
+import { recipeViolationService } from '../services/recipeViolationService'
 import type { TagCategory } from '../../../shared/types'
 
 const router = Router()
@@ -56,6 +57,8 @@ router.post('/categories', async (req, res) => {
       })
       .returning()
 
+    await recipeViolationService.recalculateAllViolations()
+
     res.status(201).json(created)
   } catch (err: unknown) {
     const details = err instanceof Error ? err.message : String(err)
@@ -89,6 +92,8 @@ router.put('/categories/:id', async (req, res) => {
     if (!updated) {
       return res.status(404).json({ error: 'Tag category not found' })
     }
+
+    await recipeViolationService.recalculateAllViolations()
 
     res.json(updated)
   } catch (err: unknown) {
@@ -132,6 +137,8 @@ router.post('/:categoryId', async (req, res) => {
       })
       .where(eq(tagCategories.id, categoryId))
       .returning()
+
+    await recipeViolationService.recalculateAllViolations()
 
     res.status(201).json(updated)
   } catch (err: unknown) {
@@ -197,6 +204,8 @@ router.put('/:categoryId/rename', async (req, res) => {
         affectedRecipesCount++
       }
     }
+
+    await recipeViolationService.recalculateAllViolations()
 
     res.json({
       success: true,
@@ -320,6 +329,8 @@ router.delete('/:categoryId/:tag', async (req, res) => {
       .set(updatePayload)
       .where(eq(tagCategories.id, categoryId))
 
+    await recipeViolationService.recalculateAllViolations()
+
     res.json({
       success: true,
       categoryId,
@@ -348,6 +359,9 @@ router.delete('/categories/:id', async (req, res) => {
         .json({ error: 'Cannot delete category that still contains tags. Delete or move tags first.' })
     }
     await db.delete(tagCategories).where(eq(tagCategories.id, id))
+
+    await recipeViolationService.recalculateAllViolations()
+
     res.json({ success: true, id })
   } catch (err: unknown) {
     const details = err instanceof Error ? err.message : String(err)

@@ -370,9 +370,11 @@ export function RecipeFormPage({
           minAllowed === 1
             ? `Please select a tag for ${cat.name}.`
             : `Please select at least ${minAllowed} tags for ${cat.name}.`
-      } else if (maxAllowed > 0 && selected.length > maxAllowed) {
+      } else if (selected.length > maxAllowed) {
         nextErrors[`tags.${cat.id}`] =
-          maxAllowed === 1
+          maxAllowed === 0
+            ? `No tags allowed for ${cat.name}.`
+            : maxAllowed === 1
             ? `Only 1 tag allowed for ${cat.name}.`
             : `Please select at most ${maxAllowed} tags for ${cat.name}.`
       }

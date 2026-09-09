@@ -2,10 +2,16 @@ import { Router } from 'express'
 import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '../db'
 import { recipes } from '../db/schema'
+import { recipeViolationService } from '../services/recipeViolationService'
+import { recipeQueryService } from '../services/recipeQueryService'
 import type {
   CreateRecipeDTO,
   InstructionStep,
+  MatchMode,
   Recipe,
+  RecipeQueryParams,
+  RecipeSortOption,
+  TriStateFilter,
 } from '../../../shared/types'
 
 const router = Router()
@@ -48,13 +54,12 @@ function formatRecipe(r: typeof recipes.$inferSelect): Recipe {
     ingredients,
     instructions,
     tags: r.tags || {},
+    has_violations: r.hasViolations ?? false,
+    violations: r.violations || [],
     created_at: r.createdAt.toISOString(),
     updated_at: r.updatedAt.toISOString(),
   }
 }
-
-import { recipeQueryService } from '../services/recipeQueryService'
-import type { MatchMode, RecipeQueryParams, RecipeSortOption } from '../../../shared/types'
 
 // GET /api/recipes/ingredients - Fetch distinct ingredient names for search/filter autocomplete
 router.get('/ingredients', async (_req, res) => {
@@ -116,12 +121,24 @@ router.get('/', async (req, res) => {
       }
     }
 
-    // Parse hasImage boolean
-    let hasImage: boolean | null = null
-    if (query.hasImage === 'true') {
-      hasImage = true
-    } else if (query.hasImage === 'false') {
-      hasImage = false
+    // Parse hasImage tri-state ('any' | 'none' | 'only')
+    let hasImage: TriStateFilter | boolean | undefined = undefined
+    if (query.hasImage === 'only' || query.hasImage === 'true') {
+      hasImage = 'only'
+    } else if (query.hasImage === 'none' || query.hasImage === 'false') {
+      hasImage = 'none'
+    } else if (query.hasImage === 'any') {
+      hasImage = 'any'
+    }
+
+    // Parse onlyConflicts tri-state ('any' | 'none' | 'only')
+    let onlyConflicts: TriStateFilter | boolean | undefined = undefined
+    if (query.onlyConflicts === 'only' || query.onlyConflicts === 'true') {
+      onlyConflicts = 'only'
+    } else if (query.onlyConflicts === 'none' || query.onlyConflicts === 'false') {
+      onlyConflicts = 'none'
+    } else if (query.onlyConflicts === 'any') {
+      onlyConflicts = 'any'
     }
 
     const params: RecipeQueryParams = {
@@ -135,17 +152,20 @@ router.get('/', async (req, res) => {
       maxPrepTime: query.maxPrepTime ? Number(query.maxPrepTime) : undefined,
       maxCookTime: query.maxCookTime ? Number(query.maxCookTime) : undefined,
       hasImage,
-      onlyConflicts: query.onlyConflicts === 'true',
+      onlyConflicts,
       sortBy: (query.sortBy as RecipeSortOption) || 'created_desc',
       page: query.page ? Number(query.page) : 1,
       pageSize: query.pageSize ? Number(query.pageSize) : 12,
     }
 
     const result = await recipeQueryService.queryRecipes(params)
+    console.log(
+      `[Recipes Query] Page ${params.page}/${result.totalPages} (size: ${params.pageSize}) | total: ${result.totalCount} recipes | search="${params.searchQuery || ''}" image=${params.hasImage || 'any'} conflicts=${params.onlyConflicts || 'any'}`
+    )
     res.json(result)
   } catch (err: unknown) {
-    const details = err instanceof Error ? err.message : String(err)
-    console.error('Failed to fetch recipes:', err)
+    const details = err instanceof Error ? err.stack || err.message : String(err)
+    console.error('[DATABASE ERROR] Failed to fetch recipes:', err)
     res.status(500).json({ error: 'Failed to fetch recipes from database', details })
   }
 })
@@ -218,9 +238,15 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Recipe title is required' })
     }
 
+    const { hasViolations, violations } = await recipeViolationService.getViolationsForPayload(synced)
+
     const [created] = await db
       .insert(recipes)
-      .values(synced)
+      .values({
+        ...synced,
+        hasViolations,
+        violations,
+      })
       .returning()
 
     res.status(201).json(formatRecipe(created))
@@ -242,8 +268,12 @@ router.put('/:id', async (req, res) => {
     const body = req.body as Partial<CreateRecipeDTO>
     const synced = syncCoreColumns(body)
 
+    const { hasViolations, violations } = await recipeViolationService.getViolationsForPayload(synced)
+
     const updatePayload: Record<string, unknown> = {
       ...synced,
+      hasViolations,
+      violations,
       updatedAt: new Date(),
     }
 

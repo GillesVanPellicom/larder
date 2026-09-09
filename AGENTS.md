@@ -56,4 +56,10 @@
 ### 11. Minimal Action Labels
 - **Action-Only Copy**: Action descriptions and button labels must simply state the action verb or core noun without redundant contextual descriptors (e.g. `"Add"` instead of `"Add Ingredient Row"`, `"Edit"` instead of `"Edit Recipe"`, `"New"` instead of `"New Recipe"`, `"Save"` instead of `"Save Rules"`, `"Delete"` instead of `"Delete Category"`). The surrounding page/section context provides all necessary meaning.
 
+### 12. Database Migrations & Seeding Lifecycle
+- **Seed Only on Empty Schema**: Seeding only runs once upon connecting to a database that has no prior schema/tables.
+- **Migration Without Re-seeding**: If the database already exists or has older migrations, only apply incremental DDL schema migrations (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`) without re-running seeds or running arbitrary data backfill scripts.
+- **Environment-Specific Seed**: Development mock recipes (`seedDev`) are only seeded when initializing an empty database in non-production mode (`process.env.NODE_ENV !== 'production'`). Production defaults (`seedProduction`) seed global metadata rules and core system templates on initial setup.
+- **DB Debug Logging**: Database query executions, route handlers, and error handlers must print descriptive debug and error information with full stack traces to the server console.
+
 

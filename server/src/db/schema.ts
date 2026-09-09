@@ -5,6 +5,7 @@ import type {
   InstructionStep,
   MandatoryFieldsConfig,
   RecipeTags,
+  RecipeViolation,
   TemplateField,
 } from '../../../shared/types'
 
@@ -43,6 +44,8 @@ export const recipes = pgTable('recipes', {
   ingredients: jsonb('ingredients').$type<IngredientItem[]>().default([]).notNull(),
   instructions: jsonb('instructions').$type<string | InstructionStep[]>().default('').notNull(),
   tags: jsonb('tags').$type<RecipeTags>().default({}).notNull(),
+  hasViolations: boolean('has_violations').default(false).notNull(),
+  violations: jsonb('violations').$type<RecipeViolation[]>().default([]).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),

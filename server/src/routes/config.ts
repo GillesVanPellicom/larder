@@ -90,6 +90,10 @@ router.put('/', async (req, res) => {
       })
       .returning()
 
+    // Recalculate stored violations across all recipes
+    const { recipeViolationService } = await import('../services/recipeViolationService')
+    await recipeViolationService.recalculateAllViolations()
+
     res.json({
       mandatoryFields: updated.mandatoryFields,
       mandatoryCategories: updated.mandatoryCategories,

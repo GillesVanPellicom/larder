@@ -12,8 +12,8 @@ export const DEFAULT_FILTER_CRITERIA: FilterCriteria = {
   maxTotalTime: undefined,
   maxPrepTime: undefined,
   maxCookTime: undefined,
-  hasImage: null,
-  onlyConflicts: false,
+  hasImage: 'any',
+  onlyConflicts: 'any',
 }
 
 export function extractAllIngredients(recipes: Recipe[]): string[] {
@@ -27,13 +27,23 @@ export function extractAllIngredients(recipes: Recipe[]): string[] {
 }
 
 export function countActiveFilters(criteria: FilterCriteria): number {
+  const hasImageFilterActive =
+    criteria.hasImage === 'only' ||
+    criteria.hasImage === 'none' ||
+    criteria.hasImage === true ||
+    criteria.hasImage === false
+  const conflictsFilterActive =
+    criteria.onlyConflicts === 'only' ||
+    criteria.onlyConflicts === 'none' ||
+    criteria.onlyConflicts === true
+
   return (
     (criteria.searchQuery ? 1 : 0) +
     criteria.selectedIngredients.length +
     Object.values(criteria.selectedTags).reduce((acc, tags) => acc + tags.length, 0) +
     (criteria.maxTotalTime ? 1 : 0) +
-    (criteria.hasImage !== null ? 1 : 0) +
-    (criteria.onlyConflicts ? 1 : 0)
+    (hasImageFilterActive ? 1 : 0) +
+    (conflictsFilterActive ? 1 : 0)
   )
 }
 
@@ -72,18 +82,25 @@ export function filterRecipes(
       return false
     }
 
-    // 3. Image requirement
-    if (criteria.hasImage === true && (!recipe.image_url || !recipe.image_url.trim())) {
+    // 3. Image requirement (any / none / only)
+    const hasImageValue = Boolean(recipe.image_url && recipe.image_url.trim())
+    if ((criteria.hasImage === 'only' || criteria.hasImage === true) && !hasImageValue) {
+      return false
+    }
+    if ((criteria.hasImage === 'none' || criteria.hasImage === false) && hasImageValue) {
       return false
     }
 
-    // 4. Conflicts requirement
+    // 4. Data rule violations / conflicts requirement (any / none / only)
     const hasConflict = violationsMap.has(recipe.id)
-    if (criteria.onlyConflicts && !hasConflict) {
+    if ((criteria.onlyConflicts === 'only' || criteria.onlyConflicts === true) && !hasConflict) {
+      return false
+    }
+    if (criteria.onlyConflicts === 'none' && hasConflict) {
       return false
     }
 
-    // 5. Selected Ingredients (Any / All matching)
+    // 5. Selected Ingredients (Any / All / None matching)
     if (criteria.selectedIngredients.length > 0) {
       const recipeIngNames = (recipe.ingredients || []).map((i) => i.name.toLowerCase().trim())
       const mode = criteria.matchModePerElement.ingredients
@@ -93,6 +110,11 @@ export function filterRecipes(
           recipeIngNames.some((n) => n.includes(target))
         )
         if (!hasAll) return false
+      } else if (mode === 'none') {
+        const hasAny = criteria.selectedIngredients.some((target) =>
+          recipeIngNames.some((n) => n.includes(target))
+        )
+        if (hasAny) return false
       } else {
         const hasAny = criteria.selectedIngredients.some((target) =>
           recipeIngNames.some((n) => n.includes(target))
@@ -101,7 +123,7 @@ export function filterRecipes(
       }
     }
 
-    // 6. Selected Tags per Category (Any / All matching)
+    // 6. Selected Tags per Category (Any / All / None matching)
     const selectedCatEntries = Object.entries(criteria.selectedTags)
     if (selectedCatEntries.length > 0) {
       for (const [catId, wantedTags] of selectedCatEntries) {
@@ -112,6 +134,9 @@ export function filterRecipes(
         if (catMode === 'all') {
           const hasAllTags = wantedTags.every((w) => recipeTagsInCat.includes(w))
           if (!hasAllTags) return false
+        } else if (catMode === 'none') {
+          const hasAnyTag = wantedTags.some((w) => recipeTagsInCat.includes(w))
+          if (hasAnyTag) return false
         } else {
           const hasAnyTag = wantedTags.some((w) => recipeTagsInCat.includes(w))
           if (!hasAnyTag) return false

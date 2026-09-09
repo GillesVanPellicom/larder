@@ -9,8 +9,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import type { FilterCriteria, MatchMode, TagCategory } from '@/shared/types'
-import { Filter, RotateCcw, Search, X } from 'lucide-react'
+import type { FilterCriteria, MatchMode, TagCategory, TriStateFilter } from '@/shared/types'
+import { RotateCcw, Search, X } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { DEFAULT_FILTER_CRITERIA, countActiveFilters } from '@/lib/recipeFilters'
 import { FilterIngredientsSection } from './FilterIngredientsSection'
 import { FilterTagsSection } from './FilterTagsSection'
@@ -23,8 +30,8 @@ export interface FilterDrawerProps {
   onChange: (criteria: FilterCriteria) => void
   categories: TagCategory[]
   allIngredients: string[]
-  matchCount: number
-  totalCount: number
+  matchCount?: number
+  totalCount?: number
 }
 
 export function FilterDrawer({
@@ -34,145 +41,141 @@ export function FilterDrawer({
   onChange,
   categories,
   allIngredients,
-  matchCount,
-  totalCount,
 }: FilterDrawerProps) {
-  const activeFiltersCount = countActiveFilters(criteria)
-  const [draftSearch, setDraftSearch] = useState(criteria.searchQuery)
+  const [draftCriteria, setDraftCriteria] = useState<FilterCriteria>(criteria)
 
   useEffect(() => {
-    setDraftSearch(criteria.searchQuery)
-  }, [criteria.searchQuery])
-
-  const handleCommitSearch = () => {
-    const trimmed = draftSearch.trim()
-    if (trimmed !== criteria.searchQuery) {
-      onChange({ ...criteria, searchQuery: trimmed })
+    if (open) {
+      setDraftCriteria(criteria)
     }
+  }, [open, criteria])
+
+  const activeFiltersCount = countActiveFilters(draftCriteria)
+
+  const handleApply = () => {
+    onChange(draftCriteria)
+    onOpenChange(false)
   }
 
   const handleClearSearch = () => {
-    setDraftSearch('')
-    onChange({ ...criteria, searchQuery: '' })
+    setDraftCriteria((prev) => ({ ...prev, searchQuery: '' }))
   }
 
   const handleResetAll = () => {
-    setDraftSearch('')
-    onChange(DEFAULT_FILTER_CRITERIA)
+    setDraftCriteria(DEFAULT_FILTER_CRITERIA)
   }
 
   const handleSelectedIngredientsChange = (selected: string[]) => {
-    onChange({
-      ...criteria,
+    setDraftCriteria((prev) => ({
+      ...prev,
       selectedIngredients: selected,
-    })
+    }))
   }
 
   const handleIngredientsMatchModeChange = (mode: MatchMode) => {
-    onChange({
-      ...criteria,
+    setDraftCriteria((prev) => ({
+      ...prev,
       matchModePerElement: {
-        ...criteria.matchModePerElement,
+        ...prev.matchModePerElement,
         ingredients: mode,
       },
-    })
+    }))
   }
 
   const handleCategoryTagsChange = (categoryId: string, tags: string[]) => {
-    const nextSelectedTags = { ...criteria.selectedTags }
-    if (tags.length > 0) {
-      nextSelectedTags[categoryId] = tags
-    } else {
-      delete nextSelectedTags[categoryId]
-    }
-
-    onChange({
-      ...criteria,
-      selectedTags: nextSelectedTags,
+    setDraftCriteria((prev) => {
+      const nextSelectedTags = { ...prev.selectedTags }
+      if (tags.length > 0) {
+        nextSelectedTags[categoryId] = tags
+      } else {
+        delete nextSelectedTags[categoryId]
+      }
+      return {
+        ...prev,
+        selectedTags: nextSelectedTags,
+      }
     })
   }
 
   const handleCategoryMatchModeChange = (categoryId: string, mode: MatchMode) => {
-    onChange({
-      ...criteria,
+    setDraftCriteria((prev) => ({
+      ...prev,
       matchModePerElement: {
-        ...criteria.matchModePerElement,
+        ...prev.matchModePerElement,
         categoryTags: {
-          ...criteria.matchModePerElement.categoryTags,
+          ...prev.matchModePerElement.categoryTags,
           [categoryId]: mode,
         },
       },
-    })
+    }))
   }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-md md:max-w-lg flex flex-col p-0 bg-white dark:bg-neutral-900 overflow-hidden"
+        className="w-full sm:max-w-md md:max-w-lg flex flex-col p-0 bg-background overflow-hidden"
       >
-        {/* Drawer Header */}
-        <div className="border-b border-neutral-200 dark:border-neutral-800 p-5 pb-4">
-          <SheetHeader className="text-left">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                  <Filter className="h-4 w-4" />
-                </div>
-                <SheetTitle className="text-lg font-bold">Filter Recipes</SheetTitle>
+        {/* Drawer Header with fixed height to prevent layout shift */}
+        <div className="h-14 shrink-0 border-b border-border px-5 flex items-center">
+          <SheetHeader className="w-full text-left">
+            <div className="flex items-center justify-between h-7">
+              <div className="flex items-center gap-2 h-7 min-w-0">
+                <SheetTitle className="text-base font-bold">Filter Recipes</SheetTitle>
                 {activeFiltersCount > 0 && (
-                  <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                  <Badge variant="secondary" className="text-xs px-2 py-0.5 h-5 flex items-center shrink-0">
                     {activeFiltersCount} active
                   </Badge>
                 )}
               </div>
-              {activeFiltersCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleResetAll}
-                  className="h-8 text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 cursor-pointer"
-                >
-                  <RotateCcw className="h-3 w-3 mr-1" />
-                  Reset all
-                </Button>
-              )}
+              <div className="flex items-center h-7 shrink-0">
+                {activeFiltersCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleResetAll}
+                    className="h-7 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-2"
+                  >
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    Reset all
+                  </Button>
+                )}
+              </div>
             </div>
-            <SheetDescription className="text-xs text-neutral-500 mt-1">
-              Configure per-element &ldquo;Any&rdquo; or &ldquo;All&rdquo; rules across tags, ingredients, and time.
+            <SheetDescription className="sr-only">
+              Filter recipe catalog by tags, ingredients, time, and search
             </SheetDescription>
           </SheetHeader>
         </div>
 
         {/* Scrollable Filter Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {/* Quick Search */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-              Text Search
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-muted-foreground">
+              Text search
             </label>
             <div className="relative">
-              <Search
-                className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-400 cursor-pointer hover:text-foreground"
-                onClick={handleCommitSearch}
-              />
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Search titles, ingredients, source..."
-                value={draftSearch}
-                onChange={(e) => setDraftSearch(e.target.value)}
+                value={draftCriteria.searchQuery}
+                onChange={(e) =>
+                  setDraftCriteria((prev) => ({ ...prev, searchQuery: e.target.value }))
+                }
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()
-                    handleCommitSearch()
+                    handleApply()
                   }
                 }}
                 className="pl-8 text-sm"
               />
-              {draftSearch && (
+              {draftCriteria.searchQuery && (
                 <button
                   type="button"
                   onClick={handleClearSearch}
-                  className="absolute right-2.5 top-2.5 text-neutral-400 hover:text-neutral-600 cursor-pointer"
+                  className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -180,28 +183,19 @@ export function FilterDrawer({
             </div>
           </div>
 
-          {/* Quick Options: Time, Conflicts, Image */}
+          {/* Max Total Time Section */}
           <FilterQuickOptionsSection
-            maxTotalTime={criteria.maxTotalTime}
-            onlyConflicts={Boolean(criteria.onlyConflicts)}
-            hasImage={criteria.hasImage ?? null}
-            onMaxTimeChange={(mins) => onChange({ ...criteria, maxTotalTime: mins })}
-            onToggleConflicts={() =>
-              onChange({ ...criteria, onlyConflicts: !criteria.onlyConflicts })
-            }
-            onToggleHasImage={() =>
-              onChange({
-                ...criteria,
-                hasImage: criteria.hasImage === true ? null : true,
-              })
+            maxTotalTime={draftCriteria.maxTotalTime}
+            onMaxTimeChange={(mins) =>
+              setDraftCriteria((prev) => ({ ...prev, maxTotalTime: mins }))
             }
           />
 
           {/* Ingredients Filter Section */}
           <FilterIngredientsSection
             allIngredients={allIngredients}
-            selectedIngredients={criteria.selectedIngredients}
-            matchMode={criteria.matchModePerElement.ingredients}
+            selectedIngredients={draftCriteria.selectedIngredients}
+            matchMode={draftCriteria.matchModePerElement.ingredients}
             onSelectedIngredientsChange={handleSelectedIngredientsChange}
             onMatchModeChange={handleIngredientsMatchModeChange}
           />
@@ -209,30 +203,110 @@ export function FilterDrawer({
           {/* Tags Categories Section */}
           <FilterTagsSection
             categories={categories}
-            selectedTags={criteria.selectedTags}
-            matchModes={criteria.matchModePerElement.categoryTags}
+            selectedTags={draftCriteria.selectedTags}
+            matchModes={draftCriteria.matchModePerElement.categoryTags}
             onCategoryTagsChange={handleCategoryTagsChange}
             onCategoryMatchModeChange={handleCategoryMatchModeChange}
           />
-        </div>
 
-        {/* Drawer Footer with Result Count */}
-        <div className="border-t border-neutral-200 dark:border-neutral-800 p-4 bg-neutral-50 dark:bg-neutral-950 flex items-center justify-between">
-          <div className="text-xs text-neutral-500">
-            Matching{' '}
-            <strong className="text-neutral-900 dark:text-neutral-100 font-semibold">
-              {matchCount}
-            </strong>{' '}
-            of {totalCount} recipes
+          {/* Divider under last category tag */}
+          <hr className="border-border" />
+
+          {/* Data Rule Violations Tri-State Select */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-muted-foreground">
+              Has data rule violation(s)
+            </label>
+            <Select
+              value={
+                typeof draftCriteria.onlyConflicts === 'string'
+                  ? draftCriteria.onlyConflicts
+                  : draftCriteria.onlyConflicts
+                  ? 'only'
+                  : 'any'
+              }
+              onValueChange={(val) =>
+                setDraftCriteria((prev) => ({
+                  ...prev,
+                  onlyConflicts: (val as TriStateFilter) || 'any',
+                }))
+              }
+            >
+              <SelectTrigger className="w-full text-xs h-9 justify-between cursor-pointer">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any" className="text-xs cursor-pointer">
+                  Any
+                </SelectItem>
+                <SelectItem value="none" className="text-xs cursor-pointer">
+                  None
+                </SelectItem>
+                <SelectItem value="only" className="text-xs cursor-pointer">
+                  Only
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
+          {/* Has Image Tri-State Select */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-muted-foreground">
+              Has image
+            </label>
+            <Select
+              value={
+                typeof draftCriteria.hasImage === 'string'
+                  ? draftCriteria.hasImage
+                  : draftCriteria.hasImage === true
+                  ? 'only'
+                  : draftCriteria.hasImage === false
+                  ? 'none'
+                  : 'any'
+              }
+              onValueChange={(val) =>
+                setDraftCriteria((prev) => ({
+                  ...prev,
+                  hasImage: (val as TriStateFilter) || 'any',
+                }))
+              }
+            >
+              <SelectTrigger className="w-full text-xs h-9 justify-between cursor-pointer">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any" className="text-xs cursor-pointer">
+                  Any
+                </SelectItem>
+                <SelectItem value="none" className="text-xs cursor-pointer">
+                  None
+                </SelectItem>
+                <SelectItem value="only" className="text-xs cursor-pointer">
+                  Only
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Drawer Footer */}
+        <div className="border-t border-border p-4 bg-muted/20 flex items-center justify-end gap-2">
           <Button
             type="button"
+            variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
             className="cursor-pointer"
           >
-            Show {matchCount} {matchCount === 1 ? 'Recipe' : 'Recipes'}
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleApply}
+            className="cursor-pointer"
+          >
+            Apply
           </Button>
         </div>
       </SheetContent>

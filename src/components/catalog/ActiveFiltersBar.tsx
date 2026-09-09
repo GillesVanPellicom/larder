@@ -77,6 +77,31 @@ export function ActiveFiltersBar({
           </Badge>
         ))
       )}
+      {criteria.onlyConflicts && criteria.onlyConflicts !== 'any' && (
+        <Badge
+          variant="secondary"
+          onClick={() => onChange({ ...criteria, onlyConflicts: 'any' })}
+          className="group gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-border bg-muted/60 text-foreground cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all select-none"
+          title="Click to remove data rule violations filter"
+        >
+          <span className="text-muted-foreground font-normal">Violations:</span>
+          <span>{criteria.onlyConflicts === 'only' ? 'Only' : 'None'}</span>
+          <X className="h-3 w-3 text-muted-foreground group-hover:text-destructive transition-colors shrink-0" />
+        </Badge>
+      )}
+
+      {criteria.hasImage && criteria.hasImage !== 'any' && (
+        <Badge
+          variant="secondary"
+          onClick={() => onChange({ ...criteria, hasImage: 'any' })}
+          className="group gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-border bg-muted/60 text-foreground cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all select-none"
+          title="Click to remove image filter"
+        >
+          <span className="text-muted-foreground font-normal">Image:</span>
+          <span>{criteria.hasImage === 'only' ? 'Only' : 'None'}</span>
+          <X className="h-3 w-3 text-muted-foreground group-hover:text-destructive transition-colors shrink-0" />
+        </Badge>
+      )}
     </div>
   )
 }

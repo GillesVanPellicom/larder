@@ -44,6 +44,16 @@ if (fs.existsSync(config.clientDistPath)) {
   })
 }
 
+// Global API error handler ensuring all errors are logged to server console
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const msg = err instanceof Error ? err.stack || err.message : String(err)
+  console.error(`[SERVER ERROR] ${req.method} ${req.originalUrl}:`, msg)
+  res.status(500).json({
+    error: 'Internal server error',
+    details: err instanceof Error ? err.message : String(err),
+  })
+})
+
 async function startServer() {
   try {
     // Attempt schema migration with Drizzle ORM

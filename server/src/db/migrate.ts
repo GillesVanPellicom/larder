@@ -10,6 +10,15 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
       attempt++
       console.log(`[Database] Connecting to PostgreSQL (attempt ${attempt}/${retries})...`)
 
+      // Check if schema already exists before running DDL
+      const tableCheck = await pool.query<{ exists: boolean }>(`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = 'recipes'
+        ) AS exists;
+      `)
+      const isInitialDatabase = !tableCheck.rows[0]?.exists
+
       // Ensure base tables and columns exist in PostgreSQL
       await pool.query(`
         CREATE TABLE IF NOT EXISTS recipes (
@@ -26,8 +35,11 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
           ingredients JSONB NOT NULL DEFAULT '[]'::jsonb,
           instructions JSONB NOT NULL DEFAULT '[]'::jsonb,
           tags JSONB NOT NULL DEFAULT '{}'::jsonb,
+          has_violations BOOLEAN NOT NULL DEFAULT FALSE,
+          violations JSONB NOT NULL DEFAULT '[]'::jsonb,
           created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          deleted_at TIMESTAMPTZ
         );
 
         -- Safe column additions for existing tables
@@ -49,6 +61,8 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
         ALTER TABLE recipes ADD COLUMN IF NOT EXISTS image_url TEXT NOT NULL DEFAULT '';
         ALTER TABLE recipes ADD COLUMN IF NOT EXISTS source_url TEXT NOT NULL DEFAULT '';
         ALTER TABLE recipes ADD COLUMN IF NOT EXISTS tags JSONB NOT NULL DEFAULT '{}'::jsonb;
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS has_violations BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS violations JSONB NOT NULL DEFAULT '[]'::jsonb;
         ALTER TABLE recipes ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
         CREATE TABLE IF NOT EXISTS templates (
@@ -85,6 +99,8 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
           name VARCHAR(255) NOT NULL,
           color VARCHAR(50) NOT NULL DEFAULT 'neutral',
           exclusive BOOLEAN NOT NULL DEFAULT FALSE,
+          min_tags INTEGER DEFAULT 0,
+          max_tags INTEGER,
           tags JSONB NOT NULL DEFAULT '[]'::jsonb,
           created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -105,23 +121,30 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
         ALTER TABLE metadata_config ADD COLUMN IF NOT EXISTS time_tracking_mode VARCHAR(50) DEFAULT 'prep_and_cook';
       `)
 
-      // 1. Seed production schemas (metadata configuration, production tag categories, and system templates)
-      await seedProduction(db, pool)
+      if (isInitialDatabase) {
+        console.log('[Database] Empty database detected. Seeding initial data...')
+        // 1. Seed production schemas (metadata configuration, production tag categories, and system templates)
+        await seedProduction(db, pool)
 
-      // 2. Seed development mock recipes if non-production environment
-      const isProductionEnv = process.env.NODE_ENV === 'production' && process.env.SEED_DEV !== 'true'
-      if (!isProductionEnv) {
-        await seedDev(db, pool)
+        // 2. Seed development mock recipes if non-production environment
+        const isProductionEnv = process.env.NODE_ENV === 'production' && process.env.SEED_DEV !== 'true'
+        if (!isProductionEnv) {
+          await seedDev(db, pool)
+        }
+
+        // 3. Recalculate violations on newly seeded recipes
+        const { recipeViolationService } = await import('../services/recipeViolationService')
+        await recipeViolationService.recalculateAllViolations()
+      } else {
+        console.log('[Database] Existing database detected. Migrated schema without re-seeding.')
       }
 
-      console.log('[Database] Schema migrations and seeds completed successfully.')
+      console.log('[Database] Database migration ready.')
       return
     } catch (err: unknown) {
-      const errObj = err as { message?: string; code?: string }
-      const message = errObj.message || errObj.code || String(err)
-      console.warn(`[Database] Migration attempt ${attempt} failed:`, message)
+      console.error(`[DATABASE ERROR] Migration attempt ${attempt} failed:`, err)
       if (attempt >= retries) {
-        console.error('[Database] All migration attempts failed.')
+        console.error('[DATABASE ERROR] All migration attempts failed.')
         throw err
       }
       await new Promise((resolve) => setTimeout(resolve, delayMs))

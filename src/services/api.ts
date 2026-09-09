@@ -54,11 +54,11 @@ export const recipesApi = {
       if (params.maxCookTime !== undefined) {
         searchParams.set('maxCookTime', String(params.maxCookTime))
       }
-      if (params.hasImage !== undefined && params.hasImage !== null) {
+      if (params.hasImage !== undefined && params.hasImage !== null && params.hasImage !== 'any') {
         searchParams.set('hasImage', String(params.hasImage))
       }
-      if (params.onlyConflicts) {
-        searchParams.set('onlyConflicts', 'true')
+      if (params.onlyConflicts !== undefined && params.onlyConflicts !== null && params.onlyConflicts !== 'any') {
+        searchParams.set('onlyConflicts', String(params.onlyConflicts))
       }
       if (params.sortBy) {
         searchParams.set('sortBy', params.sortBy)
