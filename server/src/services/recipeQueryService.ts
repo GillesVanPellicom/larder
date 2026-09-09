@@ -38,19 +38,15 @@ export function formatRecipeRow(r: typeof recipes.$inferSelect): Recipe {
     title: r.title,
     description: r.description,
     yield_amount: r.yieldAmount,
+    yield_unit: r.yieldUnit || 'servings',
     prep_time_minutes: r.prepTimeMinutes,
     cook_time_minutes: r.cookTimeMinutes,
     total_time_minutes: r.totalTimeMinutes,
     image_url: r.imageUrl,
     source_url: r.sourceUrl,
-    notes: r.notes,
     ingredients,
     instructions,
     tags: r.tags || {},
-    template_id: r.templateId || 'tpl_default',
-    template_version_id: r.templateVersionId || 1,
-    field_values: r.fieldValues || {},
-    archived_values: r.archivedValues || {},
     created_at: r.createdAt.toISOString(),
     updated_at: r.updatedAt.toISOString(),
   }
@@ -122,7 +118,7 @@ export class RecipeQueryService {
           hasViolation = true
         } else if (mandatory.description && (!r.description || !r.description.trim())) {
           hasViolation = true
-        } else if (mandatory.yield_amount && (!r.yieldAmount || !r.yieldAmount.trim())) {
+        } else if (mandatory.yield_amount && (!r.yieldAmount || r.yieldAmount <= 0)) {
           hasViolation = true
         } else if (timeTrackingMode !== 'no_cook') {
           if (timeTrackingMode === 'total_only') {
@@ -184,7 +180,6 @@ export class RecipeQueryService {
           lower(${recipes.title}) LIKE ${q}
           OR lower(${recipes.description}) LIKE ${q}
           OR lower(${recipes.sourceUrl}) LIKE ${q}
-          OR lower(${recipes.notes}) LIKE ${q}
           OR lower(${recipes.instructions}::text) LIKE ${q}
           OR EXISTS (
             SELECT 1 FROM jsonb_array_elements(${recipes.ingredients}) AS ing

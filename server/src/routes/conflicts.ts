@@ -58,7 +58,7 @@ router.get('/', async (_req, res) => {
         violations.push({ field: 'description', message: 'Description is mandatory' })
       }
 
-      if (mandatory.yield_amount && (!r.yieldAmount || !r.yieldAmount.trim())) {
+      if (mandatory.yield_amount && (!r.yieldAmount || r.yieldAmount <= 0)) {
         violations.push({ field: 'yield_amount', message: 'Yield is mandatory' })
       }
 
@@ -154,12 +154,12 @@ router.get('/', async (_req, res) => {
           title: r.title,
           description: r.description,
           yield_amount: r.yieldAmount,
+          yield_unit: r.yieldUnit || 'servings',
           prep_time_minutes: r.prepTimeMinutes,
           cook_time_minutes: r.cookTimeMinutes,
           total_time_minutes: r.totalTimeMinutes,
           image_url: r.imageUrl,
           source_url: r.sourceUrl,
-          notes: r.notes,
           ingredients,
           instructions,
           tags: r.tags || {},

@@ -17,6 +17,10 @@
     "docker:dev:db": "docker compose -f docker-compose.dev.yml up -d",
     "docker:dev:db:down": "docker compose -f docker-compose.dev.yml down",
     "lint": "eslint .",
+    "seed": "tsx server/src/db/seeds/index.ts",
+    "seed:prod": "tsx server/src/db/seeds/index.ts --prod",
+    "seed:dev": "tsx server/src/db/seeds/index.ts",
+    "seed:reset": "tsx server/src/db/seeds/index.ts --reset",
     "preview": "vite preview"
   },
   "dependencies": {

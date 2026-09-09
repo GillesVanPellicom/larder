@@ -190,7 +190,7 @@ export function RecipesCatalogPage({
                 recipe={recipe}
                 violations={violationsMap.get(recipe.id)}
                 categories={categories}
-                template={templates.find((t) => t.id === (recipe.template_id || 'tpl_default'))}
+                template={templates.find((t) => t.isDefault) || templates[0] || null}
                 timeTrackingMode={timeTrackingMode}
                 selectedTags={filterCriteria.selectedTags}
                 onToggleTag={onToggleTag}

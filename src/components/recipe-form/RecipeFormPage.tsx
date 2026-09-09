@@ -78,7 +78,8 @@ function getInitialValues(r?: Recipe | null) {
   return {
     title: String(r?.title ?? '').trim(),
     description: String(r?.description ?? '').trim(),
-    yieldAmount: String(r?.yield_amount ?? '').trim(),
+    yieldAmount: typeof r?.yield_amount === 'number' ? r.yield_amount : (parseInt(String(r?.yield_amount ?? '4'), 10) || 4),
+    yieldUnit: String(r?.yield_unit || 'servings').trim(),
     prepTimeMinutes: prep as number | '',
     cookTimeMinutes: cook as number | '',
     imageUrl: String(r?.image_url ?? '').trim(),
@@ -110,7 +111,8 @@ export function RecipeFormPage({
   // Form Fields
   const [title, setTitle] = useState(initialState.title)
   const [description, setDescription] = useState(initialState.description)
-  const [yieldAmount, setYieldAmount] = useState(initialState.yieldAmount)
+  const [yieldAmount, setYieldAmount] = useState<number | ''>(initialState.yieldAmount)
+  const [yieldUnit, setYieldUnit] = useState<string>(initialState.yieldUnit)
   const [prepTimeMinutes, setPrepTimeMinutes] = useState<number | ''>(
     initialState.prepTimeMinutes
   )
@@ -134,6 +136,7 @@ export function RecipeFormPage({
     setTitle(init.title)
     setDescription(init.description)
     setYieldAmount(init.yieldAmount)
+    setYieldUnit(init.yieldUnit)
     setPrepTimeMinutes(init.prepTimeMinutes)
     setCookTimeMinutes(init.cookTimeMinutes)
     setImageUrl(init.imageUrl)
@@ -152,8 +155,13 @@ export function RecipeFormPage({
     if (description.trim() !== initialState.description) {
       diffs.push(`description: "${description.trim()}" !== "${initialState.description}"`)
     }
-    if (yieldAmount.trim() !== initialState.yieldAmount) {
-      diffs.push(`yieldAmount: "${yieldAmount.trim()}" !== "${initialState.yieldAmount}"`)
+    const curYieldAmt = typeof yieldAmount === 'number' ? yieldAmount : 0
+    const initYieldAmt = typeof initialState.yieldAmount === 'number' ? initialState.yieldAmount : 0
+    if (curYieldAmt !== initYieldAmt) {
+      diffs.push(`yieldAmount: ${curYieldAmt} !== ${initYieldAmt}`)
+    }
+    if (yieldUnit.trim() !== initialState.yieldUnit) {
+      diffs.push(`yieldUnit: "${yieldUnit.trim()}" !== "${initialState.yieldUnit}"`)
     }
 
     const curPrep = typeof prepTimeMinutes === 'number' ? prepTimeMinutes : 0
@@ -203,6 +211,7 @@ export function RecipeFormPage({
     title,
     description,
     yieldAmount,
+    yieldUnit,
     prepTimeMinutes,
     cookTimeMinutes,
     imageUrl,
@@ -217,6 +226,7 @@ export function RecipeFormPage({
     setTitle(initialState.title)
     setDescription(initialState.description)
     setYieldAmount(initialState.yieldAmount)
+    setYieldUnit(initialState.yieldUnit)
     setPrepTimeMinutes(initialState.prepTimeMinutes)
     setCookTimeMinutes(initialState.cookTimeMinutes)
     setImageUrl(initialState.imageUrl)
@@ -282,7 +292,8 @@ export function RecipeFormPage({
     const cleanIngredients = ingredients.filter((i) => i.name.trim().length > 0)
     const finalTitle = title.trim()
     const finalDesc = description.trim()
-    const finalYield = yieldAmount.trim()
+    const finalYieldAmt = typeof yieldAmount === 'number' ? yieldAmount : 0
+    const finalYieldUnit = yieldUnit.trim() || 'servings'
     const finalPrep = timeTrackingMode !== 'no_cook' ? Number(prepTimeMinutes) || 0 : 0
     const finalCook = timeTrackingMode === 'prep_and_cook' ? Number(cookTimeMinutes) || 0 : 0
     const finalTotal = timeTrackingMode === 'prep_and_cook' ? finalPrep + finalCook : timeTrackingMode === 'total_only' ? finalPrep : 0
@@ -309,7 +320,7 @@ export function RecipeFormPage({
     if (timeTrackingMode === 'prep_and_cook' && mandatory.cook_time_minutes && !finalCook) {
       nextErrors.cook_time_minutes = 'Cook time is required.'
     }
-    if (mandatory.yield_amount && !finalYield) {
+    if (mandatory.yield_amount && (!finalYieldAmt || finalYieldAmt <= 0)) {
       nextErrors.yield_amount = 'Yield is required.'
     }
     const finalSourceUrl = sourceUrl.trim()
@@ -392,34 +403,16 @@ export function RecipeFormPage({
       const payload: CreateRecipeDTO = {
         title: finalTitle || 'Untitled Recipe',
         description: finalDesc,
-        yield_amount: finalYield,
+        yield_amount: finalYieldAmt || 4,
+        yield_unit: finalYieldUnit,
         prep_time_minutes: finalPrep,
         cook_time_minutes: finalCook,
         total_time_minutes: finalTotal,
         image_url: finalImage,
         source_url: finalSourceUrl,
-        notes: '',
         ingredients: finalIng,
         instructions: finalInst,
         tags: finalTags,
-        template_id: currentRecipe?.template_id || recipe?.template_id || 'tpl_default',
-        template_version_id: currentRecipe?.template_version_id || recipe?.template_version_id || 1,
-        field_values: {
-          ...recipe?.field_values,
-          ...currentRecipe?.field_values,
-          title: finalTitle,
-          description: finalDesc,
-          yield_amount: finalYield,
-          prep_time_minutes: finalPrep,
-          cook_time_minutes: finalCook,
-          total_time_minutes: finalTotal,
-          image_url: finalImage,
-          source_url: finalSourceUrl,
-          ingredients: finalIng,
-          instructions: finalInst,
-          fld_instructions: finalInst,
-          tags: finalTags,
-        },
       }
 
       const saved = await onSave(payload, activeId)
@@ -430,6 +423,7 @@ export function RecipeFormPage({
         setTitle(nextInit.title)
         setDescription(nextInit.description)
         setYieldAmount(nextInit.yieldAmount)
+        setYieldUnit(nextInit.yieldUnit)
         setPrepTimeMinutes(nextInit.prepTimeMinutes)
         setCookTimeMinutes(nextInit.cookTimeMinutes)
         setImageUrl(nextInit.imageUrl)
@@ -442,13 +436,13 @@ export function RecipeFormPage({
           id: activeId || 0,
           title: finalTitle,
           description: finalDesc,
-          yield_amount: finalYield,
+          yield_amount: finalYieldAmt || 4,
+          yield_unit: finalYieldUnit,
           prep_time_minutes: finalPrep,
           cook_time_minutes: finalCook,
           total_time_minutes: finalTotal,
           image_url: finalImage,
           source_url: finalSourceUrl,
-          notes: '',
           ingredients: finalIng,
           instructions: finalInst,
           tags: finalTags,
@@ -508,7 +502,9 @@ export function RecipeFormPage({
           cookTimeMinutes={cookTimeMinutes}
           onCookTimeChange={setCookTimeMinutes}
           yieldAmount={yieldAmount}
-          onYieldChange={setYieldAmount}
+          onYieldAmountChange={setYieldAmount}
+          yieldUnit={yieldUnit}
+          onYieldUnitChange={setYieldUnit}
           sourceUrl={sourceUrl}
           onSourceUrlChange={setSourceUrl}
           mandatory={mandatory}

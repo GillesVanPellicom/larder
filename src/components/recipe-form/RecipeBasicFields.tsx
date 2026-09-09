@@ -2,7 +2,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { Stepper } from '@/components/ui/stepper'
-import { YieldStepper } from './YieldStepper'
+import { UnitStepper } from '@/components/ui/unit-stepper'
 import type { MandatoryFieldsConfig, TimeTrackingMode } from '@/shared/types'
 
 interface RecipeBasicFieldsProps {
@@ -14,8 +14,10 @@ interface RecipeBasicFieldsProps {
   onPrepTimeChange: (val: number | '') => void
   cookTimeMinutes: number | ''
   onCookTimeChange: (val: number | '') => void
-  yieldAmount: string
-  onYieldChange: (val: string) => void
+  yieldAmount: number | ''
+  onYieldAmountChange: (val: number | '') => void
+  yieldUnit: string
+  onYieldUnitChange: (val: string) => void
   sourceUrl: string
   onSourceUrlChange: (val: string) => void
   mandatory: MandatoryFieldsConfig
@@ -35,7 +37,9 @@ export function RecipeBasicFields({
   cookTimeMinutes,
   onCookTimeChange,
   yieldAmount,
-  onYieldChange,
+  onYieldAmountChange,
+  yieldUnit,
+  onYieldUnitChange,
   sourceUrl,
   onSourceUrlChange,
   mandatory,
@@ -183,12 +187,21 @@ export function RecipeBasicFields({
             <label className="text-xs font-semibold text-foreground">
               Yield {mandatory.yield_amount && <span className="text-destructive">*</span>}
             </label>
-            <YieldStepper
-              value={yieldAmount}
-              onChange={(val) => {
-                onYieldChange(val)
+            <UnitStepper
+              amount={yieldAmount}
+              unit={yieldUnit}
+              onAmountChange={(val) => {
+                onYieldAmountChange(val)
                 if (fieldErrors.yield_amount) onClearFieldError('yield_amount')
               }}
+              onUnitChange={(val) => {
+                onYieldUnitChange(val)
+                if (fieldErrors.yield_amount) onClearFieldError('yield_amount')
+              }}
+              amountPlaceholder="4"
+              unitPlaceholder="servings"
+              amountAriaLabel="Yield quantity"
+              unitAriaLabel="Yield unit"
               hasError={Boolean(fieldErrors.yield_amount)}
             />
             {fieldErrors.yield_amount && (

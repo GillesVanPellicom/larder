@@ -18,21 +18,16 @@ export interface Recipe {
   id: number
   title: string
   description: string
-  yield_amount: string
+  yield_amount: number
+  yield_unit: string
   prep_time_minutes: number
   cook_time_minutes: number
   total_time_minutes: number
   image_url: string
   source_url: string
-  notes: string
   ingredients: IngredientItem[]
   instructions: string | InstructionStep[]
   tags: RecipeTags
-  // Dynamic Template Fields
-  template_id?: string
-  template_version_id?: number
-  field_values?: Record<string, unknown>
-  archived_values?: Record<string, unknown>
   created_at: string
   updated_at: string
 }

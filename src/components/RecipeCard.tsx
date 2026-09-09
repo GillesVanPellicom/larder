@@ -141,7 +141,7 @@ export function RecipeCard({
             {Boolean(recipe.yield_amount) && (
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/80 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md shadow-md border border-white/10">
                 <Users className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                <span>{recipe.yield_amount}</span>
+                <span>{recipe.yield_amount} {recipe.yield_unit || 'servings'}</span>
               </span>
             )}
             {ingredientCount > 0 && (

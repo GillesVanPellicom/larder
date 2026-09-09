@@ -157,7 +157,10 @@ export function RecipeHero({
           </span>
           <div className="flex items-center justify-center gap-1 mt-1 flex-wrap">
             <span className="text-sm sm:text-base font-bold text-foreground underline underline-offset-4 decoration-muted-foreground/50 group-hover:decoration-foreground transition-colors">
-              {renderYieldValue(scaledYield || recipe.yield_amount || '—', Math.abs(yieldMultiplier - 1) > 0.001)}
+              {renderYieldValue(
+                scaledYield || (recipe.yield_amount ? `${recipe.yield_amount} ${recipe.yield_unit || 'servings'}` : '—'),
+                Math.abs(yieldMultiplier - 1) > 0.001
+              )}
             </span>
             {Math.abs(yieldMultiplier - 1) > 0.001 && (
               <span className="text-[11px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">

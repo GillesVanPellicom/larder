@@ -14,7 +14,8 @@ export function validateRecipeForm(
   data: {
     title: string
     description: string
-    yield_amount: string
+    yield_amount: number | ''
+    yield_unit?: string
     prep_time_minutes: number | ''
     cook_time_minutes: number | ''
     image_url: string
@@ -45,7 +46,8 @@ export function validateRecipeForm(
   const recipeSchema = z.object({
     title: z.string().trim().min(1, { message: 'Recipe title is required.' }),
     description: z.string().trim(),
-    yield_amount: z.string().trim(),
+    yield_amount: z.union([z.number().min(1), z.literal('')]),
+    yield_unit: z.string().trim().optional(),
     prep_time_minutes: z.union([z.number().min(0), z.literal('')]),
     cook_time_minutes: z.union([z.number().min(0), z.literal('')]),
     image_url: z.string().trim(),
@@ -56,6 +58,7 @@ export function validateRecipeForm(
     title: data.title,
     description: data.description,
     yield_amount: data.yield_amount,
+    yield_unit: data.yield_unit,
     prep_time_minutes: data.prep_time_minutes,
     cook_time_minutes: data.cook_time_minutes,
     image_url: data.image_url,
@@ -80,7 +83,10 @@ export function validateRecipeForm(
     errors.description = 'Description is required under current metadata rules.'
   }
 
-  if (mandatory.yield_amount && !data.yield_amount.trim()) {
+  if (
+    mandatory.yield_amount &&
+    (data.yield_amount === '' || Number(data.yield_amount) <= 0)
+  ) {
     errors.yield_amount = 'Yield is required under current metadata rules.'
   }
 

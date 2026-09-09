@@ -172,9 +172,7 @@ export function App() {
                     recipe={activeRecipe}
                     categories={categories}
                     template={
-                      templates.find(
-                        (t) => t.id === (activeRecipe.template_id || 'tpl_default')
-                      ) || templates[0] || null
+                      templates.find((t) => t.isDefault) || templates[0] || null
                     }
                     timeTrackingMode={metadataConfig?.timeTrackingMode || 'prep_and_cook'}
                     onTagClick={handleFilterByTagAndNavigate}

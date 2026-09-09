@@ -107,14 +107,22 @@ export function scaleAmount(
  * "6" * 0.5 -> "3"
  */
 export function scaleYield(
-  yieldText: string | undefined | null,
-  multiplier: number
+  yieldValue: number | string | undefined | null,
+  multiplier: number,
+  unit?: string | null
 ): string {
-  if (!yieldText || !yieldText.trim()) {
+  if (typeof yieldValue === 'number') {
+    if (yieldValue <= 0) return multiplier === 1 ? '' : `${formatGracefulNumber(multiplier)}×`
+    const scaledNum = formatGracefulNumber(yieldValue * multiplier)
+    const trimmedUnit = unit?.trim() || 'servings'
+    return `${scaledNum} ${trimmedUnit}`
+  }
+
+  if (!yieldValue || !String(yieldValue).trim()) {
     return multiplier === 1 ? '' : `${formatGracefulNumber(multiplier)}×`
   }
 
-  const text = yieldText.trim()
+  const text = String(yieldValue).trim()
 
   // Range inside text: "Serves 4 to 6" or "4 - 6 portions"
   const rangeMatch = text.match(/^(\D*)(\d+(?:\.\d+)?)\s*(-|–|to)\s*(\d+(?:\.\d+)?)(\D*)$/i)

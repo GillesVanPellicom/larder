@@ -77,8 +77,8 @@ export function RecipeViewPage({
   )
 
   const scaledYield = useMemo(
-    () => scaleYield(recipe.yield_amount, yieldMultiplier),
-    [recipe.yield_amount, yieldMultiplier]
+    () => scaleYield(recipe.yield_amount, yieldMultiplier, recipe.yield_unit),
+    [recipe.yield_amount, recipe.yield_unit, yieldMultiplier]
   )
 
   const toggleIngredient = (id: string) => {
