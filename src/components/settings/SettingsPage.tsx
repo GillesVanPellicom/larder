@@ -39,7 +39,7 @@ export function SettingsPage({
   const [showConfirmBack, setShowConfirmBack] = useState(false)
   const [pendingTab, setPendingTab] = useState<'rules' | 'appearance' | 'integrations' | null>(null)
   const { theme, setTheme } = useTheme()
-  const { canInstall, triggerInstall } = usePwa()
+  const { canInstall, isInstalled, triggerInstall } = usePwa()
 
   const handleBackClick = () => {
     if (isRulesDirty) {
@@ -222,29 +222,49 @@ export function SettingsPage({
           </div>
 
           {/* Progressive Web App Install Option */}
-          {canInstall && (
-            <div className="rounded-2xl border border-border bg-card p-6 space-y-3 shadow-xs">
-              <div className="flex items-center justify-between">
-                <div>
+          <div className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
                   <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-                    App Installation
+                    Desktop & Mobile App
                   </h2>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Install Larder on your device for fast offline access.
-                  </p>
+                  {isInstalled && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                      <Check className="h-3 w-3" /> Installed
+                    </span>
+                  )}
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {isInstalled
+                    ? 'Larder is running as a standalone app on your device.'
+                    : 'Download Larder as a standalone desktop or mobile application for instant launch.'}
+                </p>
+              </div>
+
+              {!isInstalled && canInstall && (
                 <Button
-                  variant="outline"
                   size="sm"
                   onClick={triggerInstall}
-                  className="cursor-pointer gap-1.5"
+                  className="cursor-pointer gap-1.5 shrink-0"
                 >
                   <Download className="h-4 w-4" />
                   <span>Install App</span>
                 </Button>
-              </div>
+              )}
             </div>
-          )}
+
+            {!isInstalled && !canInstall && (
+              <div className="p-3.5 rounded-xl border border-border/80 bg-muted/30 text-xs text-muted-foreground space-y-1.5">
+                <p className="font-semibold text-foreground flex items-center gap-1.5">
+                  <Download className="h-3.5 w-3.5" /> Installing on Desktop (Chrome, Edge, Brave)
+                </p>
+                <p>
+                  Click the <strong>Install</strong> icon (⊕) in your browser's address bar, or click the browser menu (⋮) → <strong>Install Larder</strong> to add it to your desktop dock or taskbar.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

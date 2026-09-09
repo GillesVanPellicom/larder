@@ -39,12 +39,43 @@ export function SaveBar({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isDirtyRef = useRef(isDirty)
   isDirtyRef.current = isDirty
+  const prevDirtyRef = useRef(isDirty)
+
+  const prevSubmittingRef = useRef(submitting)
+  const submittingEverActiveRef = useRef(false)
 
   const clearPendingTimers = () => {
     if (timerRef.current) {
       clearTimeout(timerRef.current)
       timerRef.current = null
     }
+  }
+
+  // Clear timers on component unmount only
+  useEffect(() => {
+    return () => {
+      clearPendingTimers()
+    }
+  }, [])
+
+  const triggerSavedSequence = () => {
+    clearPendingTimers()
+    const elapsed = saveStartRef.current ? Date.now() - saveStartRef.current : 600
+    const delay = Math.max(0, 600 - elapsed)
+
+    timerRef.current = setTimeout(() => {
+      if (isDirtyRef.current) {
+        setPhase('idle')
+        saveStartRef.current = null
+        return
+      }
+      setPhase('saved')
+      saveStartRef.current = null
+
+      timerRef.current = setTimeout(() => {
+        setPhase('idle')
+      }, 1400)
+    }, delay)
   }
 
   // Trigger error phase when error prop is passed
@@ -63,7 +94,6 @@ export function SaveBar({
 
       return () => {
         clearTimeout(shakeTimer)
-        clearPendingTimers()
       }
     }
   }, [error])
@@ -71,52 +101,42 @@ export function SaveBar({
   // Track submitting state changes from parent
   useEffect(() => {
     if (submitting) {
+      submittingEverActiveRef.current = true
       clearPendingTimers()
-      saveStartRef.current = Date.now()
+      if (!saveStartRef.current) {
+        saveStartRef.current = Date.now()
+      }
       setPhase('saving')
-    } else if (saveStartRef.current !== null) {
-      // If the form has become dirty again while saving was in-flight, return to idle unsaved state immediately
+    } else if (prevSubmittingRef.current && !submitting) {
+      // Submitting just transitioned from true to false
       if (isDirtyRef.current) {
         clearPendingTimers()
         saveStartRef.current = null
+        submittingEverActiveRef.current = false
         setPhase('idle')
       } else {
-        const elapsed = Date.now() - saveStartRef.current
-        const delay = Math.max(0, 800 - elapsed)
-
-        clearPendingTimers()
-        timerRef.current = setTimeout(() => {
-          if (isDirtyRef.current) {
-            setPhase('idle')
-            saveStartRef.current = null
-            return
-          }
-          setPhase('saved')
-          saveStartRef.current = null
-
-          timerRef.current = setTimeout(() => {
-            setPhase('idle')
-          }, 1400)
-        }, delay)
+        triggerSavedSequence()
       }
     }
-
-    return () => {
-      clearPendingTimers()
-    }
+    prevSubmittingRef.current = submitting
   }, [submitting])
 
-  // React immediately to isDirty changes:
-  // If the form becomes dirty during 'saved', 'saving', or 'error' phase, immediately revert to idle unsaved state without blur
+  // React immediately when the form becomes dirty again during or after saving:
+  // If the form transitions from clean to dirty while in 'saved', or if isDirty is true during 'saved' phase,
+  // immediately revert to the idle unsaved state without blur/checkmark.
   useEffect(() => {
-    if (isDirty) {
+    const wasDirty = prevDirtyRef.current
+    prevDirtyRef.current = isDirty
+
+    if ((!wasDirty && isDirty) || (isDirty && phase === 'saved')) {
       if (phase === 'saved' || phase === 'error') {
         clearPendingTimers()
         saveStartRef.current = null
+        submittingEverActiveRef.current = false
         setPhase('idle')
         setActiveError(null)
       }
-    } else {
+    } else if (!isDirty) {
       // Reset phase when isDirty drops to false outside of active saving/saved
       if (phase !== 'saving' && phase !== 'saved') {
         clearPendingTimers()
@@ -130,6 +150,11 @@ export function SaveBar({
   const handleSaveClick = async () => {
     if (phase === 'saving' || phase === 'saved' || submitting) return
 
+    clearPendingTimers()
+    saveStartRef.current = Date.now()
+    submittingEverActiveRef.current = false
+    setPhase('saving')
+
     if (formId) {
       const form = document.getElementById(formId) as HTMLFormElement | null
       if (form) {
@@ -142,47 +167,29 @@ export function SaveBar({
     }
 
     if (onSave) {
-      clearPendingTimers()
-      saveStartRef.current = Date.now()
-      setPhase('saving')
       try {
         await onSave()
-        // If submitting prop is not used, manage completion here
-        if (!submitting) {
+        // If parent didn't toggle the submitting prop, manage the saved completion sequence here
+        if (!submittingEverActiveRef.current) {
           if (isDirtyRef.current) {
             clearPendingTimers()
             saveStartRef.current = null
             setPhase('idle')
           } else {
-            const elapsed = Date.now() - (saveStartRef.current || 0)
-            const delay = Math.max(0, 800 - elapsed)
-
-            clearPendingTimers()
-            timerRef.current = setTimeout(() => {
-              if (isDirtyRef.current) {
-                setPhase('idle')
-                saveStartRef.current = null
-                return
-              }
-              setPhase('saved')
-              saveStartRef.current = null
-
-              timerRef.current = setTimeout(() => {
-                setPhase('idle')
-              }, 1400)
-            }, delay)
+            triggerSavedSequence()
           }
         }
       } catch (err: unknown) {
         console.error(err)
+        clearPendingTimers()
         saveStartRef.current = null
+        submittingEverActiveRef.current = false
         const msg = err instanceof Error ? err.message : 'Some choices are invalid'
         setActiveError(msg)
         setPhase('error')
         setIsShaking(true)
         setTimeout(() => setIsShaking(false), 500)
 
-        clearPendingTimers()
         timerRef.current = setTimeout(() => {
           setPhase('idle')
           setActiveError(null)

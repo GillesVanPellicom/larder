@@ -151,7 +151,10 @@ export class RecipeQueryService {
         if (cleanTags.length === 0) continue
 
         const tagClauses = cleanTags.map(
-          (tag) => sql`${recipes.tags}->${catId} @> jsonb_build_array(${tag})`
+          (tag) => sql`EXISTS (
+            SELECT 1 FROM jsonb_array_elements_text(coalesce(${recipes.tags}->${catId}, '[]'::jsonb)) AS elem
+            WHERE lower(elem) = lower(${tag})
+          )`
         )
 
         if (catMode === 'all') {

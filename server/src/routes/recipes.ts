@@ -146,7 +146,7 @@ router.get('/', async (req, res) => {
       selectedIngredients,
       ingredientsMatchMode: (query.ingredientsMatchMode as MatchMode) || 'any',
       selectedTags,
-      tagsMatchMode: (query.tagsMatchMode as MatchMode) || 'all',
+      tagsMatchMode: (query.tagsMatchMode as MatchMode) || 'any',
       categoryTagsMatchMode,
       maxTotalTime: query.maxTotalTime ? Number(query.maxTotalTime) : undefined,
       maxPrepTime: query.maxPrepTime ? Number(query.maxPrepTime) : undefined,

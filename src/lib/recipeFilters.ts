@@ -4,7 +4,7 @@ export const DEFAULT_FILTER_CRITERIA: FilterCriteria = {
   searchQuery: '',
   matchModePerElement: {
     ingredients: 'any',
-    tags: 'all',
+    tags: 'any',
     categoryTags: {},
   },
   selectedIngredients: [],
@@ -128,17 +128,18 @@ export function filterRecipes(
     if (selectedCatEntries.length > 0) {
       for (const [catId, wantedTags] of selectedCatEntries) {
         if (!wantedTags || wantedTags.length === 0) continue
-        const recipeTagsInCat = recipe.tags?.[catId] || []
-        const catMode = criteria.matchModePerElement.categoryTags[catId] || 'any'
+        const recipeTagsInCat = (recipe.tags?.[catId] || []).map((t) => t.toLowerCase().trim())
+        const catMode = criteria.matchModePerElement.categoryTags[catId] || criteria.matchModePerElement.tags || 'any'
+        const lowerWanted = wantedTags.map((w) => w.toLowerCase().trim())
 
         if (catMode === 'all') {
-          const hasAllTags = wantedTags.every((w) => recipeTagsInCat.includes(w))
+          const hasAllTags = lowerWanted.every((w) => recipeTagsInCat.includes(w))
           if (!hasAllTags) return false
         } else if (catMode === 'none') {
-          const hasAnyTag = wantedTags.some((w) => recipeTagsInCat.includes(w))
+          const hasAnyTag = lowerWanted.some((w) => recipeTagsInCat.includes(w))
           if (hasAnyTag) return false
         } else {
-          const hasAnyTag = wantedTags.some((w) => recipeTagsInCat.includes(w))
+          const hasAnyTag = lowerWanted.some((w) => recipeTagsInCat.includes(w))
           if (!hasAnyTag) return false
         }
       }
