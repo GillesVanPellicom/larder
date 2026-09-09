@@ -55,7 +55,7 @@ function updateEnvFile(updates: Record<string, string | null>): void {
 export function getDatabaseUrl(): string {
   return (
     process.env.DATABASE_URL ||
-    'postgresql://coquinaria:coquinaria_secret@localhost:5432/coquinaria'
+    'postgresql://larder:larder_secret@localhost:5432/larder'
   )
 }
 

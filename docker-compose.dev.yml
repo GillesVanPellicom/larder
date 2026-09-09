@@ -1,20 +1,20 @@
-name: coquinaria-dev
+name: larder-dev
 
 services:
   db:
     image: postgres:16-alpine
-    container_name: coquinaria-dev-db
+    container_name: larder-dev-db
     restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: coquinaria
-      POSTGRES_PASSWORD: coquinaria_secret
-      POSTGRES_DB: coquinaria
+      POSTGRES_USER: larder
+      POSTGRES_PASSWORD: larder_secret
+      POSTGRES_DB: larder
     volumes:
       - dev_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U coquinaria -d coquinaria"]
+      test: ["CMD-SHELL", "pg_isready -U larder -d larder"]
       interval: 3s
       timeout: 3s
       retries: 5

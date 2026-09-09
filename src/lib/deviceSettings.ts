@@ -13,7 +13,8 @@ export const DEFAULT_DEVICE_SETTINGS: DeviceSettings = {
   recipesPerPage: 12,
 }
 
-const COOKIE_PREFIX = 'coquinaria_'
+const COOKIE_PREFIX = 'larder_'
+const LEGACY_COOKIE_PREFIX = 'coquinaria_'
 
 type SettingsListener = (settings: DeviceSettings) => void
 const listeners = new Set<SettingsListener>()
@@ -42,7 +43,7 @@ export function getDeviceSetting<K extends keyof DeviceSettings>(key: K): Device
   }
 
   if (key === 'theme') {
-    const raw = getCookie(`${COOKIE_PREFIX}theme`)
+    const raw = getCookie(`${COOKIE_PREFIX}theme`) || getCookie(`${LEGACY_COOKIE_PREFIX}theme`)
     if (raw === 'light' || raw === 'dark') {
       return raw as DeviceSettings[K]
     }
@@ -65,7 +66,7 @@ export function getDeviceSetting<K extends keyof DeviceSettings>(key: K): Device
   }
 
   if (key === 'recipesPerPage') {
-    const raw = getCookie(`${COOKIE_PREFIX}recipes_per_page`)
+    const raw = getCookie(`${COOKIE_PREFIX}recipes_per_page`) || getCookie(`${LEGACY_COOKIE_PREFIX}recipes_per_page`)
     const parsed = parseInt(raw || '', 10)
     if (!isNaN(parsed) && [6, 12, 24, 48, 96].includes(parsed)) {
       return parsed as DeviceSettings[K]
@@ -73,7 +74,7 @@ export function getDeviceSetting<K extends keyof DeviceSettings>(key: K): Device
     return DEFAULT_DEVICE_SETTINGS.recipesPerPage as DeviceSettings[K]
   }
 
-  const raw = getCookie(`${COOKIE_PREFIX}${key}`)
+  const raw = getCookie(`${COOKIE_PREFIX}${key}`) || getCookie(`${LEGACY_COOKIE_PREFIX}${key}`)
   return (raw as DeviceSettings[K]) ?? DEFAULT_DEVICE_SETTINGS[key]
 }
 
@@ -101,7 +102,7 @@ function notifySubscribers(settings: DeviceSettings): void {
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(
-      new CustomEvent('coquinaria:device-settings-change', {
+      new CustomEvent('larder:device-settings-change', {
         detail: settings,
       })
     )

@@ -20,7 +20,7 @@ dist-server
 .env
 .env.*
 !.env.example
-.coquinaria_config.json
+.larder_config.json
 *.local
 
 # Editor directories and files

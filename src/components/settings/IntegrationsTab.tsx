@@ -329,14 +329,14 @@ export function IntegrationsTab() {
               <label className="text-xs font-semibold text-foreground">
                 Connection String
               </label>
-              <InfoTooltip content="Standard PostgreSQL connection URI (e.g. postgresql://user:password@localhost:5432/coquinaria?sslmode=verify-full). Applied globally across all app users." />
+              <InfoTooltip content="Standard PostgreSQL connection URI (e.g. postgresql://user:password@localhost:5432/larder?sslmode=verify-full). Applied globally across all app users." />
             </div>
             <div className="relative">
               <Input
                 type={showDbPassword ? 'text' : 'password'}
                 value={connStringInput}
                 onChange={(e) => setConnStringInput(e.target.value)}
-                placeholder="postgresql://user:password@localhost:5432/coquinaria"
+                placeholder="postgresql://user:password@localhost:5432/larder"
                 className="pr-10 font-mono text-xs"
               />
               <button
@@ -471,12 +471,12 @@ export function IntegrationsTab() {
                 <label className="text-xs font-semibold text-foreground">
                   Bucket Name
                 </label>
-                <InfoTooltip content="Name of your object storage bucket (e.g. coquinaria-images)." />
+                <InfoTooltip content="Name of your object storage bucket (e.g. larder-images)." />
               </div>
               <Input
                 value={bucket}
                 onChange={(e) => setBucket(e.target.value)}
-                placeholder="coquinaria-images"
+                placeholder="larder-images"
                 className="font-mono text-xs"
               />
             </div>

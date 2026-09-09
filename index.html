@@ -14,7 +14,7 @@
     <script>
       (function() {
         try {
-          var match = document.cookie.match(/(?:^|;\s*)coquinaria_theme=([^;]+)/);
+          var match = document.cookie.match(/(?:^|;\s*)larder_theme=([^;]+)/) || document.cookie.match(/(?:^|;\s*)coquinaria_theme=([^;]+)/);
           var theme = match ? decodeURIComponent(match[1]) : null;
           if (!theme) {
             var legacy = localStorage.getItem('larder-theme');

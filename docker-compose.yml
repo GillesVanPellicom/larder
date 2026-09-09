@@ -1,47 +1,47 @@
-name: coquinaria
+name: larder
 
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    image: coquinaria-app:latest
-    container_name: coquinaria-app
+    image: larder-app:latest
+    container_name: larder-app
     restart: unless-stopped
     ports:
       - "${APP_PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-coquinaria}:${POSTGRES_PASSWORD:-coquinaria_secret}@db:5432/${POSTGRES_DB:-coquinaria}?sslmode=disable
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-larder}:${POSTGRES_PASSWORD:-larder_secret}@db:5432/${POSTGRES_DB:-larder}?sslmode=disable
     depends_on:
       db:
         condition: service_healthy
     networks:
-      - coquinaria-network
+      - larder-network
 
   db:
     image: postgres:16-alpine
-    container_name: coquinaria-db
+    container_name: larder-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-coquinaria}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-coquinaria_secret}
-      POSTGRES_DB: ${POSTGRES_DB:-coquinaria}
+      POSTGRES_USER: ${POSTGRES_USER:-larder}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-larder_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-larder}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-coquinaria} -d ${POSTGRES_DB:-coquinaria}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-larder} -d ${POSTGRES_DB:-larder}"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      - coquinaria-network
+      - larder-network
 
 volumes:
   postgres_data:
     driver: local
 
 networks:
-  coquinaria-network:
+  larder-network:
     driver: bridge

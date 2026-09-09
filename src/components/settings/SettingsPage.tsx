@@ -152,7 +152,7 @@ export function SettingsPage({
                 Theme Preference
               </h2>
               <p className="text-xs text-muted-foreground mt-1">
-                Choose your preferred color theme for Coquinaria.
+                Choose your preferred color theme for Larder.
               </p>
             </div>
 
@@ -230,7 +230,7 @@ export function SettingsPage({
                     App Installation
                   </h2>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Install Coquinaria on your device for fast offline access.
+                    Install Larder on your device for fast offline access.
                   </p>
                 </div>
                 <Button

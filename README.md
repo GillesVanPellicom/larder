@@ -85,9 +85,9 @@ pnpm dev
 2. Name the stack `larder`.
 3. Choose **Web editor** and paste [`docker-compose.yml`](./docker-compose.yml), or link your Git repository.
 4. (Optional) Adjust variables:
-   - `POSTGRES_USER`: `coquinaria`
+   - `POSTGRES_USER`: `larder`
    - `POSTGRES_PASSWORD`: `<your-secure-password>`
-   - `POSTGRES_DB`: `coquinaria`
+   - `POSTGRES_DB`: `larder`
    - `APP_PORT`: `3000`
 5. Click **Deploy the stack**.
 
