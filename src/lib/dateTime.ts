@@ -61,3 +61,26 @@ export function formatBelgianTime(
     hour12: false,
   }).format(d)
 }
+
+/**
+ * Formats a date/timestamp with friendly relative context if recent, else Belgian date & time
+ */
+export function formatRelativeDate(
+  date: string | Date | number | null | undefined
+): string {
+  if (!date) return '—'
+  const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date
+  if (isNaN(d.getTime())) return '—'
+
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffMinutes = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+
+  if (diffMinutes < 1) return 'Just now'
+  if (diffMinutes < 60) return `${diffMinutes}m ago`
+  if (diffHours < 24 && now.getDate() === d.getDate()) return `Today at ${formatBelgianTime(d)}`
+  
+  return formatBelgianDateTime(d)
+}
+

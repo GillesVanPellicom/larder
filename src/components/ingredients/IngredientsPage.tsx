@@ -147,8 +147,33 @@ export function IngredientsPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-8rem)] space-y-5">
-      {/* Top Toolbar: Search & Info */}
+    <div className="space-y-6 w-full max-w-7xl mx-auto pb-32 sm:pb-36 animate-in fade-in duration-150">
+      {/* Top Header */}
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-light tracking-wide text-foreground">
+              Ingredients
+            </h1>
+            <InfoTooltip content="Ingredients used across recipes. Click column headers to sort by name, creation date, or recipe usage." />
+          </div>
+          <p className="mt-1 text-xs sm:text-sm text-muted-foreground font-light">
+            {loading ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Loading ingredients...</span>
+              </span>
+            ) : (
+              `${totalCount} unique ingredient${totalCount === 1 ? '' : 's'}`
+            )}
+          </p>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="border-b border-border" />
+
+      {/* Search Toolbar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -172,20 +197,6 @@ export function IngredientsPage() {
               <X className="h-4 w-4" />
             </button>
           )}
-        </div>
-
-        <div className="flex items-center gap-2 text-xs text-muted-foreground font-light justify-between sm:justify-end">
-          <span>
-            {loading ? (
-              <span className="flex items-center gap-1.5">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Loading...
-              </span>
-            ) : (
-              `${totalCount} ingredient${totalCount === 1 ? '' : 's'}`
-            )}
-          </span>
-          <InfoTooltip content="Ingredients used across recipes. Click column headers to sort by name, creation date, or recipe usage." />
         </div>
       </div>
 

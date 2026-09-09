@@ -161,6 +161,27 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
           created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS shopping_list_items (
+          id SERIAL PRIMARY KEY,
+          recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+          checked_ingredients JSONB NOT NULL DEFAULT '[]'::jsonb,
+          multiplier NUMERIC NOT NULL DEFAULT 1,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT uq_shopping_list_recipe UNIQUE (recipe_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_shopping_list_items_recipe_id ON shopping_list_items(recipe_id);
+        ALTER TABLE shopping_list_items ADD COLUMN IF NOT EXISTS multiplier NUMERIC NOT NULL DEFAULT 1;
+
+        CREATE TABLE IF NOT EXISTS shopping_list_history (
+          id SERIAL PRIMARY KEY,
+          recipe_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+          recipe_titles JSONB NOT NULL DEFAULT '[]'::jsonb,
+          ingredient_count INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
       `)
 
       if (isInitialDatabase) {

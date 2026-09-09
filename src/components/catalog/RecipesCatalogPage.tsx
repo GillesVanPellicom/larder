@@ -19,6 +19,7 @@ import { FloatingActionButton } from '@/components/ui/floating-action-button'
 import { PaginationControl } from '@/components/ui/pagination'
 import { Database, Loader2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useDeviceSettings } from '@/lib/deviceSettings'
 
 interface RecipesCatalogPageProps {
@@ -43,9 +44,9 @@ interface RecipesCatalogPageProps {
   onOpenFilterDrawer: (tab?: 'filters' | 'templates') => void
   onNewRecipe: () => void
   onOpenSettings: (tab?: 'rules' | 'appearance' | 'integrations') => void
+  isRecipeInShoppingList?: (recipeId: number) => boolean
+  onToggleShoppingList?: (recipe: Recipe) => void
   onViewRecipe: (recipe: Recipe) => void
-  onEditRecipe: (recipe: Recipe) => void
-  onDeleteRequest: (recipe: Recipe) => void
 }
 
 export function RecipesCatalogPage({
@@ -70,9 +71,9 @@ export function RecipesCatalogPage({
   onOpenFilterDrawer,
   onNewRecipe,
   onOpenSettings,
+  isRecipeInShoppingList,
+  onToggleShoppingList,
   onViewRecipe,
-  onEditRecipe,
-  onDeleteRequest,
 }: RecipesCatalogPageProps) {
   const [saveModalOpen, setSaveModalOpen] = useState(false)
   const { settings, setSetting } = useDeviceSettings()
@@ -158,6 +159,30 @@ export function RecipesCatalogPage({
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-6.5rem)]">
+      {/* Top Header */}
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-light tracking-wide text-foreground">
+              Recipes
+            </h1>
+            <InfoTooltip content="Browse, search, and filter your recipe collection. Filter by ingredients, tags, or cooking times." />
+          </div>
+          <p className="mt-1 text-xs sm:text-sm text-muted-foreground font-light">
+            {loading ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Loading recipes...</span>
+              </span>
+            ) : activeFiltersCount > 0 ? (
+              `${totalCount} matching recipe${totalCount === 1 ? '' : 's'}`
+            ) : (
+              `${totalCount} recipe${totalCount === 1 ? '' : 's'} in collection`
+            )}
+          </p>
+        </div>
+      </div>
+
       {/* Floating Action Button for New Recipe (Mobile only, replaces toolbar Add button) */}
       <FloatingActionButton
         icon={<Plus />}
@@ -240,10 +265,10 @@ export function RecipesCatalogPage({
                 categories={categories}
                 timeTrackingMode={timeTrackingMode}
                 selectedTags={filterCriteria.selectedTags}
+                isInShoppingList={isRecipeInShoppingList?.(recipe.id) ?? false}
+                onToggleShoppingList={onToggleShoppingList}
                 onToggleTag={onToggleTag}
                 onView={onViewRecipe}
-                onEdit={onEditRecipe}
-                onDeleteRequest={onDeleteRequest}
               />
             ))}
           </div>

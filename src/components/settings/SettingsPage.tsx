@@ -6,8 +6,8 @@ import { useTheme } from '@/hooks/useTheme'
 import { usePwa } from '@/hooks/usePwa'
 import type { MetadataConfig, TagCategory } from '@/shared/types'
 import { ConfirmUnsavedDialog } from '@/components/ConfirmUnsavedDialog'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import {
-  ArrowLeft,
   Check,
   Download,
   Moon,
@@ -23,7 +23,6 @@ export interface SettingsPageProps {
   initialTab?: 'rules' | 'appearance' | 'integrations'
   onSaveConfig: (config: MetadataConfig) => Promise<void>
   onRefreshCategories: () => Promise<void>
-  onBack?: () => void
 }
 
 export function SettingsPage({
@@ -32,22 +31,12 @@ export function SettingsPage({
   initialTab = 'rules',
   onSaveConfig,
   onRefreshCategories,
-  onBack,
 }: SettingsPageProps) {
   const [activeSubTab, setActiveSubTab] = useState<'rules' | 'appearance' | 'integrations'>(initialTab)
   const [isRulesDirty, setIsRulesDirty] = useState(false)
-  const [showConfirmBack, setShowConfirmBack] = useState(false)
   const [pendingTab, setPendingTab] = useState<'rules' | 'appearance' | 'integrations' | null>(null)
   const { theme, setTheme } = useTheme()
   const { canInstall, isInstalled, triggerInstall } = usePwa()
-
-  const handleBackClick = () => {
-    if (isRulesDirty) {
-      setShowConfirmBack(true)
-    } else {
-      onBack?.()
-    }
-  }
 
   const handleTabChange = (newTab: 'rules' | 'appearance' | 'integrations') => {
     if (newTab === activeSubTab) return
@@ -61,19 +50,19 @@ export function SettingsPage({
   return (
     <div className="space-y-6 w-full max-w-7xl mx-auto pb-32 sm:pb-36 animate-in fade-in duration-150">
       {/* Top Header */}
-      {onBack && (
-        <div className="flex items-center">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleBackClick}
-            title="Back"
-            className="h-9 w-9 cursor-pointer border-border hover:bg-muted text-foreground shrink-0"
-          >
-            <ArrowLeft className="h-4.5 w-4.5" />
-          </Button>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-light tracking-wide text-foreground">
+              Settings
+            </h1>
+            <InfoTooltip content="Configure tag categories, metadata validation rules, integrations, and application appearance." />
+          </div>
+          <p className="mt-1 text-xs sm:text-sm text-muted-foreground font-light">
+            Manage recipe rules, theme preferences, and connected services.
+          </p>
         </div>
-      )}
+      </div>
 
       {/* Primary Tabs */}
       <div className="flex items-center gap-2 sm:gap-6 border-b border-border">
@@ -260,18 +249,6 @@ export function SettingsPage({
           </div>
         </div>
       )}
-
-      {/* Confirmation Dialog for Back Navigation */}
-      <ConfirmUnsavedDialog
-        open={showConfirmBack}
-        onOpenChange={setShowConfirmBack}
-        onConfirmDiscard={() => {
-          setIsRulesDirty(false)
-          onBack?.()
-        }}
-        title="Discard unsaved settings?"
-        description="You have unsaved changes to your rules and configuration that will be lost."
-      />
 
       {/* Confirmation Dialog for Tab Switching */}
       <ConfirmUnsavedDialog

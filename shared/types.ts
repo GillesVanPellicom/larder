@@ -19,7 +19,13 @@ export interface InstructionStep {
   text: string
 }
 
-export type PageView = 'recipes' | 'recipe-view' | 'recipe-form' | 'settings'
+export type PageView =
+  | 'recipes'
+  | 'recipe-view'
+  | 'recipe-form'
+  | 'settings'
+  | 'shopping-list'
+  | 'ingredients'
 
 // Category ID -> Array of tag values (e.g. { season: ['Winter', 'Spring'], course: ['Main'] })
 export type RecipeTags = Record<string, string[]>
@@ -203,6 +209,40 @@ export interface CreateFilterTemplateDTO {
 export interface UpdateFilterTemplateDTO {
   name?: string
   criteria?: FilterCriteria
+}
+
+export interface ShoppingListItem {
+  id: number
+  recipe_id: number
+  recipe: Recipe
+  checked_ingredients: string[]
+  multiplier: number
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ShoppingListHistoryItem {
+  id: number
+  recipe_ids: number[]
+  recipe_titles: string[]
+  ingredient_count: number
+  created_at: string
+}
+
+export interface ConsolidatedIngredient {
+  name: string
+  displayQuantity: string
+  instances: Array<{
+    recipeId: number
+    recipeTitle: string
+    amount: string
+    unit: string
+    itemKey: string
+    isChecked: boolean
+  }>
+  isChecked: boolean
+  isPartial: boolean
 }
 
 

@@ -211,4 +211,38 @@ export interface UpdateFilterTemplateDTO {
   criteria?: FilterCriteria
 }
 
+export interface ShoppingListItem {
+  id: number
+  recipe_id: number
+  recipe: Recipe
+  checked_ingredients: string[]
+  multiplier: number
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ShoppingListHistoryItem {
+  id: number
+  recipe_ids: number[]
+  recipe_titles: string[]
+  ingredient_count: number
+  created_at: string
+}
+
+export interface ConsolidatedIngredient {
+  name: string
+  displayQuantity: string
+  instances: Array<{
+    recipeId: number
+    recipeTitle: string
+    amount: string
+    unit: string
+    itemKey: string
+    isChecked: boolean
+  }>
+  isChecked: boolean
+  isPartial: boolean
+}
+
 

@@ -8,6 +8,8 @@ import type {
   Recipe,
   RecipeConflict,
   RecipeQueryParams,
+  ShoppingListHistoryItem,
+  ShoppingListItem,
   StorageConfig,
   StorageConfigDTO,
   TagCategory,
@@ -427,6 +429,68 @@ export const filterTemplatesApi = {
       const errorBody = await res.json().catch(() => ({}))
       throw new Error(errorBody.error || `HTTP ${res.status}: ${res.statusText}`)
     }
+  },
+}
+
+export const shoppingListApi = {
+  async get(): Promise<{ items: ShoppingListItem[]; history: ShoppingListHistoryItem[] }> {
+    const res = await fetch('/api/shopping-list')
+    return handleResponse<{ items: ShoppingListItem[]; history: ShoppingListHistoryItem[] }>(res)
+  },
+
+  async add(recipeId: number, checkedIngredients?: string[], multiplier?: number): Promise<ShoppingListItem> {
+    const res = await fetch('/api/shopping-list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipeId, checkedIngredients, multiplier }),
+    })
+    return handleResponse<ShoppingListItem>(res)
+  },
+
+  async updateChecked(recipeId: number, checkedIngredients: string[]): Promise<{ success: boolean; checked_ingredients: string[] }> {
+    const res = await fetch(`/api/shopping-list/${recipeId}/checked`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ checkedIngredients }),
+    })
+    return handleResponse<{ success: boolean; checked_ingredients: string[] }>(res)
+  },
+
+  async updateMultiplier(recipeId: number, multiplier: number): Promise<{ success: boolean; multiplier: number }> {
+    const res = await fetch(`/api/shopping-list/${recipeId}/multiplier`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ multiplier }),
+    })
+    return handleResponse<{ success: boolean; multiplier: number }>(res)
+  },
+
+  async remove(recipeId: number): Promise<{ success: boolean; recipeId: number }> {
+    const res = await fetch(`/api/shopping-list/${recipeId}`, {
+      method: 'DELETE',
+    })
+    return handleResponse<{ success: boolean; recipeId: number }>(res)
+  },
+
+  async clear(): Promise<{ success: boolean }> {
+    const res = await fetch('/api/shopping-list/clear', {
+      method: 'POST',
+    })
+    return handleResponse<{ success: boolean }>(res)
+  },
+
+  async loadHistory(historyId: number): Promise<{ success: boolean; loadedRecipeIds: number[] }> {
+    const res = await fetch(`/api/shopping-list/load-history/${historyId}`, {
+      method: 'POST',
+    })
+    return handleResponse<{ success: boolean; loadedRecipeIds: number[] }>(res)
+  },
+
+  async deleteHistory(historyId: number): Promise<{ success: boolean; id: number }> {
+    const res = await fetch(`/api/shopping-list/history/${historyId}`, {
+      method: 'DELETE',
+    })
+    return handleResponse<{ success: boolean; id: number }>(res)
   },
 }
 

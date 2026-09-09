@@ -11,10 +11,14 @@ import type { PageView, Recipe } from '@/shared/types'
 import { Menu, Settings } from 'lucide-react'
 import { cn } from 'cn'
 
+import { Badge } from '@/components/ui/badge'
+
 export interface AppHeaderProps {
   currentView: PageView
   onNavigate: (view: PageView, recipe?: Recipe | null) => void
   onOpenSettings: (tab?: 'rules' | 'appearance' | 'integrations') => void
+  shoppingListCount?: number
+  isDatabaseConnected?: boolean
   className?: string
 }
 
@@ -22,6 +26,8 @@ export function AppHeader({
   currentView,
   onNavigate,
   onOpenSettings,
+  shoppingListCount,
+  isDatabaseConnected = true,
   className = '',
 }: AppHeaderProps) {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
@@ -55,7 +61,7 @@ export function AppHeader({
           {/* Left Area: Desktop Tabs & Mobile Menu Button */}
           <div className="flex-1 flex items-center justify-start min-w-0">
             {/* Mobile Menu Button */}
-            <div className="flex md:hidden">
+            <div className={cn('flex md:hidden', !isDatabaseConnected && 'invisible')}>
               <Button
                 type="button"
                 variant="ghost"
@@ -69,7 +75,7 @@ export function AppHeader({
             </div>
 
             {/* Desktop Tabs */}
-            <nav className="hidden md:flex items-center gap-1.5">
+            <nav className={cn('hidden md:flex items-center gap-1.5', !isDatabaseConnected && 'invisible')}>
               <Button
                 type="button"
                 variant="ghost"
@@ -91,13 +97,21 @@ export function AppHeader({
                 size="sm"
                 onClick={() => handleNav('shopping-list', null)}
                 className={cn(
-                  'rounded-full text-xs font-light px-3.5 h-9 tracking-[0.16em] uppercase transition-colors cursor-pointer text-foreground whitespace-nowrap',
+                  'rounded-full text-xs font-light px-3.5 h-9 tracking-[0.16em] uppercase transition-colors cursor-pointer text-foreground whitespace-nowrap gap-1.5',
                   isShoppingListActive
                     ? 'bg-muted/90 shadow-2xs'
                     : 'hover:bg-muted/40'
                 )}
               >
-                SHOPPING LIST
+                <span>SHOPPING LIST</span>
+                {shoppingListCount !== undefined && shoppingListCount > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px] px-1.5 py-0 h-4 font-bold font-mono bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                  >
+                    {shoppingListCount}
+                  </Badge>
+                )}
               </Button>
 
               <Button
@@ -194,13 +208,21 @@ export function AppHeader({
                 type="button"
                 onClick={() => handleNav('shopping-list', null)}
                 className={cn(
-                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-light tracking-[0.16em] uppercase transition-colors cursor-pointer text-left text-foreground',
+                  'flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-light tracking-[0.16em] uppercase transition-colors cursor-pointer text-left text-foreground',
                   isShoppingListActive
                     ? 'bg-muted/90 shadow-2xs'
                     : 'hover:bg-muted/40'
                 )}
               >
-                SHOPPING LIST
+                <span>SHOPPING LIST</span>
+                {shoppingListCount !== undefined && shoppingListCount > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="text-xs px-2 py-0.5 h-5 font-bold font-mono bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                  >
+                    {shoppingListCount}
+                  </Badge>
+                )}
               </button>
 
               <button

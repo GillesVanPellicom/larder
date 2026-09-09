@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, integer, jsonb, timestamp, boolean } from 'drizzle-orm/pg-core'
+import { pgTable, serial, varchar, text, integer, jsonb, timestamp, boolean, numeric } from 'drizzle-orm/pg-core'
 import type {
   FilterCriteria,
   InstructionStep,
@@ -74,6 +74,24 @@ export const filterTemplates = pgTable('filter_templates', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
+export const shoppingListItems = pgTable('shopping_list_items', {
+  id: serial('id').primaryKey(),
+  recipeId: integer('recipe_id').notNull().references(() => recipes.id, { onDelete: 'cascade' }),
+  checkedIngredients: jsonb('checked_ingredients').$type<string[]>().default([]).notNull(),
+  multiplier: numeric('multiplier').default('1').notNull(),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+export const shoppingListHistory = pgTable('shopping_list_history', {
+  id: serial('id').primaryKey(),
+  recipeIds: jsonb('recipe_ids').$type<number[]>().default([]).notNull(),
+  recipeTitles: jsonb('recipe_titles').$type<string[]>().default([]).notNull(),
+  ingredientCount: integer('ingredient_count').default(0).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
 export type IngredientRow = typeof ingredients.$inferSelect
 export type NewIngredientRow = typeof ingredients.$inferInsert
 export type RecipeRow = typeof recipes.$inferSelect
@@ -84,3 +102,7 @@ export type TagCategoryRow = typeof tagCategories.$inferSelect
 export type MetadataConfigRow = typeof metadataConfigTable.$inferSelect
 export type FilterTemplateRow = typeof filterTemplates.$inferSelect
 export type NewFilterTemplateRow = typeof filterTemplates.$inferInsert
+export type ShoppingListItemRow = typeof shoppingListItems.$inferSelect
+export type NewShoppingListItemRow = typeof shoppingListItems.$inferInsert
+export type ShoppingListHistoryRow = typeof shoppingListHistory.$inferSelect
+export type NewShoppingListHistoryRow = typeof shoppingListHistory.$inferInsert

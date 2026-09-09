@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ArrowLeft, ExternalLink, MoreHorizontal, Pencil, RotateCcw, Scale, Trash2 } from 'lucide-react'
+import { ArrowLeft, ExternalLink, MoreHorizontal, Pencil, RotateCcw, Scale, ShoppingBag, Trash2 } from 'lucide-react'
 import { RecipeHero } from './RecipeHero'
 import { RecipeIngredientsList } from './RecipeIngredientsList'
 import { RecipeInstructionsView } from './RecipeInstructionsView'
@@ -23,6 +23,10 @@ export interface RecipeViewPageProps {
   onBack: () => void
   onEdit: (recipe: Recipe) => void
   onDeleteRequest: (recipe: Recipe) => void
+  isInShoppingList?: boolean
+  initialYieldMultiplier?: number
+  onUpdateShoppingListMultiplier?: (recipeId: number, multiplier: number) => void
+  onToggleShoppingList?: (recipe: Recipe, checkedIngredients?: string[], multiplier?: number) => void
   hideTopBar?: boolean
 }
 
@@ -64,10 +68,14 @@ export function RecipeViewPage({
   onBack,
   onEdit,
   onDeleteRequest,
+  isInShoppingList = false,
+  initialYieldMultiplier = 1,
+  onUpdateShoppingListMultiplier,
+  onToggleShoppingList,
   hideTopBar = false,
 }: RecipeViewPageProps) {
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({})
-  const [yieldMultiplier, setYieldMultiplier] = useState(1)
+  const [yieldMultiplier, setYieldMultiplier] = useState(initialYieldMultiplier || 1)
   const [yieldModalOpen, setYieldModalOpen] = useState(false)
 
   const displayIngredients = useMemo(
@@ -82,6 +90,20 @@ export function RecipeViewPage({
 
   const toggleIngredient = (id: string) => {
     setCheckedIngredients((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  const handleApplyYieldMultiplier = (mult: number) => {
+    setYieldMultiplier(mult)
+    if (isInShoppingList && onUpdateShoppingListMultiplier) {
+      onUpdateShoppingListMultiplier(recipe.id, mult)
+    }
+  }
+
+  const handleToggleShoppingList = () => {
+    const tickedKeys = Object.entries(checkedIngredients)
+      .filter(([, checked]) => checked)
+      .map(([key]) => key)
+    onToggleShoppingList?.(recipe, tickedKeys, yieldMultiplier)
   }
 
   return (
@@ -113,6 +135,16 @@ export function RecipeViewPage({
               }
             />
             <DropdownMenuContent align="end" className="w-56 bg-card border-border shadow-md">
+              {onToggleShoppingList && (
+                <DropdownMenuItem
+                  onClick={handleToggleShoppingList}
+                  className="cursor-pointer gap-2 py-2 text-xs font-medium text-foreground"
+                >
+                  <ShoppingBag className="h-4 w-4" />
+                  <span>{isInShoppingList ? 'Remove from shopping list' : 'Add to shopping list'}</span>
+                </DropdownMenuItem>
+              )}
+
               <DropdownMenuItem
                 onClick={() => setYieldModalOpen(true)}
                 className="cursor-pointer gap-2 py-2 text-xs font-medium text-foreground"
@@ -173,7 +205,9 @@ export function RecipeViewPage({
             checkedIngredients={checkedIngredients}
             onToggleIngredient={toggleIngredient}
             yieldMultiplier={yieldMultiplier}
-            onResetYield={() => setYieldMultiplier(1)}
+            onResetYield={() => handleApplyYieldMultiplier(1)}
+            isInShoppingList={isInShoppingList}
+            onToggleShoppingList={onToggleShoppingList ? handleToggleShoppingList : undefined}
           />
         </div>
 
@@ -198,7 +232,7 @@ export function RecipeViewPage({
         open={yieldModalOpen}
         onOpenChange={setYieldModalOpen}
         currentMultiplier={yieldMultiplier}
-        onApplyMultiplier={setYieldMultiplier}
+        onApplyMultiplier={handleApplyYieldMultiplier}
       />
     </div>
   )

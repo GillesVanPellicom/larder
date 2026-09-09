@@ -1,6 +1,8 @@
 import { formatGracefulNumber } from '@/lib/recipeMath'
 import type { IngredientItem } from '@/shared/types'
-import { Check } from 'lucide-react'
+import { Check, ShoppingBag } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { cn } from 'cn'
 
 interface RecipeIngredientsListProps {
   ingredients: IngredientItem[]
@@ -8,6 +10,8 @@ interface RecipeIngredientsListProps {
   onToggleIngredient: (id: string) => void
   yieldMultiplier?: number
   onResetYield?: () => void
+  isInShoppingList?: boolean
+  onToggleShoppingList?: () => void
 }
 
 function renderAmountValue(amount: string, isScaled: boolean, isChecked: boolean) {
@@ -48,13 +52,15 @@ export function RecipeIngredientsList({
   onToggleIngredient,
   yieldMultiplier = 1,
   onResetYield,
+  isInShoppingList = false,
+  onToggleShoppingList,
 }: RecipeIngredientsListProps) {
   const isScaled = Math.abs(yieldMultiplier - 1) > 0.001
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <h2 className="text-base font-bold text-foreground">
             Ingredients
           </h2>
@@ -73,6 +79,31 @@ export function RecipeIngredientsList({
             </button>
           )}
         </div>
+
+        {onToggleShoppingList && (
+          <Button
+            type="button"
+            variant={isInShoppingList ? 'default' : 'outline'}
+            size="sm"
+            onClick={onToggleShoppingList}
+            className={cn(
+              "h-8 text-xs gap-1.5 cursor-pointer rounded-lg shrink-0",
+              isInShoppingList && "bg-primary text-primary-foreground"
+            )}
+          >
+            {isInShoppingList ? (
+              <>
+                <Check className="h-3.5 w-3.5 stroke-[2.5]" />
+                <span className="hidden sm:inline">In shopping list</span>
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="h-3.5 w-3.5" />
+                <span>Add to shopping list</span>
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-3 sm:p-4 shadow-xs space-y-1">

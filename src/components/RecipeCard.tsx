@@ -1,6 +1,5 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ButtonGroup } from '@/components/ui/button-group'
 import {
   Card,
   CardContent,
@@ -15,13 +14,14 @@ import {
 import type { Recipe, RecipeViolation, TagCategory, TimeTrackingMode } from '@/shared/types'
 import {
   AlertTriangle,
+  Check,
   Clock,
-  Pencil,
+  ShoppingBag,
   ShoppingBasket,
-  Trash2,
   Users,
   Utensils,
 } from 'lucide-react'
+import { cn } from 'cn'
 
 interface RecipeCardProps {
   recipe: Recipe
@@ -29,10 +29,10 @@ interface RecipeCardProps {
   categories: TagCategory[]
   timeTrackingMode?: TimeTrackingMode
   selectedTags?: Record<string, string[]>
+  isInShoppingList?: boolean
+  onToggleShoppingList?: (recipe: Recipe) => void
   onToggleTag?: (catId: string, tag: string) => void
   onView: (recipe: Recipe) => void
-  onEdit: (recipe: Recipe) => void
-  onDeleteRequest: (recipe: Recipe) => void
 }
 
 export function RecipeCard({
@@ -41,10 +41,10 @@ export function RecipeCard({
   categories,
   timeTrackingMode = 'prep_and_cook',
   selectedTags,
+  isInShoppingList = false,
+  onToggleShoppingList,
   onToggleTag,
   onView,
-  onEdit,
-  onDeleteRequest,
 }: RecipeCardProps) {
   const hasViolations = violations.length > 0
   const ingredientCount = recipe.ingredients?.length || 0
@@ -52,7 +52,10 @@ export function RecipeCard({
   return (
     <Card
       onClick={() => onView(recipe)}
-      className="group relative flex flex-col justify-between overflow-hidden p-0 pt-0 gap-0 transition-all duration-150 hover:brightness-105 dark:hover:brightness-110 cursor-pointer border border-border bg-card text-card-foreground shadow-xs select-none rounded-2xl"
+      className={cn(
+        "group relative flex flex-col justify-between overflow-hidden p-0 pt-0 gap-0 transition-all duration-150 hover:brightness-105 dark:hover:brightness-110 cursor-pointer border border-border bg-card text-card-foreground shadow-xs select-none rounded-2xl",
+        isInShoppingList && "ring-2 ring-primary/80 shadow-md shadow-primary/10 border-primary/50"
+      )}
     >
       {/* Top-Left: Error Badge */}
       {hasViolations && (
@@ -83,31 +86,41 @@ export function RecipeCard({
         </div>
       )}
 
-      {/* Top-Right: Cohesive Action ButtonGroup */}
+      {/* Top-Right: Add to Shopping List Button */}
       <div
-        className="absolute top-2.5 right-2.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+        className={cn(
+          "absolute top-2.5 right-2.5 z-20 transition-opacity duration-150",
+          isInShoppingList ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        )}
         onClick={(e) => e.stopPropagation()}
       >
-        <ButtonGroup orientation="horizontal" className="bg-black/80 backdrop-blur-md rounded-lg p-0.5 shadow-md border border-white/20">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => onEdit(recipe)}
-            title="Edit"
-            className="h-8 w-8 text-white hover:bg-white/20 hover:text-white cursor-pointer"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => onDeleteRequest(recipe)}
-            title="Delete"
-            className="h-8 w-8 text-red-400 hover:bg-red-500/20 hover:text-red-300 cursor-pointer"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </ButtonGroup>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onToggleShoppingList?.(recipe)}
+                className={cn(
+                  "h-8.5 w-8.5 rounded-lg backdrop-blur-md shadow-md border cursor-pointer transition-all",
+                  isInShoppingList
+                    ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+                    : "bg-black/80 text-white border-white/20 hover:bg-black/90 hover:scale-105"
+                )}
+                aria-label={isInShoppingList ? "Remove from shopping list" : "Add to shopping list"}
+              >
+                {isInShoppingList ? (
+                  <Check className="h-4 w-4 stroke-[2.5]" />
+                ) : (
+                  <ShoppingBag className="h-4 w-4" />
+                )}
+              </Button>
+            }
+          />
+          <TooltipContent side="bottom" align="end">
+            {isInShoppingList ? "Remove from shopping list" : "Add to shopping list"}
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       <div>

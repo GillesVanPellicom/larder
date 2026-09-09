@@ -13,6 +13,7 @@ import tagsRouter from './routes/tags'
 import conflictsRouter from './routes/conflicts'
 import ingredientsRouter from './routes/ingredients'
 import filterTemplatesRouter from './routes/filterTemplates'
+import shoppingListRouter from './routes/shoppingList'
 
 const app = express()
 
@@ -30,6 +31,7 @@ app.use('/api/tags', tagsRouter)
 app.use('/api/conflicts', conflictsRouter)
 app.use('/api/ingredients', ingredientsRouter)
 app.use('/api/filter-templates', filterTemplatesRouter)
+app.use('/api/shopping-list', shoppingListRouter)
 app.use('/api/recipes', recipesRouter)
 
 // In production or when client build exists, serve static React frontend

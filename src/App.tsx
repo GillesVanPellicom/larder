@@ -13,8 +13,10 @@ import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { useNavigation } from '@/hooks/useNavigation'
 import { useRecipesData } from '@/hooks/useRecipesData'
 import { useFilterTemplates } from '@/hooks/useFilterTemplates'
+import { useShoppingList } from '@/hooks/useShoppingList'
 import { useTheme } from '@/hooks/useTheme'
 import { useAppKeyboardShortcuts } from '@/hooks/useAppKeyboardShortcuts'
+import { recipesApi } from '@/services/api'
 
 export function App() {
   useTheme()
@@ -43,7 +45,6 @@ export function App() {
     violationsMap,
     isDatabaseConnected,
     loading,
-    loadAll,
     saveRecipe,
     deleteRecipe,
     saveConfig,
@@ -57,6 +58,24 @@ export function App() {
     deleteTemplate,
     applyTemplate,
   } = useFilterTemplates()
+
+  const {
+    items: shoppingListItems,
+    history: shoppingListHistory,
+    loading: shoppingListLoading,
+    consolidated: consolidatedIngredients,
+    uniqueIngredientsCount,
+    isRecipeInShoppingList,
+    getRecipeMultiplier,
+    updateRecipeMultiplier,
+    toggleRecipeInShoppingList,
+    toggleIngredientInRecipe,
+    toggleConsolidatedIngredient,
+    removeFromShoppingList,
+    clearShoppingList,
+    loadHistorySnapshot,
+    deleteHistorySnapshot,
+  } = useShoppingList()
 
   // Drawer & Deletion Dialog States
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false)
@@ -135,6 +154,23 @@ export function App() {
     navigateTo('recipes', null)
   }
 
+  // Navigate to recipe detail by ID (resolving cached recipe or fetching from API)
+  const handleViewRecipeById = async (recipeId: number) => {
+    const existing =
+      recipes.find((r) => r.id === recipeId) ||
+      shoppingListItems.find((i) => i.recipe_id === recipeId)?.recipe
+    if (existing) {
+      navigateTo('recipe-view', existing)
+      return
+    }
+    try {
+      const fullRecipe = await recipesApi.getById(recipeId)
+      navigateTo('recipe-view', fullRecipe)
+    } catch (err) {
+      console.error('[App] Failed to load recipe by ID for view:', err)
+    }
+  }
+
   return (
     <TooltipProvider delay={200}>
       <div className="min-h-screen bg-background text-foreground flex flex-col font-sans overflow-x-clip">
@@ -143,11 +179,18 @@ export function App() {
           {/* Universal Sticky Header */}
           <AppHeader
             currentView={currentView}
-            onNavigate={navigateTo}
+            onNavigate={(view) => {
+              if (view === 'recipes') {
+                resetFilters()
+              }
+              navigateTo(view, null)
+            }}
             onOpenSettings={(tab) => {
               if (tab) setSettingsTab(tab)
               navigateTo('settings', null)
             }}
+            shoppingListCount={uniqueIngredientsCount}
+            isDatabaseConnected={isDatabaseConnected}
           />
 
           {/* VIEW 1: Recipes Catalog */}
@@ -180,9 +223,9 @@ export function App() {
                 if (tab) setSettingsTab(tab)
                 navigateTo('settings', null)
               }}
+              isRecipeInShoppingList={isRecipeInShoppingList}
+              onToggleShoppingList={(recipe) => void toggleRecipeInShoppingList(recipe.id)}
               onViewRecipe={(recipe) => navigateTo('recipe-view', recipe)}
-              onEditRecipe={(recipe) => navigateTo('recipe-form', recipe)}
-              onDeleteRequest={(recipe) => setRecipeToDelete(recipe)}
             />
           )}
 
@@ -204,6 +247,14 @@ export function App() {
                     onBack={handleBack}
                     onEdit={(recipe) => navigateTo('recipe-form', recipe)}
                     onDeleteRequest={(recipe) => setRecipeToDelete(recipe)}
+                    isInShoppingList={isRecipeInShoppingList(activeRecipe.id)}
+                    initialYieldMultiplier={getRecipeMultiplier(activeRecipe.id)}
+                    onUpdateShoppingListMultiplier={(recipeId, mult) =>
+                      void updateRecipeMultiplier(recipeId, mult)
+                    }
+                    onToggleShoppingList={(recipe, checked, mult) =>
+                      void toggleRecipeInShoppingList(recipe.id, checked, mult)
+                    }
                   />
                 )}
 
@@ -230,15 +281,29 @@ export function App() {
               initialTab={settingsTab}
               onSaveConfig={saveConfig}
               onRefreshCategories={fetchCategories}
-              onBack={() => {
-                void loadAll()
-                navigateTo('recipes', null)
-              }}
             />
           )}
 
           {/* VIEW 5: Shopping List */}
-          {currentView === 'shopping-list' && <ShoppingListPage />}
+          {currentView === 'shopping-list' && (
+            <ShoppingListPage
+              items={shoppingListItems}
+              history={shoppingListHistory}
+              loading={shoppingListLoading}
+              consolidated={consolidatedIngredients}
+              uniqueIngredientsCount={uniqueIngredientsCount}
+              onToggleIngredientInRecipe={toggleIngredientInRecipe}
+              onToggleConsolidatedIngredient={toggleConsolidatedIngredient}
+              onUpdateRecipeMultiplier={updateRecipeMultiplier}
+              onRemoveRecipe={removeFromShoppingList}
+              onClearList={clearShoppingList}
+              onLoadHistory={loadHistorySnapshot}
+              onDeleteHistory={deleteHistorySnapshot}
+              onViewRecipe={(recipe) => navigateTo('recipe-view', recipe)}
+              onViewRecipeById={handleViewRecipeById}
+              onNavigateToCatalog={() => navigateTo('recipes', null)}
+            />
+          )}
 
           {/* VIEW 6: Ingredients Table */}
           {currentView === 'ingredients' && <IngredientsPage />}
