@@ -7,8 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { AddToTodoDialog } from '@/components/AddToTodoDialog'
-import { ArrowLeft, ExternalLink, ListTodo, MoreHorizontal, Pencil, RotateCcw, Scale, Trash2 } from 'lucide-react'
+import { ArrowLeft, ExternalLink, MoreHorizontal, Pencil, RotateCcw, Scale, Trash2 } from 'lucide-react'
 import { RecipeHero } from './RecipeHero'
 import { RecipeIngredientsList } from './RecipeIngredientsList'
 import { RecipeInstructionsView } from './RecipeInstructionsView'
@@ -28,6 +27,36 @@ export interface RecipeViewPageProps {
   hideTopBar?: boolean
 }
 
+function renderFormattedSource(text: string) {
+  if (!text) return null
+  // Split on URLs (http/https or www.)
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi
+  const parts = text.split(urlRegex)
+
+  return (
+    <span>
+      {parts.map((part, index) => {
+        if (/^(https?:\/\/|www\.)/i.test(part)) {
+          const href = part.startsWith('http') ? part : `https://${part}`
+          return (
+            <a
+              key={index}
+              href={href}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-primary underline inline-flex items-center gap-0.5 hover:opacity-80 break-all font-medium"
+            >
+              <span>{part}</span>
+              <ExternalLink className="h-3 w-3 inline shrink-0 ml-0.5" />
+            </a>
+          )
+        }
+        return <span key={index}>{part}</span>
+      })}
+    </span>
+  )
+}
+
 export function RecipeViewPage({
   recipe,
   categories,
@@ -39,7 +68,6 @@ export function RecipeViewPage({
   hideTopBar = false,
 }: RecipeViewPageProps) {
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({})
-  const [todoDialogOpen, setTodoDialogOpen] = useState(false)
   const [yieldMultiplier, setYieldMultiplier] = useState(1)
   const [yieldModalOpen, setYieldModalOpen] = useState(false)
 
@@ -104,15 +132,6 @@ export function RecipeViewPage({
                 </DropdownMenuItem>
               )}
 
-              <DropdownMenuItem
-                onClick={() => setTodoDialogOpen(true)}
-                disabled={displayIngredients.length === 0}
-                className="cursor-pointer gap-2 py-2 text-xs font-medium text-foreground"
-              >
-                <ListTodo className="h-4 w-4" />
-                <span>Export to Microsoft To Do</span>
-              </DropdownMenuItem>
-
               <DropdownMenuSeparator />
 
               <DropdownMenuItem
@@ -158,48 +177,21 @@ export function RecipeViewPage({
           />
         </div>
 
-        {/* Instructions & Notes Column */}
+        {/* Instructions Column */}
         <div className="md:col-span-2 space-y-6">
           <RecipeInstructionsView instructions={recipe.instructions} />
 
-          {/* Notes Block */}
-          {recipe.notes && (
-            <div className="rounded-2xl border border-amber-500/20 bg-amber-50/40 dark:bg-amber-950/15 p-5">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 mb-1.5">
-                Cook&apos;s Notes
-              </h3>
-              <p className="text-xs text-foreground/90 leading-relaxed whitespace-pre-wrap">
-                {recipe.notes}
-              </p>
-            </div>
-          )}
-
-          {/* Source Link */}
+          {/* Originally Adapted From */}
           {recipe.source_url && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>Originally adapted from:</span>
-              <a
-                href={recipe.source_url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-primary underline flex items-center gap-1 hover:opacity-80 truncate max-w-sm"
-              >
-                <span>{recipe.source_url}</span>
-                <ExternalLink className="h-3 w-3 inline shrink-0" />
-              </a>
+            <div className="flex items-start gap-1.5 text-xs text-muted-foreground pt-1">
+              <span className="font-semibold shrink-0 text-foreground/80">Originally adapted from:</span>
+              <span className="text-foreground/90">
+                {renderFormattedSource(recipe.source_url)}
+              </span>
             </div>
           )}
         </div>
       </div>
-
-      {/* Microsoft To Do Integration Dialog */}
-      <AddToTodoDialog
-        open={todoDialogOpen}
-        onOpenChange={setTodoDialogOpen}
-        recipeTitle={recipe.title}
-        ingredients={displayIngredients}
-        checkedIngredients={checkedIngredients}
-      />
 
       {/* Volatile Yield Multiplier Dialog */}
       <YieldMultiplierDialog

@@ -43,12 +43,12 @@ export function filterRecipes(
   violationsMap: Map<number, RecipeConflict['violations']>
 ): Recipe[] {
   return recipes.filter((recipe) => {
-    // 1. Text Search across Title, Description, Notes, Ingredients, Instructions
+    // 1. Text Search across Title, Description, Source, Ingredients, Instructions
     if (criteria.searchQuery.trim()) {
       const q = criteria.searchQuery.toLowerCase().trim()
       const titleMatch = recipe.title.toLowerCase().includes(q)
       const descMatch = (recipe.description || '').toLowerCase().includes(q)
-      const notesMatch = (recipe.notes || '').toLowerCase().includes(q)
+      const sourceMatch = (recipe.source_url || '').toLowerCase().includes(q)
       const ingredientMatch = (recipe.ingredients || []).some((i) =>
         i.name.toLowerCase().includes(q)
       )
@@ -62,7 +62,7 @@ export function filterRecipes(
             })
           : false
 
-      if (!titleMatch && !descMatch && !notesMatch && !ingredientMatch && !instructionMatch) {
+      if (!titleMatch && !descMatch && !sourceMatch && !ingredientMatch && !instructionMatch) {
         return false
       }
     }

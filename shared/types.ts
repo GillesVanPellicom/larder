@@ -184,6 +184,7 @@ export interface MandatoryFieldsConfig {
   yield_amount: boolean
   prep_time_minutes: boolean
   cook_time_minutes: boolean
+  source_url: boolean
 }
 
 export interface MetadataConfig {
@@ -228,3 +229,41 @@ export interface HealthCheckResponse {
   uptimeSeconds: number
   timestamp: string
 }
+
+export interface DatabaseConfig {
+  configured: boolean
+  connectionStringMasked?: string
+  healthy: boolean
+  error?: string
+  databaseVersion?: string
+}
+
+export interface StorageConfig {
+  configured: boolean
+  endpoint?: string
+  region?: string
+  bucket?: string
+  accessKeyId?: string
+  secretAccessKeyMasked?: string
+  publicUrlPrefix?: string
+  forcePathStyle?: boolean
+}
+
+export interface StorageConfigDTO {
+  endpoint: string
+  region?: string
+  bucket: string
+  accessKeyId: string
+  secretAccessKey: string
+  publicUrlPrefix: string
+  forcePathStyle?: boolean
+}
+
+export interface UploadImageResponse {
+  url: string
+  key: string
+  sizeBytes: number
+  contentType: string
+}
+
+

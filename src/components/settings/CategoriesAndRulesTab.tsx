@@ -109,6 +109,7 @@ export function CategoriesAndRulesTab({
       yield_amount: Boolean(metadataConfig?.mandatoryFields?.yield_amount),
       prep_time_minutes: Boolean(metadataConfig?.mandatoryFields?.prep_time_minutes),
       cook_time_minutes: Boolean(metadataConfig?.mandatoryFields?.cook_time_minutes),
+      source_url: Boolean(metadataConfig?.mandatoryFields?.source_url),
     }),
     [metadataConfig]
   )
@@ -382,6 +383,7 @@ export function CategoriesAndRulesTab({
     { key: 'instructions', label: 'Instructions', desc: 'Directions or preparation steps', locked: true },
     { key: 'description', label: 'Description / Summary', desc: 'Short synopsis or backstory for the dish' },
     { key: 'yield_amount', label: 'Yield', desc: 'Portion or serving count' },
+    { key: 'source_url', label: 'Originally adapted from', desc: 'Attribution, source link, or reference' },
     { key: 'image_url', label: 'Cover Photo', desc: 'Disallow recipes without a hero photo' },
     ...(timeTrackingMode === 'prep_and_cook'
       ? [

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { CategoriesAndRulesTab } from './CategoriesAndRulesTab'
+import { IntegrationsTab } from './IntegrationsTab'
 import { useTheme } from '@/hooks/useTheme'
 import { usePwa } from '@/hooks/usePwa'
 import type { MetadataConfig, TagCategory } from '@/shared/types'
@@ -11,6 +12,7 @@ import {
   Download,
   Moon,
   Palette,
+  Plug,
   SlidersHorizontal,
   Sun,
 } from 'lucide-react'
@@ -18,6 +20,7 @@ import {
 export interface SettingsPageProps {
   metadataConfig: MetadataConfig | null
   categories: TagCategory[]
+  initialTab?: 'rules' | 'appearance' | 'integrations'
   onSaveConfig: (config: MetadataConfig) => Promise<void>
   onRefreshCategories: () => Promise<void>
   onBack?: () => void
@@ -26,14 +29,15 @@ export interface SettingsPageProps {
 export function SettingsPage({
   metadataConfig,
   categories,
+  initialTab = 'rules',
   onSaveConfig,
   onRefreshCategories,
   onBack,
 }: SettingsPageProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'rules' | 'appearance'>('rules')
+  const [activeSubTab, setActiveSubTab] = useState<'rules' | 'appearance' | 'integrations'>(initialTab)
   const [isRulesDirty, setIsRulesDirty] = useState(false)
   const [showConfirmBack, setShowConfirmBack] = useState(false)
-  const [pendingTab, setPendingTab] = useState<'rules' | 'appearance' | null>(null)
+  const [pendingTab, setPendingTab] = useState<'rules' | 'appearance' | 'integrations' | null>(null)
   const { theme, setTheme } = useTheme()
   const { canInstall, triggerInstall } = usePwa()
 
@@ -45,7 +49,7 @@ export function SettingsPage({
     }
   }
 
-  const handleTabChange = (newTab: 'rules' | 'appearance') => {
+  const handleTabChange = (newTab: 'rules' | 'appearance' | 'integrations') => {
     if (newTab === activeSubTab) return
     if (isRulesDirty) {
       setPendingTab(newTab)
@@ -105,6 +109,19 @@ export function SettingsPage({
           <Palette className="h-4 w-4" />
           <span>Appearance</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('integrations')}
+          className={`group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer ${
+            activeSubTab === 'integrations'
+              ? 'border-foreground text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+          }`}
+        >
+          <Plug className="h-4 w-4" />
+          <span>Integrations</span>
+        </button>
       </div>
 
       {/* Tab 1: Categories & Rules Manager */}
@@ -121,7 +138,12 @@ export function SettingsPage({
         />
       )}
 
-      {/* Tab 2: Appearance & Theme */}
+      {/* Tab 2: Integrations */}
+      {activeSubTab === 'integrations' && (
+        <IntegrationsTab />
+      )}
+
+      {/* Tab 3: Appearance & Theme */}
       {activeSubTab === 'appearance' && (
         <div className="space-y-6 max-w-2xl animate-in fade-in duration-150">
           <div className="rounded-2xl border border-border bg-card p-6 space-y-6 shadow-xs">

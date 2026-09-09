@@ -5,6 +5,8 @@ import cors from 'cors'
 import { config } from './config'
 import { migrateDb } from './db/migrate'
 import healthRouter from './routes/health'
+import databaseRouter from './routes/database'
+import storageRouter from './routes/storage'
 import recipesRouter from './routes/recipes'
 import configRouter from './routes/config'
 import tagsRouter from './routes/tags'
@@ -19,6 +21,9 @@ app.use(express.json())
 
 // API routes
 app.use('/api/health', healthRouter)
+app.use('/api/database', databaseRouter)
+app.use('/api/storage', storageRouter)
+app.use('/api/images', storageRouter)
 app.use('/api/config', configRouter)
 app.use('/api/tags', tagsRouter)
 app.use('/api/conflicts', conflictsRouter)

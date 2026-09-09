@@ -163,30 +163,34 @@ export function RecipeIngredientsEditor({
         <div className="text-xs text-destructive font-medium">{error}</div>
       )}
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext
-          items={ingredients.map((item) => item.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          <div className="space-y-2">
-            {ingredients.map((item, idx) => (
-              <SortableIngredientRow
-                key={item.id}
-                item={item}
-                index={idx}
-                totalCount={ingredients.length}
-                onIngredientChange={onIngredientChange}
-                onAddRow={onAddRow}
-                onRemoveRow={onRemoveRow}
-              />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
+      <div className="overflow-x-auto pb-2 -mx-2 px-2">
+        <div className="min-w-[540px]">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={ingredients.map((item) => item.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-2">
+                {ingredients.map((item, idx) => (
+                  <SortableIngredientRow
+                    key={item.id}
+                    item={item}
+                    index={idx}
+                    totalCount={ingredients.length}
+                    onIngredientChange={onIngredientChange}
+                    onAddRow={onAddRow}
+                    onRemoveRow={onRemoveRow}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </div>
+      </div>
 
       <div className="flex justify-center pt-2">
         <Button

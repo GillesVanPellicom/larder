@@ -130,7 +130,7 @@ export function Stepper({
   if (variant === 'small') {
     return (
       <div className={cn('flex items-center gap-1.5 w-full', className)}>
-        <div className="relative flex-1 min-w-0 flex items-center h-10 sm:h-9 rounded-lg border border-input bg-transparent px-3 py-1.5 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+        <div className="relative flex-1 min-w-[4rem] sm:min-w-0 flex items-center h-10 sm:h-9 rounded-lg border border-input bg-transparent px-3 py-1.5 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
           <input
             ref={inputRef}
             type="text"

@@ -135,7 +135,7 @@ export function FilterDrawer({
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-400" />
               <Input
-                placeholder="Search titles, ingredients, notes..."
+                placeholder="Search titles, ingredients, source..."
                 value={criteria.searchQuery}
                 onChange={(e) => onChange({ ...criteria, searchQuery: e.target.value })}
                 className="pl-8 text-sm"

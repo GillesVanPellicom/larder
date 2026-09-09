@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { normalizeInstructionsToHtml } from '@/lib/instructions'
 import type {
   CreateRecipeDTO,
@@ -12,9 +10,10 @@ import type {
   RecipeTemplate,
   TagCategory,
 } from '@/shared/types'
-import { ArrowLeft, Image as ImageIcon, X } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { ConfirmUnsavedDialog } from '@/components/ConfirmUnsavedDialog'
 import { RecipeBasicFields } from './RecipeBasicFields'
+import { RecipeImageUpload } from './RecipeImageUpload'
 import { RecipeTagsEditor } from './RecipeTagsEditor'
 import { RecipeIngredientsEditor } from './RecipeIngredientsEditor'
 import { RecipeInstructionsEditor } from './RecipeInstructionsEditor'
@@ -83,6 +82,7 @@ function getInitialValues(r?: Recipe | null) {
     prepTimeMinutes: prep as number | '',
     cookTimeMinutes: cook as number | '',
     imageUrl: String(r?.image_url ?? '').trim(),
+    sourceUrl: String(r?.source_url ?? '').trim(),
     ingredients: cleanIngs,
     instructionsHtml: normalizeInstructionsToHtml(r?.instructions),
     tags: (r?.tags ? JSON.parse(JSON.stringify(r.tags)) : {}) as RecipeTags,
@@ -118,6 +118,7 @@ export function RecipeFormPage({
     initialState.cookTimeMinutes
   )
   const [imageUrl, setImageUrl] = useState(initialState.imageUrl)
+  const [sourceUrl, setSourceUrl] = useState(initialState.sourceUrl)
   const [ingredients, setIngredients] = useState<IngredientItem[]>(
     initialState.ingredients
   )
@@ -136,6 +137,7 @@ export function RecipeFormPage({
     setPrepTimeMinutes(init.prepTimeMinutes)
     setCookTimeMinutes(init.cookTimeMinutes)
     setImageUrl(init.imageUrl)
+    setSourceUrl(init.sourceUrl)
     setIngredients(init.ingredients)
     setInstructionsHtml(init.instructionsHtml)
     setTags(init.tags)
@@ -170,6 +172,10 @@ export function RecipeFormPage({
       diffs.push(`imageUrl: "${imageUrl.trim()}" !== "${initialState.imageUrl}"`)
     }
 
+    if (sourceUrl.trim() !== initialState.sourceUrl) {
+      diffs.push(`sourceUrl: "${sourceUrl.trim()}" !== "${initialState.sourceUrl}"`)
+    }
+
     const curInst = normalizeHtml(instructionsHtml)
     const initInst = normalizeHtml(initialState.instructionsHtml)
     if (curInst !== initInst) {
@@ -200,6 +206,7 @@ export function RecipeFormPage({
     prepTimeMinutes,
     cookTimeMinutes,
     imageUrl,
+    sourceUrl,
     instructionsHtml,
     ingredients,
     tags,
@@ -213,6 +220,7 @@ export function RecipeFormPage({
     setPrepTimeMinutes(initialState.prepTimeMinutes)
     setCookTimeMinutes(initialState.cookTimeMinutes)
     setImageUrl(initialState.imageUrl)
+    setSourceUrl(initialState.sourceUrl)
     setIngredients(initialState.ingredients)
     setInstructionsHtml(initialState.instructionsHtml)
     setTags(initialState.tags)
@@ -229,6 +237,7 @@ export function RecipeFormPage({
     yield_amount: false,
     prep_time_minutes: false,
     cook_time_minutes: false,
+    source_url: false,
   }
 
   const clearFieldError = (field: string) => {
@@ -302,6 +311,10 @@ export function RecipeFormPage({
     }
     if (mandatory.yield_amount && !finalYield) {
       nextErrors.yield_amount = 'Yield is required.'
+    }
+    const finalSourceUrl = sourceUrl.trim()
+    if (mandatory.source_url && !finalSourceUrl) {
+      nextErrors.source_url = 'Originally adapted from is required.'
     }
 
     // Cover Image Validation
@@ -384,8 +397,8 @@ export function RecipeFormPage({
         cook_time_minutes: finalCook,
         total_time_minutes: finalTotal,
         image_url: finalImage,
-        source_url: currentRecipe?.source_url || recipe?.source_url || '',
-        notes: currentRecipe?.notes || recipe?.notes || '',
+        source_url: finalSourceUrl,
+        notes: '',
         ingredients: finalIng,
         instructions: finalInst,
         tags: finalTags,
@@ -401,6 +414,7 @@ export function RecipeFormPage({
           cook_time_minutes: finalCook,
           total_time_minutes: finalTotal,
           image_url: finalImage,
+          source_url: finalSourceUrl,
           ingredients: finalIng,
           instructions: finalInst,
           fld_instructions: finalInst,
@@ -419,6 +433,7 @@ export function RecipeFormPage({
         setPrepTimeMinutes(nextInit.prepTimeMinutes)
         setCookTimeMinutes(nextInit.cookTimeMinutes)
         setImageUrl(nextInit.imageUrl)
+        setSourceUrl(nextInit.sourceUrl)
         setIngredients(nextInit.ingredients)
         setInstructionsHtml(nextInit.instructionsHtml)
         setTags(nextInit.tags)
@@ -432,8 +447,8 @@ export function RecipeFormPage({
           cook_time_minutes: finalCook,
           total_time_minutes: finalTotal,
           image_url: finalImage,
-          source_url: currentRecipe?.source_url || recipe?.source_url || '',
-          notes: currentRecipe?.notes || recipe?.notes || '',
+          source_url: finalSourceUrl,
+          notes: '',
           ingredients: finalIng,
           instructions: finalInst,
           tags: finalTags,
@@ -494,68 +509,22 @@ export function RecipeFormPage({
           onCookTimeChange={setCookTimeMinutes}
           yieldAmount={yieldAmount}
           onYieldChange={setYieldAmount}
+          sourceUrl={sourceUrl}
+          onSourceUrlChange={setSourceUrl}
           mandatory={mandatory}
           fieldErrors={fieldErrors}
           onClearFieldError={clearFieldError}
           timeTrackingMode={timeTrackingMode}
         />
 
-        {/* 2. Cover Photo */}
-        <div data-field="image_url" className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-xs">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-              Cover Photo {mandatory.image_url && <span className="text-destructive">*</span>}
-            </h2>
-            <InfoTooltip content="Add a high-quality photo URL for this recipe. A preview will be shown below." />
-          </div>
-
-          <div className="space-y-3">
-            <div className="relative">
-              <Input
-                placeholder="https://images.unsplash.com/..."
-                value={imageUrl}
-                onChange={(e) => {
-                  setImageUrl(e.target.value)
-                  if (fieldErrors.image_url) clearFieldError('image_url')
-                }}
-                className={`pl-9 pr-9 ${fieldErrors.image_url ? 'border-destructive ring-destructive/20 ring-2' : ''}`}
-              />
-              <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              {Boolean(imageUrl) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setImageUrl('')
-                    if (fieldErrors.image_url) clearFieldError('image_url')
-                  }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5"
-                  title="Clear image URL"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-
-            {fieldErrors.image_url && (
-              <span className="text-[11px] text-destructive block">
-                {fieldErrors.image_url}
-              </span>
-            )}
-
-            {Boolean(imageUrl) && (
-              <div className="relative h-48 sm:h-64 w-full rounded-xl overflow-hidden border border-border bg-muted/20">
-                <img
-                  src={imageUrl}
-                  alt="Cover preview"
-                  className="h-full w-full object-cover"
-                  onError={(e) => {
-                    ;(e.target as HTMLImageElement).style.display = 'none'
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        </div>
+        {/* 2. Cover Photo Attachment */}
+        <RecipeImageUpload
+          imageUrl={imageUrl}
+          onImageUrlChange={setImageUrl}
+          isMandatory={Boolean(mandatory.image_url)}
+          error={fieldErrors.image_url}
+          onClearError={() => clearFieldError('image_url')}
+        />
 
         {/* 3. Tags (Categories with Selection Range Rules) */}
         <RecipeTagsEditor

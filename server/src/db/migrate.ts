@@ -118,6 +118,7 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
             yield_amount: false,
             prep_time_minutes: false,
             cook_time_minutes: false,
+            source_url: false,
           },
           mandatoryCategories: [],
           timeTrackingMode: 'prep_and_cook',

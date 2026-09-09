@@ -7,9 +7,20 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+
+# Build outputs
 dist
 dist-ssr
+dist-server
+*.tsbuildinfo
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+.coquinaria_config.json
 *.local
 
 # Editor directories and files
@@ -22,3 +33,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Scratch & artifacts
+scratch/

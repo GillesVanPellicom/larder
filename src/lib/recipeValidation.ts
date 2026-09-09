@@ -18,6 +18,7 @@ export function validateRecipeForm(
     prep_time_minutes: number | ''
     cook_time_minutes: number | ''
     image_url: string
+    source_url?: string
     ingredients: { id: string; name: string; amount?: string; unit?: string }[]
     instructions: string
     tags: Record<string, string[]>
@@ -34,6 +35,7 @@ export function validateRecipeForm(
     yield_amount: false,
     prep_time_minutes: false,
     cook_time_minutes: false,
+    source_url: false,
   }
 
   const mandatoryCategories = metadataConfig?.mandatoryCategories || []
@@ -47,6 +49,7 @@ export function validateRecipeForm(
     prep_time_minutes: z.union([z.number().min(0), z.literal('')]),
     cook_time_minutes: z.union([z.number().min(0), z.literal('')]),
     image_url: z.string().trim(),
+    source_url: z.string().trim().optional(),
   })
 
   const baseParsed = recipeSchema.safeParse({
@@ -56,6 +59,7 @@ export function validateRecipeForm(
     prep_time_minutes: data.prep_time_minutes,
     cook_time_minutes: data.cook_time_minutes,
     image_url: data.image_url,
+    source_url: data.source_url,
   })
 
   if (!baseParsed.success) {
@@ -78,6 +82,10 @@ export function validateRecipeForm(
 
   if (mandatory.yield_amount && !data.yield_amount.trim()) {
     errors.yield_amount = 'Yield is required under current metadata rules.'
+  }
+
+  if (mandatory.source_url && (!data.source_url || !data.source_url.trim())) {
+    errors.source_url = 'Originally adapted from is required under current metadata rules.'
   }
 
   if (

@@ -1,14 +1,18 @@
 import type {
   CardGridLayoutConfig,
   CreateRecipeDTO,
+  DatabaseConfig,
   FieldUsageReport,
   MetadataConfig,
   Recipe,
   RecipeConflict,
   RecipeHistoryEntry,
   RecipeTemplate,
+  StorageConfig,
+  StorageConfigDTO,
   TagCategory,
   TemplateField,
+  UploadImageResponse,
 } from '@/shared/types'
 
 async function handleResponse<T>(res: Response): Promise<T> {
@@ -285,3 +289,83 @@ export const tagsApi = {
     return handleResponse(res)
   },
 }
+
+export const databaseApi = {
+  async getConfig(): Promise<DatabaseConfig> {
+    const res = await fetch('/api/database/config')
+    return handleResponse<DatabaseConfig>(res)
+  },
+
+  async testConnection(connectionString: string): Promise<{ healthy: boolean; error?: string; databaseVersion?: string }> {
+    const res = await fetch('/api/database/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connectionString }),
+    })
+    return handleResponse<{ healthy: boolean; error?: string; databaseVersion?: string }>(res)
+  },
+
+  async saveConfig(connectionString: string): Promise<{ success: boolean; configured: boolean; connectionStringMasked: string; healthy: boolean; error?: string; databaseVersion?: string }> {
+    const res = await fetch('/api/database/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connectionString }),
+    })
+    return handleResponse<{ success: boolean; configured: boolean; connectionStringMasked: string; healthy: boolean; error?: string; databaseVersion?: string }>(res)
+  },
+
+  async disconnect(): Promise<{ success: boolean; configured: boolean; connectionStringMasked: string; healthy: boolean }> {
+    const res = await fetch('/api/database/config', {
+      method: 'DELETE',
+    })
+    return handleResponse<{ success: boolean; configured: boolean; connectionStringMasked: string; healthy: boolean }>(res)
+  },
+}
+
+export const storageApi = {
+  async getConfig(): Promise<StorageConfig> {
+    const res = await fetch('/api/storage/config')
+    return handleResponse<StorageConfig>(res)
+  },
+
+  async testConnection(config: StorageConfigDTO): Promise<{ success: boolean; error?: string }> {
+    const res = await fetch('/api/storage/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    })
+    return handleResponse<{ success: boolean; error?: string }>(res)
+  },
+
+  async saveConfig(config: StorageConfigDTO): Promise<{ success: boolean; configured: boolean; endpoint?: string; bucket?: string; error?: string }> {
+    const res = await fetch('/api/storage/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    })
+    return handleResponse<{ success: boolean; configured: boolean; endpoint?: string; bucket?: string; error?: string }>(res)
+  },
+
+  async disconnect(): Promise<{ success: boolean; configured: boolean }> {
+    const res = await fetch('/api/storage/config', {
+      method: 'DELETE',
+    })
+    return handleResponse<{ success: boolean; configured: boolean }>(res)
+  },
+}
+
+export const imagesApi = {
+  async upload(blob: Blob, filename = 'image.webp'): Promise<UploadImageResponse> {
+    const res = await fetch('/api/images/upload', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'image/webp',
+        'X-Filename': filename,
+      },
+      body: blob,
+    })
+    return handleResponse<UploadImageResponse>(res)
+  },
+}
+
+

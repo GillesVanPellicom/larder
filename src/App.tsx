@@ -32,7 +32,9 @@ export function App() {
     categories,
     metadataConfig,
     violationsMap,
+    isDatabaseConnected,
     loading,
+    loadAll,
     saveRecipe,
     deleteRecipe,
     saveConfig,
@@ -52,6 +54,7 @@ export function App() {
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false)
   const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [settingsTab, setSettingsTab] = useState<'rules' | 'appearance' | 'integrations'>('rules')
 
   // Global Keyboard Shortcuts (Cmd+F / Ctrl+F, Cmd+N / Ctrl+N)
   useAppKeyboardShortcuts({
@@ -134,6 +137,7 @@ export function App() {
               templates={templates}
               violationsMap={violationsMap}
               loading={loading}
+              isDatabaseConnected={isDatabaseConnected}
               filterCriteria={filterCriteria}
               activeFiltersCount={activeFiltersCount}
               timeTrackingMode={metadataConfig?.timeTrackingMode || 'prep_and_cook'}
@@ -142,7 +146,10 @@ export function App() {
               onResetFilters={resetFilters}
               onOpenFilterDrawer={() => setFilterDrawerOpen(true)}
               onNewRecipe={() => navigateTo('recipe-form', null)}
-              onOpenSettings={() => navigateTo('settings', null)}
+              onOpenSettings={(tab) => {
+                if (tab) setSettingsTab(tab)
+                navigateTo('settings', null)
+              }}
               onViewRecipe={(recipe) => navigateTo('recipe-view', recipe)}
               onEditRecipe={(recipe) => navigateTo('recipe-form', recipe)}
               onDeleteRequest={(recipe) => setRecipeToDelete(recipe)}
@@ -185,9 +192,13 @@ export function App() {
             <SettingsPage
               metadataConfig={metadataConfig}
               categories={categories}
+              initialTab={settingsTab}
               onSaveConfig={saveConfig}
               onRefreshCategories={fetchCategories}
-              onBack={() => navigateTo('recipes', null)}
+              onBack={() => {
+                void loadAll()
+                navigateTo('recipes', null)
+              }}
             />
           )}
         </main>

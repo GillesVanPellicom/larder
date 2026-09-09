@@ -1,19 +1,33 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type {
   CreateRecipeDTO,
+  DatabaseConfig,
   MetadataConfig,
   Recipe,
   RecipeConflict,
   TagCategory,
 } from '@/shared/types'
-import { configApi, conflictsApi, recipesApi, tagsApi } from '@/services/api'
+import { configApi, conflictsApi, databaseApi, recipesApi, tagsApi } from '@/services/api'
 
 export function useRecipesData() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [categories, setCategories] = useState<TagCategory[]>([])
   const [metadataConfig, setMetadataConfig] = useState<MetadataConfig | null>(null)
   const [conflicts, setConflicts] = useState<RecipeConflict[]>([])
+  const [dbConfig, setDbConfig] = useState<DatabaseConfig | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const fetchDatabaseConfig = useCallback(async () => {
+    try {
+      const data = await databaseApi.getConfig()
+      setDbConfig(data)
+      return data
+    } catch (err) {
+      console.error('Failed to load database config:', err)
+      setDbConfig({ configured: false, healthy: false, error: 'Database unreachable' })
+      return null
+    }
+  }, [])
 
   const fetchRecipes = useCallback(async () => {
     try {
@@ -21,6 +35,7 @@ export function useRecipesData() {
       setRecipes(data)
     } catch (err) {
       console.error('Failed to load recipes:', err)
+      setRecipes([])
     }
   }, [])
 
@@ -53,14 +68,21 @@ export function useRecipesData() {
 
   const loadAll = useCallback(async () => {
     setLoading(true)
-    await Promise.allSettled([
-      fetchRecipes(),
-      fetchCategories(),
-      fetchMetadataConfig(),
-      fetchConflicts(),
-    ])
+    const db = await fetchDatabaseConfig()
+    if (db && db.configured && db.healthy) {
+      await Promise.allSettled([
+        fetchRecipes(),
+        fetchCategories(),
+        fetchMetadataConfig(),
+        fetchConflicts(),
+      ])
+    } else {
+      setRecipes([])
+      setCategories([])
+      setConflicts([])
+    }
     setLoading(false)
-  }, [fetchRecipes, fetchCategories, fetchMetadataConfig, fetchConflicts])
+  }, [fetchDatabaseConfig, fetchRecipes, fetchCategories, fetchMetadataConfig, fetchConflicts])
 
   useEffect(() => {
     void loadAll()
@@ -100,14 +122,19 @@ export function useRecipesData() {
     return map
   }, [conflicts])
 
+  const isDatabaseConnected = Boolean(dbConfig?.configured && dbConfig?.healthy)
+
   return {
     recipes,
     categories,
     metadataConfig,
     conflicts,
     violationsMap,
+    dbConfig,
+    isDatabaseConnected,
     loading,
     loadAll,
+    fetchDatabaseConfig,
     fetchRecipes,
     fetchCategories,
     fetchMetadataConfig,
@@ -117,3 +144,4 @@ export function useRecipesData() {
     saveConfig,
   }
 }
+

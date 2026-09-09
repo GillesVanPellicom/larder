@@ -7,8 +7,9 @@ import { CatalogEmptyState } from '@/components/catalog/CatalogEmptyState'
 import { getShortcutLabel } from '@/lib/shortcuts'
 import { FloatingActionButton } from '@/components/ui/floating-action-button'
 import { PaginationControl } from '@/components/ui/pagination'
+import { Database, Plus, RefreshCw } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { useDeviceSettings } from '@/lib/deviceSettings'
-import { Plus, RefreshCw } from 'lucide-react'
 
 interface RecipesCatalogPageProps {
   recipes: Recipe[]
@@ -17,6 +18,7 @@ interface RecipesCatalogPageProps {
   templates?: RecipeTemplate[]
   violationsMap: Map<number, RecipeViolation[]>
   loading: boolean
+  isDatabaseConnected?: boolean
   filterCriteria: FilterCriteria
   activeFiltersCount: number
   timeTrackingMode?: TimeTrackingMode
@@ -25,7 +27,7 @@ interface RecipesCatalogPageProps {
   onResetFilters: () => void
   onOpenFilterDrawer: () => void
   onNewRecipe: () => void
-  onOpenSettings: () => void
+  onOpenSettings: (tab?: 'rules' | 'appearance' | 'integrations') => void
   onViewRecipe: (recipe: Recipe) => void
   onEditRecipe: (recipe: Recipe) => void
   onDeleteRequest: (recipe: Recipe) => void
@@ -38,6 +40,7 @@ export function RecipesCatalogPage({
   templates = [],
   violationsMap,
   loading,
+  isDatabaseConnected = true,
   filterCriteria,
   activeFiltersCount,
   timeTrackingMode = 'prep_and_cook',
@@ -117,6 +120,26 @@ export function RecipesCatalogPage({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [validCurrentPage, totalPages])
+
+  // When no database is configured or connected, render isolated "No database connected" screen
+  if (!isDatabaseConnected && !loading) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center py-24 px-4 my-auto min-h-[calc(100vh-10rem)]">
+        <Database className="h-12 w-12 text-muted-foreground/35" />
+        <h3 className="mt-4 text-base sm:text-lg font-semibold text-foreground">
+          No database connected
+        </h3>
+        <p className="mt-1.5 text-sm text-muted-foreground max-w-md">
+          A PostgreSQL database connection is required to store and view your recipes, tags, and custom metadata.
+        </p>
+        <div className="mt-6 flex items-center justify-center">
+          <Button size="default" onClick={() => onOpenSettings('integrations')} className="cursor-pointer">
+            Settings
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-6.5rem)] space-y-6">
