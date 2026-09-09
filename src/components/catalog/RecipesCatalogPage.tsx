@@ -4,7 +4,8 @@ import { RecipeCard } from '@/components/RecipeCard'
 import { CatalogToolbar } from '@/components/catalog/CatalogToolbar'
 import { ActiveFiltersBar } from '@/components/catalog/ActiveFiltersBar'
 import { CatalogEmptyState } from '@/components/catalog/CatalogEmptyState'
-import { getShortcutLabel } from '@/lib/shortcuts'
+import { isMac } from '@/lib/shortcuts'
+import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { FloatingActionButton } from '@/components/ui/floating-action-button'
 import { PaginationControl } from '@/components/ui/pagination'
 import { Database, Plus, RefreshCw } from 'lucide-react'
@@ -134,7 +135,14 @@ export function RecipesCatalogPage({
       <FloatingActionButton
         icon={<Plus />}
         onClick={onNewRecipe}
-        tooltip={`New${getShortcutLabel('n')}`}
+        aria-label="New recipe"
+        tooltip={
+          <KbdGroup>
+            <Kbd>{isMac() ? '⌘' : 'Ctrl'}</Kbd>
+            <span className="text-[10px] text-muted-foreground font-medium select-none px-0.5">+</span>
+            <Kbd>N</Kbd>
+          </KbdGroup>
+        }
       />
 
       {/* Catalog Search & Action Toolbar */}

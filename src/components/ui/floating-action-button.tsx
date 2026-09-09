@@ -80,7 +80,7 @@ export interface FloatingActionButtonProps
     VariantProps<typeof fabVariants> {
   icon: React.ReactNode
   position?: FabPosition
-  tooltip?: string
+  tooltip?: React.ReactNode
   label?: string
   containerClassName?: string
 }
@@ -104,16 +104,19 @@ export const FloatingActionButton = React.forwardRef<
     },
     ref
   ) => {
-    const tooltipText = tooltip || label || title
+    const tooltipNode = tooltip ?? label ?? title
     const positionConfig = fabWrapperPositions[position]
     const tooltipSide =
       position.includes('top') ? 'bottom' : position.includes('right') ? 'left' : 'right'
+
+    const ariaLabel =
+      label || title || (typeof tooltip === 'string' ? tooltip : undefined)
 
     const buttonElement = (
       <button
         ref={ref}
         type="button"
-        aria-label={label || title || tooltip}
+        aria-label={ariaLabel}
         className={cn(fabVariants({ variant, size }), className)}
         {...props}
       >
@@ -121,11 +124,11 @@ export const FloatingActionButton = React.forwardRef<
       </button>
     )
 
-    const renderedButton = tooltipText ? (
+    const renderedButton = tooltipNode ? (
       <Tooltip>
         <TooltipTrigger render={buttonElement} />
-        <TooltipContent side={tooltipSide} className="font-semibold">
-          {tooltipText}
+        <TooltipContent side={tooltipSide} className="p-1 px-1.5">
+          {tooltipNode}
         </TooltipContent>
       </Tooltip>
     ) : (

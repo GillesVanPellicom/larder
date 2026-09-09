@@ -85,10 +85,10 @@ export function RecipeIngredientsList({
               <div
                 key={item.id || index}
                 onClick={() => onToggleIngredient(item.id || String(index))}
-                className={`flex items-start gap-2.5 py-1.5 px-2.5 rounded-xl cursor-pointer transition-colors select-none ${
+                className={`flex items-start gap-2.5 py-1.5 px-2.5 rounded-xl cursor-pointer transition-colors select-none hover:bg-muted/40 ${
                   isChecked
-                    ? 'bg-muted/60 text-muted-foreground line-through opacity-80'
-                    : 'hover:bg-muted/40 text-foreground'
+                    ? 'text-muted-foreground line-through opacity-80'
+                    : 'text-foreground'
                 }`}
               >
                 <button

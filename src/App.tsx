@@ -18,7 +18,7 @@ export function App() {
   const {
     currentView,
     selectedRecipe,
-    setSelectedRecipe,
+    updateRecipe,
     navigateTo,
     handleBack,
     handleDeletedTransition,
@@ -64,7 +64,7 @@ export function App() {
   // Save recipe wrapper
   const handleSaveRecipe = async (data: CreateRecipeDTO, id?: number) => {
     const saved = await saveRecipe(data, id)
-    setSelectedRecipe(saved)
+    updateRecipe(saved)
     return saved
   }
 
@@ -158,36 +158,47 @@ export function App() {
             />
           )}
 
-          {/* VIEW 2: Recipe Detail View */}
-          {currentView === 'recipe-view' && selectedRecipe && (
-            <RecipeViewPage
-              recipe={selectedRecipe}
-              categories={categories}
-              template={
-                templates.find(
-                  (t) => t.id === (selectedRecipe.template_id || 'tpl_default')
-                ) || templates[0] || null
-              }
-              timeTrackingMode={metadataConfig?.timeTrackingMode || 'prep_and_cook'}
-              onTagClick={handleFilterByTagAndNavigate}
-              onBack={handleBack}
-              onEdit={(recipe) => navigateTo('recipe-form', recipe)}
-              onDeleteRequest={(recipe) => setRecipeToDelete(recipe)}
-            />
-          )}
+          {/* Derive most up-to-date recipe object from recipes catalog if available */}
+          {(() => {
+            const activeRecipe = selectedRecipe
+              ? recipes.find((r) => r.id === selectedRecipe.id) || selectedRecipe
+              : null
 
-          {/* VIEW 3: Recipe Form (Create / Edit) */}
-          {currentView === 'recipe-form' && (
-            <RecipeFormPage
-              key={selectedRecipe ? `recipe-edit-${selectedRecipe.id}` : 'recipe-new'}
-              recipe={selectedRecipe}
-              categories={categories}
-              metadataConfig={metadataConfig}
-              templates={templates}
-              onBack={handleBack}
-              onSave={handleSaveRecipe}
-            />
-          )}
+            return (
+              <>
+                {/* VIEW 2: Recipe Detail View */}
+                {currentView === 'recipe-view' && activeRecipe && (
+                  <RecipeViewPage
+                    recipe={activeRecipe}
+                    categories={categories}
+                    template={
+                      templates.find(
+                        (t) => t.id === (activeRecipe.template_id || 'tpl_default')
+                      ) || templates[0] || null
+                    }
+                    timeTrackingMode={metadataConfig?.timeTrackingMode || 'prep_and_cook'}
+                    onTagClick={handleFilterByTagAndNavigate}
+                    onBack={handleBack}
+                    onEdit={(recipe) => navigateTo('recipe-form', recipe)}
+                    onDeleteRequest={(recipe) => setRecipeToDelete(recipe)}
+                  />
+                )}
+
+                {/* VIEW 3: Recipe Form (Create / Edit) */}
+                {currentView === 'recipe-form' && (
+                  <RecipeFormPage
+                    key={activeRecipe ? `recipe-edit-${activeRecipe.id}` : 'recipe-new'}
+                    recipe={activeRecipe}
+                    categories={categories}
+                    metadataConfig={metadataConfig}
+                    templates={templates}
+                    onBack={handleBack}
+                    onSave={handleSaveRecipe}
+                  />
+                )}
+              </>
+            )
+          })()}
 
           {/* VIEW 4: Settings & Configuration */}
           {currentView === 'settings' && (

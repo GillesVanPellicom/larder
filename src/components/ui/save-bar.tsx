@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Kbd, KbdGroup } from '@/components/ui/kbd'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { ConfirmUnsavedDialog } from '@/components/ConfirmUnsavedDialog'
+import { isMac } from '@/lib/shortcuts'
 import { Check, RotateCcw } from 'lucide-react'
 import { cn } from 'cn'
 
@@ -135,141 +139,228 @@ export function SaveBar({
   const isVisible = isDirty || phase === 'saving' || phase === 'saved' || phase === 'error'
   const isButtonsDisabled = submitting || phase === 'saving' || phase === 'saved'
   const isOverlayActive = phase === 'saving' || phase === 'saved'
+  const canSave = isDirty && !isButtonsDisabled
+
+  const [isMacOs, setIsMacOs] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+
+  useEffect(() => {
+    setIsMacOs(isMac())
+  }, [])
+
+  const handleSaveClickRef = useRef(handleSaveClick)
+  handleSaveClickRef.current = handleSaveClick
+
+  const onDiscardRef = useRef(onDiscard)
+  onDiscardRef.current = onDiscard
+
+  // Global Ctrl+S / Cmd+S (save) and Esc (discard) shortcuts when SaveBar is active
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Save: Ctrl+S or Cmd+S
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        e.stopPropagation()
+        if (canSave) {
+          void handleSaveClickRef.current()
+        }
+      }
+      // Discard: Escape -> triggers confirmation dialog
+      else if (e.key === 'Escape' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        if (canSave) {
+          // Do not trigger discard if user is dismissing an open modal dialog or popup
+          const hasOpenOverlay = document.querySelector(
+            '[role="dialog"]:not([data-slot="alert-dialog-content"]), [role="alertdialog"]:not([data-slot="alert-dialog-content"]), [data-state="open"][data-slot="combobox-content"]'
+          )
+          if (!hasOpenOverlay) {
+            e.preventDefault()
+            e.stopPropagation()
+            setShowConfirmModal(true)
+          }
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true)
+    }
+  }, [canSave])
+
+  const handleConfirmDiscard = () => {
+    setShowConfirmModal(false)
+    onDiscard()
+  }
 
   return (
-    <div
-      className={cn(
-        'fixed bottom-6 inset-x-0 mx-auto w-full max-w-2xl px-4 z-50 transition-all duration-400 ease-out',
-        isVisible
-          ? 'translate-y-0 opacity-100 pointer-events-auto'
-          : 'translate-y-24 opacity-0 pointer-events-none',
-        isShaking ? 'animate-head-shake' : '',
-        className
-      )}
-    >
-      <div className="relative overflow-hidden flex items-center justify-between gap-2 sm:gap-3 p-1.5 sm:p-2.5 rounded-full border border-border bg-card/85 backdrop-blur-md shadow-xl">
-        {/* Full Bar Blur & Central Morph Animation Overlay */}
-        <div
-          className={cn(
-            'absolute inset-0 z-20 rounded-full flex items-center justify-center bg-card/75 backdrop-blur-md transition-opacity duration-300',
-            isOverlayActive ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-          )}
-        >
-          {phase === 'saving' && (
-            <div className="flex items-center justify-center animate-in fade-in duration-200">
-              <svg
-                className="h-8 w-8 animate-spin text-foreground"
-                viewBox="0 0 36 36"
-                fill="none"
-              >
-                <circle
-                  cx="18"
-                  cy="18"
-                  r="14"
-                  stroke="currentColor"
-                  strokeOpacity="0.2"
-                  strokeWidth="3.5"
-                />
-                <circle
-                  cx="18"
-                  cy="18"
-                  r="14"
-                  stroke="currentColor"
-                  strokeWidth="3.5"
-                  strokeDasharray="60 100"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-          )}
-          {phase === 'saved' && (
-            <div className="flex items-center justify-center animate-circle-fade">
-              <div className="relative flex items-center justify-center h-8 w-8 rounded-full bg-emerald-500 text-white shadow-md">
+    <>
+      <div
+        className={cn(
+          'fixed bottom-6 inset-x-0 mx-auto w-full max-w-2xl px-4 z-50 transition-all duration-400 ease-out',
+          isVisible
+            ? 'translate-y-0 opacity-100 pointer-events-auto'
+            : 'translate-y-24 opacity-0 pointer-events-none',
+          isShaking ? 'animate-head-shake' : '',
+          className
+        )}
+      >
+        <div className="relative overflow-hidden flex items-center justify-between gap-2 sm:gap-3 p-1.5 sm:p-2.5 rounded-full border border-border bg-card/85 backdrop-blur-md shadow-xl">
+          {/* Full Bar Blur & Central Morph Animation Overlay */}
+          <div
+            className={cn(
+              'absolute inset-0 z-20 rounded-full flex items-center justify-center bg-card/75 backdrop-blur-md transition-opacity duration-300',
+              isOverlayActive ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+            )}
+          >
+            {phase === 'saving' && (
+              <div className="flex items-center justify-center animate-in fade-in duration-200">
                 <svg
-                  className="h-4.5 w-4.5 text-white"
-                  viewBox="0 0 24 24"
+                  className="h-8 w-8 animate-spin text-foreground"
+                  viewBox="0 0 36 36"
                   fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
                 >
-                  <path
-                    d="M 5 12.5 L 9.5 17 L 19 7"
-                    className="animate-check-draw"
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="14"
+                    stroke="currentColor"
+                    strokeOpacity="0.2"
+                    strokeWidth="3.5"
+                  />
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="14"
+                    stroke="currentColor"
+                    strokeWidth="3.5"
+                    strokeDasharray="60 100"
+                    strokeLinecap="round"
                   />
                 </svg>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Left Side: Status indicator */}
-        <div className="flex items-center gap-2 pl-2.5 sm:pl-4 min-w-0 shrink">
-          <span className="relative flex h-2.5 w-2.5 shrink-0">
-            {phase === 'saved' ? (
-              <>
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 transition-colors duration-300" />
-              </>
-            ) : phase === 'error' ? (
-              <>
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 transition-colors duration-300" />
-              </>
-            ) : (
-              <>
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500 transition-colors duration-300" />
-              </>
             )}
-          </span>
-          <span
-            className={cn(
-              'text-xs sm:text-sm font-semibold select-none transition-colors duration-300 truncate',
-              phase === 'error' ? 'text-destructive' : 'text-foreground'
+            {phase === 'saved' && (
+              <div className="flex items-center justify-center animate-circle-fade">
+                <div className="relative flex items-center justify-center h-8 w-8 rounded-full bg-emerald-500 text-white shadow-md">
+                  <svg
+                    className="h-4.5 w-4.5 text-white"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path
+                      d="M 5 12.5 L 9.5 17 L 19 7"
+                      className="animate-check-draw"
+                    />
+                  </svg>
+                </div>
+              </div>
             )}
-          >
-            {phase === 'saved'
-              ? 'Saved'
-              : phase === 'saving'
-              ? 'Saving...'
-              : phase === 'error'
-              ? activeError || 'Some choices are invalid'
-              : statusLabel}
-          </span>
-        </div>
+          </div>
 
-        {/* Right Side: Discard & Save Actions */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onDiscard}
-            disabled={isButtonsDisabled}
-            title={discardLabel}
-            aria-label={discardLabel}
-            className="rounded-full text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer p-2 sm:px-3.5 h-8 sm:h-9 shrink-0 disabled:opacity-40 flex items-center justify-center"
-          >
-            <RotateCcw className="h-3.5 w-3.5 sm:mr-1.5 shrink-0" />
-            <span className="hidden sm:inline">{discardLabel}</span>
-          </Button>
+          {/* Left Side: Status indicator */}
+          <div className="flex items-center gap-2 pl-2.5 sm:pl-4 min-w-0 shrink">
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
+              {phase === 'saved' ? (
+                <>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 transition-colors duration-300" />
+                </>
+              ) : phase === 'error' ? (
+                <>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 transition-colors duration-300" />
+                </>
+              ) : (
+                <>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500 transition-colors duration-300" />
+                </>
+              )}
+            </span>
+            <span
+              className={cn(
+                'text-xs sm:text-sm font-semibold select-none transition-colors duration-300 truncate',
+                phase === 'error' ? 'text-destructive' : 'text-foreground'
+              )}
+            >
+              {phase === 'saved'
+                ? 'Saved'
+                : phase === 'saving'
+                ? 'Saving...'
+                : phase === 'error'
+                ? activeError || 'Some choices are invalid'
+                : statusLabel}
+            </span>
+          </div>
 
-          <Button
-            type="button"
-            onClick={handleSaveClick}
-            variant="default"
-            size="sm"
-            disabled={isButtonsDisabled}
-            className="rounded-full text-xs font-semibold shrink-0 cursor-pointer shadow-md bg-primary text-primary-foreground hover:opacity-90 px-3.5 sm:px-4 h-8 sm:h-9 disabled:opacity-40 flex items-center justify-center min-w-16 sm:min-w-24"
-          >
-            <Check className="h-3.5 w-3.5 mr-1 sm:mr-1.5 shrink-0" />
-            <span>{phase === 'saved' ? 'Saved' : saveLabel}</span>
-          </Button>
+          {/* Right Side: Discard & Save Actions */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowConfirmModal(true)}
+                    disabled={isButtonsDisabled}
+                    aria-label={discardLabel}
+                    className="rounded-full text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer p-2 sm:px-3.5 h-8 sm:h-9 shrink-0 disabled:opacity-40 flex items-center justify-center"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5 sm:mr-1.5 shrink-0" />
+                    <span className="hidden sm:inline">{discardLabel}</span>
+                  </Button>
+                }
+              />
+              <TooltipContent side="top" className="p-1 px-1.5">
+                <Kbd>Esc</Kbd>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    onClick={handleSaveClick}
+                    variant="default"
+                    size="sm"
+                    disabled={isButtonsDisabled}
+                    aria-label={saveLabel}
+                    className="rounded-full text-xs font-semibold shrink-0 cursor-pointer shadow-md bg-primary text-primary-foreground hover:opacity-90 px-3.5 sm:px-4 h-8 sm:h-9 disabled:opacity-40 flex items-center justify-center min-w-16 sm:min-w-24"
+                  >
+                    <Check className="h-3.5 w-3.5 mr-1 sm:mr-1.5 shrink-0" />
+                    <span>{phase === 'saved' ? 'Saved' : saveLabel}</span>
+                  </Button>
+                }
+              />
+              {phase !== 'saved' && (
+                <TooltipContent side="top" className="p-1 px-1.5">
+                  <KbdGroup>
+                    <Kbd>{isMacOs ? '⌘' : 'Ctrl'}</Kbd>
+                    <span className="text-[10px] text-muted-foreground font-medium select-none px-0.5">+</span>
+                    <Kbd>S</Kbd>
+                  </KbdGroup>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </div>
         </div>
       </div>
-    </div>
+
+      <ConfirmUnsavedDialog
+        open={showConfirmModal}
+        onOpenChange={setShowConfirmModal}
+        onConfirmDiscard={handleConfirmDiscard}
+        title="Discard unsaved changes?"
+        description="You have unsaved changes that will be lost."
+        confirmText={discardLabel}
+      />
+    </>
   )
 }
 

@@ -49,12 +49,31 @@ export function useNavigation() {
     [currentView, selectedRecipe, selectedTemplate]
   )
 
+  const updateRecipe = useCallback((updated: Recipe) => {
+    setSelectedRecipe((prev) => (prev?.id === updated.id ? updated : prev))
+    setHistory((prev) =>
+      prev.map((entry) => {
+        if (entry.recipe && entry.recipe.id === updated.id) {
+          return { ...entry, recipe: updated }
+        }
+        return entry
+      })
+    )
+  }, [])
+
   const handleBack = useCallback(() => {
     if (history.length > 0) {
       const previous = history[history.length - 1]
       setHistory((prev) => prev.slice(0, -1))
       setCurrentView(previous.view)
-      setSelectedRecipe(previous.recipe)
+
+      // If the recipe in the previous view is the same one that was edited, keep the fresh instance
+      if (previous.recipe && selectedRecipe && previous.recipe.id === selectedRecipe.id) {
+        setSelectedRecipe(selectedRecipe)
+      } else {
+        setSelectedRecipe(previous.recipe)
+      }
+
       setSelectedTemplate(previous.template || null)
 
       const targetScroll =
@@ -73,7 +92,7 @@ export function useNavigation() {
         window.scrollTo({ top: recipesScrollYRef.current, behavior: 'instant' as ScrollBehavior })
       }, 10)
     }
-  }, [history])
+  }, [history, selectedRecipe])
 
   const handleNavTab = useCallback(
     (view: PageView) => {
@@ -127,6 +146,7 @@ export function useNavigation() {
     currentView,
     selectedRecipe,
     setSelectedRecipe,
+    updateRecipe,
     selectedTemplate,
     setSelectedTemplate,
     navigateTo,
