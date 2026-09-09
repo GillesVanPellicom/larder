@@ -2,15 +2,18 @@ import { useState, useEffect } from 'react'
 import { getCookie, setCookie } from './cookies'
 
 export type Theme = 'light' | 'dark'
+export type FilterDrawerTab = 'filters' | 'templates'
 
 export interface DeviceSettings {
   theme: Theme
   recipesPerPage: number
+  filterDrawerTab: FilterDrawerTab
 }
 
 export const DEFAULT_DEVICE_SETTINGS: DeviceSettings = {
   theme: 'light',
   recipesPerPage: 12,
+  filterDrawerTab: 'filters',
 }
 
 const COOKIE_PREFIX = 'larder_'
@@ -74,6 +77,14 @@ export function getDeviceSetting<K extends keyof DeviceSettings>(key: K): Device
     return DEFAULT_DEVICE_SETTINGS.recipesPerPage as DeviceSettings[K]
   }
 
+  if (key === 'filterDrawerTab') {
+    const raw = getCookie(`${COOKIE_PREFIX}filter_drawer_tab`) || getCookie(`${LEGACY_COOKIE_PREFIX}filter_drawer_tab`)
+    if (raw === 'filters' || raw === 'templates') {
+      return raw as DeviceSettings[K]
+    }
+    return DEFAULT_DEVICE_SETTINGS.filterDrawerTab as DeviceSettings[K]
+  }
+
   const raw = getCookie(`${COOKIE_PREFIX}${key}`) || getCookie(`${LEGACY_COOKIE_PREFIX}${key}`)
   return (raw as DeviceSettings[K]) ?? DEFAULT_DEVICE_SETTINGS[key]
 }
@@ -85,6 +96,7 @@ export function getAllDeviceSettings(): DeviceSettings {
   return {
     theme: getDeviceSetting('theme'),
     recipesPerPage: getDeviceSetting('recipesPerPage'),
+    filterDrawerTab: getDeviceSetting('filterDrawerTab'),
   }
 }
 
@@ -116,7 +128,12 @@ export function setDeviceSetting<K extends keyof DeviceSettings>(
   key: K,
   value: DeviceSettings[K]
 ): void {
-  const cookieKey = key === 'recipesPerPage' ? `${COOKIE_PREFIX}recipes_per_page` : `${COOKIE_PREFIX}${key}`
+  const cookieKey =
+    key === 'recipesPerPage'
+      ? `${COOKIE_PREFIX}recipes_per_page`
+      : key === 'filterDrawerTab'
+      ? `${COOKIE_PREFIX}filter_drawer_tab`
+      : `${COOKIE_PREFIX}${key}`
   setCookie(cookieKey, String(value))
   const updatedSettings = getAllDeviceSettings()
   applyDeviceSettings(updatedSettings)

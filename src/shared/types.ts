@@ -19,7 +19,13 @@ export interface InstructionStep {
   text: string
 }
 
-export type PageView = 'recipes' | 'recipe-view' | 'recipe-form' | 'settings'
+export type PageView =
+  | 'recipes'
+  | 'recipe-view'
+  | 'recipe-form'
+  | 'settings'
+  | 'shopping-list'
+  | 'ingredients'
 
 // Category ID -> Array of tag values (e.g. { season: ['Winter', 'Spring'], course: ['Main'] })
 export type RecipeTags = Record<string, string[]>
@@ -183,6 +189,26 @@ export interface UploadImageResponse {
   key: string
   sizeBytes: number
   contentType: string
+}
+
+export interface FilterTemplate {
+  id: number
+  name: string
+  criteria: FilterCriteria
+  use_count: number
+  last_used_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateFilterTemplateDTO {
+  name: string
+  criteria: FilterCriteria
+}
+
+export interface UpdateFilterTemplateDTO {
+  name?: string
+  criteria?: FilterCriteria
 }
 
 

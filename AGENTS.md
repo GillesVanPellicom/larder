@@ -65,4 +65,7 @@
 ### 13. Abstract Away Internal Workings & Technical Jargon
 - **No Technical Jargon in UI**: Users never have to know internal mechanics, database schemas, or technical jargon (e.g. no "normalized ingredients", "session only", "volatile state", "payloads", "database tables", etc.). All concepts are abstracted into clear, natural user benefits and familiar concepts to minimize cognitive friction.
 
+### 14. No Titles Next to Back Buttons
+- **Standalone Back Buttons**: Never place page titles, headers, or text labels (e.g. "Settings", "Edit", "New") next to back buttons (`ArrowLeft`). Back buttons stand alone as dedicated navigation triggers at the top of detail or sub pages.
+
 

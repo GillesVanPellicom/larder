@@ -1,6 +1,8 @@
 import type {
+  CreateFilterTemplateDTO,
   CreateRecipeDTO,
   DatabaseConfig,
+  FilterTemplate,
   MetadataConfig,
   PaginatedRecipesResponse,
   Recipe,
@@ -9,6 +11,7 @@ import type {
   StorageConfig,
   StorageConfigDTO,
   TagCategory,
+  UpdateFilterTemplateDTO,
   UploadImageResponse,
 } from '@/shared/types'
 
@@ -106,10 +109,29 @@ export const recipesApi = {
   },
 }
 
+export interface IngredientRecord {
+  id: number
+  name: string
+  created_at?: string
+  usage_count?: number
+}
+
 export interface IngredientsSearchResponse {
-  items: { id: number; name: string; created_at?: string }[]
+  items: IngredientRecord[]
   totalCount: number
+  totalPages?: number
+  currentPage?: number
   hasMore: boolean
+}
+
+export interface IngredientsQueryParams {
+  q?: string
+  page?: number
+  pageSize?: number
+  limit?: number
+  offset?: number
+  sortBy?: 'name' | 'created_at' | 'usage_count'
+  sortOrder?: 'asc' | 'desc'
 }
 
 export const ingredientsApi = {
@@ -119,6 +141,23 @@ export const ingredientsApi = {
     if (limit) params.set('limit', String(limit))
     if (offset) params.set('offset', String(offset))
     const res = await fetch(`/api/ingredients?${params.toString()}`)
+    return handleResponse<IngredientsSearchResponse>(res)
+  },
+
+  async getPaginated(params?: IngredientsQueryParams): Promise<IngredientsSearchResponse> {
+    const searchParams = new URLSearchParams()
+    if (params) {
+      if (params.q) searchParams.set('q', params.q)
+      if (params.page !== undefined) searchParams.set('page', String(params.page))
+      if (params.pageSize !== undefined) searchParams.set('pageSize', String(params.pageSize))
+      if (params.limit !== undefined) searchParams.set('limit', String(params.limit))
+      if (params.offset !== undefined) searchParams.set('offset', String(params.offset))
+      if (params.sortBy) searchParams.set('sortBy', params.sortBy)
+      if (params.sortOrder) searchParams.set('sortOrder', params.sortOrder)
+    }
+    const qs = searchParams.toString()
+    const url = qs ? `/api/ingredients?${qs}` : '/api/ingredients'
+    const res = await fetch(url)
     return handleResponse<IngredientsSearchResponse>(res)
   },
 
@@ -134,6 +173,15 @@ export const ingredientsApi = {
       body: JSON.stringify({ name }),
     })
     return handleResponse<{ id: number; name: string }>(res)
+  },
+
+  async update(id: number, name: string): Promise<{ id: number; name: string; created_at?: string; updated_at?: string }> {
+    const res = await fetch(`/api/ingredients/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    return handleResponse<{ id: number; name: string; created_at?: string; updated_at?: string }>(res)
   },
 }
 
@@ -337,6 +385,48 @@ export const imagesApi = {
       body: blob,
     })
     return handleResponse<UploadImageResponse>(res)
+  },
+}
+
+export const filterTemplatesApi = {
+  async getAll(): Promise<FilterTemplate[]> {
+    const res = await fetch('/api/filter-templates')
+    return handleResponse<FilterTemplate[]>(res)
+  },
+
+  async create(dto: CreateFilterTemplateDTO): Promise<FilterTemplate> {
+    const res = await fetch('/api/filter-templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dto),
+    })
+    return handleResponse<FilterTemplate>(res)
+  },
+
+  async update(id: number, dto: UpdateFilterTemplateDTO): Promise<FilterTemplate> {
+    const res = await fetch(`/api/filter-templates/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dto),
+    })
+    return handleResponse<FilterTemplate>(res)
+  },
+
+  async apply(id: number): Promise<FilterTemplate> {
+    const res = await fetch(`/api/filter-templates/${id}/apply`, {
+      method: 'POST',
+    })
+    return handleResponse<FilterTemplate>(res)
+  },
+
+  async delete(id: number): Promise<void> {
+    const res = await fetch(`/api/filter-templates/${id}`, {
+      method: 'DELETE',
+    })
+    if (!res.ok && res.status !== 204) {
+      const errorBody = await res.json().catch(() => ({}))
+      throw new Error(errorBody.error || `HTTP ${res.status}: ${res.statusText}`)
+    }
   },
 }
 

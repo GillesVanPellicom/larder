@@ -1,11 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import type { Recipe } from '@/shared/types'
-
-export type PageView =
-  | 'recipes'
-  | 'recipe-view'
-  | 'recipe-form'
-  | 'settings'
+import type { PageView, Recipe } from '@/shared/types'
 
 export interface HistoryEntry {
   view: PageView

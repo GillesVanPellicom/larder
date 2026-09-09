@@ -104,7 +104,7 @@ export class RecipeQueryService {
   private async buildFilterConditions(params: RecipeQueryParams): Promise<SQL[]> {
     const conditions: SQL[] = [isNull(recipes.deletedAt)]
 
-    // 1. Full-text search across Title, Description, Source, Relational Ingredients, Instructions
+    // 1. Text search across Title, Description, Source, and Instructions (excluding Ingredients which has dedicated filter)
     if (params.searchQuery && params.searchQuery.trim()) {
       const q = `%${params.searchQuery.trim().toLowerCase()}%`
       conditions.push(
@@ -113,11 +113,6 @@ export class RecipeQueryService {
           OR lower(${recipes.description}) LIKE ${q}
           OR lower(${recipes.sourceUrl}) LIKE ${q}
           OR lower(${recipes.instructions}::text) LIKE ${q}
-          OR EXISTS (
-            SELECT 1 FROM recipe_ingredients ri
-            JOIN ingredients ing ON ing.id = ri.ingredient_id
-            WHERE ri.recipe_id = ${recipes.id} AND lower(ing.name) LIKE ${q}
-          )
         )`
       )
     }

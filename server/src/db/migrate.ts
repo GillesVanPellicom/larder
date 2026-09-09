@@ -151,6 +151,16 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
         );
 
         ALTER TABLE metadata_config ADD COLUMN IF NOT EXISTS time_tracking_mode VARCHAR(50) DEFAULT 'prep_and_cook';
+
+        CREATE TABLE IF NOT EXISTS filter_templates (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          criteria JSONB NOT NULL DEFAULT '{}'::jsonb,
+          use_count INTEGER NOT NULL DEFAULT 0,
+          last_used_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
       `)
 
       if (isInitialDatabase) {
@@ -169,6 +179,10 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
         await recipeViolationService.recalculateAllViolations()
       } else {
         console.log('[Database] Existing database detected. Migrated schema without re-seeding.')
+        const isProductionEnv = process.env.NODE_ENV === 'production' && process.env.SEED_DEV !== 'true'
+        if (!isProductionEnv) {
+          await seedDev(db, pool)
+        }
       }
 
       console.log('[Database] Database migration ready.')

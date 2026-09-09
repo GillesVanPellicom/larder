@@ -1,5 +1,6 @@
 import { pgTable, serial, varchar, text, integer, jsonb, timestamp, boolean } from 'drizzle-orm/pg-core'
 import type {
+  FilterCriteria,
   InstructionStep,
   MandatoryFieldsConfig,
   RecipeTags,
@@ -63,6 +64,16 @@ export const metadataConfigTable = pgTable('metadata_config', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
+export const filterTemplates = pgTable('filter_templates', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  criteria: jsonb('criteria').$type<FilterCriteria>().notNull(),
+  useCount: integer('use_count').default(0).notNull(),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
 export type IngredientRow = typeof ingredients.$inferSelect
 export type NewIngredientRow = typeof ingredients.$inferInsert
 export type RecipeRow = typeof recipes.$inferSelect
@@ -71,3 +82,5 @@ export type RecipeIngredientRow = typeof recipeIngredients.$inferSelect
 export type NewRecipeIngredientRow = typeof recipeIngredients.$inferInsert
 export type TagCategoryRow = typeof tagCategories.$inferSelect
 export type MetadataConfigRow = typeof metadataConfigTable.$inferSelect
+export type FilterTemplateRow = typeof filterTemplates.$inferSelect
+export type NewFilterTemplateRow = typeof filterTemplates.$inferInsert

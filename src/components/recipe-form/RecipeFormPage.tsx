@@ -472,20 +472,15 @@ export function RecipeFormPage({
       {/* Top Action Bar */}
       {!hideTopBar && (
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleBackClick}
-              title="Back to Recipes"
-              className="h-9 w-9 cursor-pointer border-border hover:bg-muted text-foreground"
-            >
-              <ArrowLeft className="h-4.5 w-4.5" />
-            </Button>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
-              {recipe ? 'Edit' : 'New'}
-            </h1>
-          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleBackClick}
+            title="Back"
+            className="h-9 w-9 cursor-pointer border-border hover:bg-muted text-foreground shrink-0"
+          >
+            <ArrowLeft className="h-4.5 w-4.5" />
+          </Button>
         </div>
       )}
 

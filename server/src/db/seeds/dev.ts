@@ -1,6 +1,6 @@
-import { count } from 'drizzle-orm'
+import { count, eq } from 'drizzle-orm'
 import type { Pool } from 'pg'
-import { ingredients, recipeIngredients, recipes } from '../schema'
+import { filterTemplates, ingredients, recipeIngredients, recipes } from '../schema'
 
 export const devRecipes = [
   {
@@ -799,6 +799,76 @@ export const devRecipes = [
   },
 ]
 
+export const devFilterTemplates = [
+  {
+    name: 'Quick Weekday Dinners',
+    criteria: {
+      searchQuery: '',
+      maxTotalTime: 30,
+      selectedIngredients: [],
+      selectedTags: { occasion: ['Everyday'] },
+      matchModePerElement: { ingredients: 'any', tags: 'any', categoryTags: {} },
+      hasImage: 'any',
+      onlyConflicts: 'any',
+    },
+    useCount: 12,
+    lastUsedAt: new Date(Date.now() - 3600000 * 3),
+  },
+  {
+    name: 'Summer Refreshers',
+    criteria: {
+      searchQuery: '',
+      selectedIngredients: [],
+      selectedTags: { weather: ['warm'] },
+      matchModePerElement: { ingredients: 'any', tags: 'any', categoryTags: {} },
+      hasImage: 'any',
+      onlyConflicts: 'any',
+    },
+    useCount: 8,
+    lastUsedAt: new Date(Date.now() - 3600000 * 24),
+  },
+  {
+    name: 'Italian Classics',
+    criteria: {
+      searchQuery: '',
+      selectedIngredients: [],
+      selectedTags: { cuisine: ['Italian'] },
+      matchModePerElement: { ingredients: 'any', tags: 'any', categoryTags: {} },
+      hasImage: 'any',
+      onlyConflicts: 'any',
+    },
+    useCount: 5,
+    lastUsedAt: new Date(Date.now() - 3600000 * 48),
+  },
+  {
+    name: 'Weekend Feasts',
+    criteria: {
+      searchQuery: '',
+      selectedIngredients: [],
+      selectedTags: { occasion: ['Weekend', 'Festive'] },
+      matchModePerElement: { ingredients: 'any', tags: 'any', categoryTags: { occasion: 'any' } },
+      hasImage: 'any',
+      onlyConflicts: 'any',
+    },
+    useCount: 3,
+    lastUsedAt: new Date(Date.now() - 3600000 * 72),
+  },
+  {
+    name: 'Speedy Starters',
+    criteria: {
+      searchQuery: '',
+      maxTotalTime: 20,
+      selectedIngredients: [],
+      selectedTags: { course: ['appetizer'] },
+      matchModePerElement: { ingredients: 'any', tags: 'any', categoryTags: {} },
+      hasImage: 'any',
+      onlyConflicts: 'any',
+    },
+    useCount: 1,
+    lastUsedAt: new Date(Date.now() - 3600000 * 120),
+  },
+]
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function seedDev(db: any, _pool: Pool): Promise<void> {
   const [recipeCount] = await db.select({ value: count() }).from(recipes)
@@ -848,4 +918,18 @@ export async function seedDev(db: any, _pool: Pool): Promise<void> {
     }
     console.log('[Seed:Dev] 23 development recipes and relational ingredients seeded successfully.')
   }
+
+  // 4. Seed development filter templates if missing
+  for (const t of devFilterTemplates) {
+    const existing = await db
+      .select({ id: filterTemplates.id })
+      .from(filterTemplates)
+      .where(eq(filterTemplates.name, t.name))
+
+    if (existing.length === 0) {
+      await db.insert(filterTemplates).values(t)
+    }
+  }
 }
+
+

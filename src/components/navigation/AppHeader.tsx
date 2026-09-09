@@ -8,7 +8,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import type { PageView, Recipe } from '@/shared/types'
-import { BookOpen, Menu, Plus, Settings } from 'lucide-react'
+import { Menu, Settings } from 'lucide-react'
 import { cn } from 'cn'
 
 export interface AppHeaderProps {
@@ -36,19 +36,22 @@ export function AppHeader({
     onOpenSettings(tab)
   }
 
-  const isRecipesActive = currentView === 'recipes' || currentView === 'recipe-view'
-  const isNewActive = currentView === 'recipe-form'
+  const isRecipesActive =
+    currentView === 'recipes' || currentView === 'recipe-view' || currentView === 'recipe-form'
+  const isShoppingListActive = currentView === 'shopping-list'
+  const isIngredientsActive = currentView === 'ingredients'
   const isSettingsActive = currentView === 'settings'
 
   return (
     <>
       <header
         className={cn(
-          'sticky top-3 sm:top-4 z-40 w-full mb-6 transition-all duration-300',
+          'sticky top-3 sm:top-4 z-40 mb-6 transition-all duration-300 w-full max-w-full mx-0',
+          'xl:w-[calc(100%+max(0px,(100vw-80rem)/2))] xl:-ml-[calc(max(0px,(100vw-80rem)/4))] xl:-mr-[calc(max(0px,(100vw-80rem)/4))] xl:max-w-[calc(100vw-3rem)]',
           className
         )}
       >
-        <div className="relative overflow-hidden flex items-center justify-between gap-2 p-1.5 sm:p-2 rounded-full border border-border bg-card/85 backdrop-blur-md shadow-xl px-3 sm:px-4 h-12 sm:h-14">
+        <div className="relative overflow-hidden flex items-center justify-between gap-2 p-2 sm:p-2.5 rounded-full border border-border bg-card/85 backdrop-blur-sm shadow-xl px-4 sm:px-6 h-16 sm:h-[4.75rem]">
           {/* Left Area: Desktop Tabs & Mobile Menu Button */}
           <div className="flex-1 flex items-center justify-start min-w-0">
             {/* Mobile Menu Button */}
@@ -58,10 +61,10 @@ export function AppHeader({
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileDrawerOpen(true)}
-                className="rounded-full h-8 w-8 text-foreground hover:bg-muted/80 cursor-pointer shrink-0"
+                className="rounded-full h-9 w-9 text-foreground hover:bg-muted/80 cursor-pointer shrink-0"
                 aria-label="Open navigation menu"
               >
-                <Menu className="h-4.5 w-4.5" />
+                <Menu className="h-5 w-5" />
               </Button>
             </div>
 
@@ -69,34 +72,47 @@ export function AppHeader({
             <nav className="hidden md:flex items-center gap-1.5">
               <Button
                 type="button"
-                variant={isRecipesActive ? 'secondary' : 'ghost'}
+                variant="ghost"
                 size="sm"
                 onClick={() => handleNav('recipes', null)}
                 className={cn(
-                  'rounded-full text-xs font-semibold px-3.5 h-8.5 transition-colors cursor-pointer',
+                  'rounded-full text-xs font-light px-3.5 h-9 tracking-[0.16em] uppercase transition-colors cursor-pointer text-foreground',
                   isRecipesActive
-                    ? 'bg-muted text-foreground font-bold shadow-2xs'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    ? 'bg-muted/90 shadow-2xs'
+                    : 'hover:bg-muted/40'
                 )}
               >
-                <BookOpen className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                <span>Recipes</span>
+                RECIPES
               </Button>
 
               <Button
                 type="button"
-                variant={isNewActive ? 'secondary' : 'ghost'}
+                variant="ghost"
                 size="sm"
-                onClick={() => handleNav('recipe-form', null)}
+                onClick={() => handleNav('shopping-list', null)}
                 className={cn(
-                  'rounded-full text-xs font-semibold px-3.5 h-8.5 transition-colors cursor-pointer',
-                  isNewActive
-                    ? 'bg-muted text-foreground font-bold shadow-2xs'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  'rounded-full text-xs font-light px-3.5 h-9 tracking-[0.16em] uppercase transition-colors cursor-pointer text-foreground whitespace-nowrap',
+                  isShoppingListActive
+                    ? 'bg-muted/90 shadow-2xs'
+                    : 'hover:bg-muted/40'
                 )}
               >
-                <Plus className="h-3.5 w-3.5 mr-1 shrink-0" />
-                <span>New</span>
+                SHOPPING LIST
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleNav('ingredients', null)}
+                className={cn(
+                  'rounded-full text-xs font-light px-3.5 h-9 tracking-[0.16em] uppercase transition-colors cursor-pointer text-foreground',
+                  isIngredientsActive
+                    ? 'bg-muted/90 shadow-2xs'
+                    : 'hover:bg-muted/40'
+                )}
+              >
+                INGREDIENTS
               </Button>
             </nav>
           </div>
@@ -106,7 +122,7 @@ export function AppHeader({
             <button
               type="button"
               onClick={() => handleNav('recipes', null)}
-              className="font-extralight tracking-[0.22em] sm:tracking-[0.28em] text-lg sm:text-xl md:text-2xl uppercase text-foreground select-none hover:opacity-80 transition-opacity cursor-pointer text-center px-2 py-0.5"
+              className="font-extralight tracking-[0.24em] sm:tracking-[0.3em] text-xl sm:text-2xl md:text-3xl uppercase text-foreground select-none hover:opacity-80 transition-opacity cursor-pointer text-center px-3 py-1"
             >
               LARDER
             </button>
@@ -121,18 +137,18 @@ export function AppHeader({
                   render={
                     <Button
                       type="button"
-                      variant={isSettingsActive ? 'secondary' : 'ghost'}
+                      variant="ghost"
                       size="icon"
                       onClick={() => handleSettings()}
                       className={cn(
-                        'rounded-full h-8.5 w-8.5 cursor-pointer transition-colors shrink-0',
+                        'rounded-full h-10 w-10 sm:h-11 sm:w-11 cursor-pointer transition-colors shrink-0 text-foreground',
                         isSettingsActive
-                          ? 'bg-muted text-foreground'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                          ? 'bg-muted/90 shadow-2xs'
+                          : 'hover:bg-muted/40'
                       )}
                       aria-label="Settings"
                     >
-                      <Settings className="h-4 w-4" />
+                      <Settings className="h-5 w-5 sm:h-5.5 sm:w-5.5" />
                     </Button>
                   }
                 />
@@ -141,7 +157,7 @@ export function AppHeader({
             </div>
 
             {/* Mobile Spacer to keep "LARDER" perfectly centered */}
-            <div className="flex md:hidden w-8 h-8 pointer-events-none" aria-hidden="true" />
+            <div className="flex md:hidden w-9 h-9 pointer-events-none" aria-hidden="true" />
           </div>
         </div>
       </header>
@@ -150,11 +166,11 @@ export function AppHeader({
       <Sheet open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
         <SheetContent
           side="left"
-          className="w-72 bg-card/95 backdrop-blur-md border-r border-border p-6 flex flex-col justify-between"
+          className="p-6 flex flex-col justify-between"
         >
           <div className="space-y-6">
             <SheetHeader className="p-0 text-left border-b border-border/60 pb-4">
-              <SheetTitle className="font-extralight tracking-[0.25em] text-xl uppercase text-foreground">
+              <SheetTitle>
                 LARDER
               </SheetTitle>
             </SheetHeader>
@@ -165,47 +181,59 @@ export function AppHeader({
                 type="button"
                 onClick={() => handleNav('recipes', null)}
                 className={cn(
-                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors cursor-pointer text-left',
+                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-light tracking-[0.16em] uppercase transition-colors cursor-pointer text-left text-foreground',
                   isRecipesActive
-                    ? 'bg-primary/10 text-primary font-bold'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    ? 'bg-muted/90 shadow-2xs'
+                    : 'hover:bg-muted/40'
                 )}
               >
-                <BookOpen className="h-4 w-4 shrink-0" />
-                <span>Recipes</span>
+                RECIPES
               </button>
 
               <button
                 type="button"
-                onClick={() => handleNav('recipe-form', null)}
+                onClick={() => handleNav('shopping-list', null)}
                 className={cn(
-                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors cursor-pointer text-left',
-                  isNewActive
-                    ? 'bg-primary/10 text-primary font-bold'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-light tracking-[0.16em] uppercase transition-colors cursor-pointer text-left text-foreground',
+                  isShoppingListActive
+                    ? 'bg-muted/90 shadow-2xs'
+                    : 'hover:bg-muted/40'
                 )}
               >
-                <Plus className="h-4 w-4 shrink-0" />
-                <span>New</span>
+                SHOPPING LIST
               </button>
+
+              <button
+                type="button"
+                onClick={() => handleNav('ingredients', null)}
+                className={cn(
+                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-light tracking-[0.16em] uppercase transition-colors cursor-pointer text-left text-foreground',
+                  isIngredientsActive
+                    ? 'bg-muted/90 shadow-2xs'
+                    : 'hover:bg-muted/40'
+                )}
+              >
+                INGREDIENTS
+              </button>
+
+              <hr className="my-1 border-border/60" />
 
               <button
                 type="button"
                 onClick={() => handleSettings()}
                 className={cn(
-                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors cursor-pointer text-left',
+                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-light tracking-[0.16em] uppercase transition-colors cursor-pointer text-left text-foreground',
                   isSettingsActive
-                    ? 'bg-primary/10 text-primary font-bold'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    ? 'bg-muted/90 shadow-2xs'
+                    : 'hover:bg-muted/40'
                 )}
               >
-                <Settings className="h-4 w-4 shrink-0" />
-                <span>Settings</span>
+                <span>SETTINGS</span>
               </button>
             </nav>
           </div>
 
-          <div className="pt-4 border-t border-border/40 text-[11px] text-muted-foreground text-center select-none font-medium">
+          <div className="pt-4 border-t border-border/60 text-[11px] text-muted-foreground text-center select-none font-medium">
             Larder Recipe Manager
           </div>
         </SheetContent>

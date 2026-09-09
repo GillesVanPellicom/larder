@@ -6,10 +6,13 @@ import { RecipesCatalogPage } from '@/components/catalog/RecipesCatalogPage'
 import { RecipeViewPage } from '@/components/recipe-view/RecipeViewPage'
 import { RecipeFormPage } from '@/components/recipe-form/RecipeFormPage'
 import { SettingsPage } from '@/components/settings/SettingsPage'
+import { ShoppingListPage } from '@/components/shopping-list/ShoppingListPage'
+import { IngredientsPage } from '@/components/ingredients/IngredientsPage'
 import { FilterDrawer } from '@/components/filter-drawer/FilterDrawer'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { useNavigation } from '@/hooks/useNavigation'
 import { useRecipesData } from '@/hooks/useRecipesData'
+import { useFilterTemplates } from '@/hooks/useFilterTemplates'
 import { useTheme } from '@/hooks/useTheme'
 import { useAppKeyboardShortcuts } from '@/hooks/useAppKeyboardShortcuts'
 
@@ -47,15 +50,27 @@ export function App() {
     fetchCategories,
   } = useRecipesData()
 
+  const {
+    templates,
+    createTemplate,
+    updateTemplate,
+    deleteTemplate,
+    applyTemplate,
+  } = useFilterTemplates()
+
   // Drawer & Deletion Dialog States
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false)
+  const [filterDrawerTab, setFilterDrawerTab] = useState<'filters' | 'templates' | undefined>(undefined)
   const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [settingsTab, setSettingsTab] = useState<'rules' | 'appearance' | 'integrations'>('rules')
 
   // Global Keyboard Shortcuts (Cmd+F / Ctrl+F, Cmd+N / Ctrl+N)
   useAppKeyboardShortcuts({
-    onToggleFilters: () => setFilterDrawerOpen((prev) => !prev),
+    onToggleFilters: () => {
+      setFilterDrawerTab(undefined)
+      setFilterDrawerOpen((prev) => !prev)
+    },
     onNewRecipe: () => navigateTo('recipe-form', null),
   })
 
@@ -122,7 +137,7 @@ export function App() {
 
   return (
     <TooltipProvider delay={200}>
-      <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
+      <div className="min-h-screen bg-background text-foreground flex flex-col font-sans overflow-x-clip">
         {/* Main Content Router */}
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-4 sm:px-6">
           {/* Universal Sticky Header */}
@@ -150,10 +165,16 @@ export function App() {
               filterCriteria={filterCriteria}
               activeFiltersCount={activeFiltersCount}
               timeTrackingMode={metadataConfig?.timeTrackingMode || 'prep_and_cook'}
+              templates={templates}
+              onApplyTemplate={applyTemplate}
+              onCreateTemplate={createTemplate}
               onFilterCriteriaChange={setFilterCriteria}
               onToggleTag={handleToggleTagFilter}
               onResetFilters={resetFilters}
-              onOpenFilterDrawer={() => setFilterDrawerOpen(true)}
+              onOpenFilterDrawer={(tab) => {
+                setFilterDrawerTab(tab === 'filters' || tab === 'templates' ? tab : undefined)
+                setFilterDrawerOpen(true)
+              }}
               onNewRecipe={() => navigateTo('recipe-form', null)}
               onOpenSettings={(tab) => {
                 if (tab) setSettingsTab(tab)
@@ -215,6 +236,12 @@ export function App() {
               }}
             />
           )}
+
+          {/* VIEW 5: Shopping List */}
+          {currentView === 'shopping-list' && <ShoppingListPage />}
+
+          {/* VIEW 6: Ingredients Table */}
+          {currentView === 'ingredients' && <IngredientsPage />}
         </main>
 
         {/* Global Filter Drawer */}
@@ -227,6 +254,12 @@ export function App() {
           allIngredients={allIngredients}
           matchCount={totalCount}
           totalCount={totalCount}
+          templates={templates}
+          onApplyTemplate={applyTemplate}
+          onCreateTemplate={createTemplate}
+          onUpdateTemplate={updateTemplate}
+          onDeleteTemplate={deleteTemplate}
+          initialTab={filterDrawerTab}
         />
 
         {/* Global Confirmation Modal for Recipe Deletion */}

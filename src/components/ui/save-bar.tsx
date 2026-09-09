@@ -266,11 +266,11 @@ export function SaveBar({
           className
         )}
       >
-        <div className="relative overflow-hidden flex items-center justify-between gap-2 sm:gap-3 p-1.5 sm:p-2.5 rounded-full border border-border bg-card/85 backdrop-blur-md shadow-xl">
+        <div className="relative overflow-hidden flex items-center justify-between gap-2 sm:gap-3 p-1.5 sm:p-2.5 rounded-full border border-border bg-card/85 backdrop-blur-sm shadow-xl">
           {/* Full Bar Blur & Central Morph Animation Overlay */}
           <div
             className={cn(
-              'absolute inset-0 z-20 rounded-full flex items-center justify-center bg-card/75 backdrop-blur-md transition-opacity duration-300',
+              'absolute inset-0 z-20 rounded-full flex items-center justify-center bg-card/75 backdrop-blur-sm transition-opacity duration-300',
               isOverlayActive ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
             )}
           >

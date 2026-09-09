@@ -1,14 +1,23 @@
-import { useEffect } from 'react'
-import type { FilterCriteria, Recipe, RecipeViolation, TagCategory, TimeTrackingMode } from '@/shared/types'
+import { useState, useEffect } from 'react'
+import type {
+  FilterCriteria,
+  FilterTemplate,
+  Recipe,
+  RecipeViolation,
+  TagCategory,
+  TimeTrackingMode,
+} from '@/shared/types'
 import { RecipeCard } from '@/components/RecipeCard'
 import { CatalogToolbar } from '@/components/catalog/CatalogToolbar'
 import { ActiveFiltersBar } from '@/components/catalog/ActiveFiltersBar'
+import { FilterTemplateChips } from '@/components/catalog/FilterTemplateChips'
+import { SaveTemplateModal } from '@/components/filter-drawer/SaveTemplateModal'
 import { CatalogEmptyState } from '@/components/catalog/CatalogEmptyState'
 import { isMac } from '@/lib/shortcuts'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { FloatingActionButton } from '@/components/ui/floating-action-button'
 import { PaginationControl } from '@/components/ui/pagination'
-import { Database, Plus, RefreshCw } from 'lucide-react'
+import { Database, Loader2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useDeviceSettings } from '@/lib/deviceSettings'
 
@@ -25,10 +34,13 @@ interface RecipesCatalogPageProps {
   filterCriteria: FilterCriteria
   activeFiltersCount: number
   timeTrackingMode?: TimeTrackingMode
+  templates?: FilterTemplate[]
+  onApplyTemplate?: (template: FilterTemplate) => void
+  onCreateTemplate?: (name: string, criteria: FilterCriteria) => Promise<FilterTemplate>
   onFilterCriteriaChange: (criteria: FilterCriteria) => void
   onToggleTag?: (catId: string, tag: string) => void
   onResetFilters: () => void
-  onOpenFilterDrawer: () => void
+  onOpenFilterDrawer: (tab?: 'filters' | 'templates') => void
   onNewRecipe: () => void
   onOpenSettings: (tab?: 'rules' | 'appearance' | 'integrations') => void
   onViewRecipe: (recipe: Recipe) => void
@@ -49,6 +61,9 @@ export function RecipesCatalogPage({
   filterCriteria,
   activeFiltersCount,
   timeTrackingMode = 'prep_and_cook',
+  templates = [],
+  onApplyTemplate,
+  onCreateTemplate,
   onFilterCriteriaChange,
   onToggleTag,
   onResetFilters,
@@ -59,8 +74,22 @@ export function RecipesCatalogPage({
   onEditRecipe,
   onDeleteRequest,
 }: RecipesCatalogPageProps) {
+  const [saveModalOpen, setSaveModalOpen] = useState(false)
   const { settings, setSetting } = useDeviceSettings()
   const pageSize = settings.recipesPerPage || 12
+
+  const handleApplyTemplate = (template: FilterTemplate) => {
+    onFilterCriteriaChange(template.criteria)
+    if (onApplyTemplate) {
+      onApplyTemplate(template)
+    }
+  }
+
+  const handleSaveModalSubmit = async (name: string) => {
+    if (onCreateTemplate) {
+      await onCreateTemplate(name, filterCriteria)
+    }
+  }
 
   const handlePageChange = (newPage: number) => {
     onPageChange(newPage)
@@ -129,11 +158,12 @@ export function RecipesCatalogPage({
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-6.5rem)]">
-      {/* Floating Action Button for New Recipe */}
+      {/* Floating Action Button for New Recipe (Mobile only, replaces toolbar Add button) */}
       <FloatingActionButton
         icon={<Plus />}
         onClick={onNewRecipe}
         aria-label="New recipe"
+        containerClassName="sm:hidden"
         tooltip={
           <KbdGroup>
             <Kbd>{isMac() ? '⌘' : 'Ctrl'}</Kbd>
@@ -152,23 +182,43 @@ export function RecipesCatalogPage({
         activeFiltersCount={activeFiltersCount}
         onResetFilters={onResetFilters}
         onOpenFilterDrawer={onOpenFilterDrawer}
-        onOpenSettings={onOpenSettings}
+        onNewRecipe={onNewRecipe}
       />
 
-      {/* Active Filter Tags with equal top & bottom margins */}
-      <div className="my-3.5 min-h-7 flex items-center">
-        {activeFiltersCount > 0 && (
-          <ActiveFiltersBar
-            criteria={filterCriteria}
-            onChange={onFilterCriteriaChange}
+      {/* Template Chips and Active Filters */}
+      <div className="my-3.5 space-y-2">
+        {(templates.length > 0 || activeFiltersCount > 0) && (
+          <FilterTemplateChips
+            templates={templates}
+            currentCriteria={filterCriteria}
+            onApplyTemplate={handleApplyTemplate}
+            onSaveCurrentAsTemplate={() => setSaveModalOpen(true)}
+            hasActiveFilters={activeFiltersCount > 0}
           />
         )}
+
+        {activeFiltersCount > 0 && (
+          <div className="min-h-7 flex items-center">
+            <ActiveFiltersBar
+              criteria={filterCriteria}
+              onChange={onFilterCriteriaChange}
+            />
+          </div>
+        )}
       </div>
+
+      {/* Save Template Modal from Catalog */}
+      <SaveTemplateModal
+        open={saveModalOpen}
+        onOpenChange={setSaveModalOpen}
+        criteria={filterCriteria}
+        onSave={handleSaveModalSubmit}
+      />
 
       {/* Content Area: Loading, Empty, or Recipes Grid */}
       {loading && recipes.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center py-24 my-auto">
-          <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           <p className="mt-3 text-sm text-muted-foreground">Loading...</p>
         </div>
       ) : recipes.length === 0 ? (

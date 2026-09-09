@@ -68,7 +68,7 @@ export function MultiCombobox({
       <ComboboxChips
         ref={anchor}
         className={cn(
-          "w-full cursor-text bg-card",
+          "w-full cursor-text",
           disabled && "cursor-not-allowed opacity-50",
           className
         )}

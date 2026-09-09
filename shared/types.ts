@@ -185,4 +185,24 @@ export interface UploadImageResponse {
   contentType: string
 }
 
+export interface FilterTemplate {
+  id: number
+  name: string
+  criteria: FilterCriteria
+  use_count: number
+  last_used_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateFilterTemplateDTO {
+  name: string
+  criteria: FilterCriteria
+}
+
+export interface UpdateFilterTemplateDTO {
+  name?: string
+  criteria?: FilterCriteria
+}
+
 

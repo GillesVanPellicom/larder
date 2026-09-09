@@ -82,7 +82,7 @@ export function UnitStepper({
       {/* Unified Input Box (Amount + Vertical Divider + Unit) */}
       <div
         className={cn(
-          'relative flex-1 min-w-0 flex items-center h-10 sm:h-9 rounded-lg border bg-transparent transition-colors overflow-hidden',
+          'relative flex-1 min-w-0 flex items-center h-10 sm:h-9 rounded-lg border bg-transparent dark:bg-input/30 transition-colors overflow-hidden',
           'focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50',
           hasError ? 'border-destructive ring-destructive/20 ring-2' : 'border-input'
         )}

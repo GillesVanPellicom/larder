@@ -61,26 +61,19 @@ export function SettingsPage({
   return (
     <div className="space-y-6 w-full max-w-7xl mx-auto pb-32 sm:pb-36 animate-in fade-in duration-150">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          {onBack && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleBackClick}
-              title="Back to Recipes"
-              className="h-9 w-9 cursor-pointer border-border hover:bg-muted text-foreground shrink-0"
-            >
-              <ArrowLeft className="h-4.5 w-4.5" />
-            </Button>
-          )}
-          <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-              Settings
-            </h1>
-          </div>
+      {onBack && (
+        <div className="flex items-center">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleBackClick}
+            title="Back"
+            className="h-9 w-9 cursor-pointer border-border hover:bg-muted text-foreground shrink-0"
+          >
+            <ArrowLeft className="h-4.5 w-4.5" />
+          </Button>
         </div>
-      </div>
+      )}
 
       {/* Primary Tabs */}
       <div className="flex items-center gap-2 sm:gap-6 border-b border-border">
