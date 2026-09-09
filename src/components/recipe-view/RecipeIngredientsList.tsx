@@ -106,47 +106,62 @@ export function RecipeIngredientsList({
         )}
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-3 sm:p-4 shadow-xs space-y-1">
+      <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden p-2 sm:p-3">
         {ingredients.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic py-2">No ingredients specified.</p>
+          <p className="text-xs text-muted-foreground italic py-3 px-3">No ingredients specified.</p>
         ) : (
           ingredients.map((item, index) => {
             const itemKey = String(item.id ?? index)
             const isChecked = Boolean(checkedIngredients[itemKey])
-            return (
-              <div
-                key={itemKey}
-                onClick={() => onToggleIngredient(itemKey)}
-                className={`flex items-start gap-2.5 py-1.5 px-2.5 rounded-xl cursor-pointer transition-colors select-none hover:bg-muted/40 ${
-                  isChecked
-                    ? 'text-muted-foreground line-through opacity-80'
-                    : 'text-foreground'
-                }`}
-              >
-                <button
-                  type="button"
-                  className={`mt-0.5 h-4.5 w-4.5 rounded flex items-center justify-center shrink-0 transition-colors border ${
-                    isChecked
-                      ? 'bg-primary border-primary text-primary-foreground'
-                      : 'border-border bg-card hover:border-primary/50'
-                  }`}
-                >
-                  {isChecked && <Check className="h-3.5 w-3.5 stroke-[2.5]" />}
-                </button>
+            const hasQty = Boolean(item.amount || item.unit)
 
-                <div className="text-sm flex-1 leading-snug">
-                  {(item.amount || item.unit) && (
-                    <span className="mr-1.5 font-semibold">
-                      {item.amount && renderAmountValue(item.amount, isScaled, isChecked)}
-                      {item.amount && item.unit ? ' ' : ''}
-                      {item.unit && (
-                        <span className={isChecked ? 'text-muted-foreground' : 'text-foreground'}>
-                          {item.unit}
+            return (
+              <div key={itemKey}>
+                {index > 0 && <div className="border-t border-border/40 mx-3 sm:mx-4 my-0.5" />}
+                <div
+                  onClick={() => onToggleIngredient(itemKey)}
+                  className={cn(
+                    'flex items-start gap-3.5 py-3.5 sm:py-3 px-3 sm:px-4 rounded-xl cursor-pointer transition-colors select-none hover:bg-muted/40 min-h-[3rem]',
+                    isChecked ? 'text-muted-foreground opacity-70' : 'text-foreground'
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'mt-0.5 h-5 w-5 rounded-md flex items-center justify-center shrink-0 transition-colors border',
+                      isChecked
+                        ? 'bg-primary border-primary text-primary-foreground'
+                        : 'border-border bg-card hover:border-primary/50'
+                    )}
+                  >
+                    {isChecked && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span
+                        title={item.name}
+                        className={cn('text-sm sm:text-[15px] font-medium truncate', isChecked && 'line-through')}
+                      >
+                        {item.name}
+                      </span>
+                      {hasQty && (
+                        <span
+                          className={cn(
+                            'text-xs sm:text-sm font-mono font-medium shrink-0 ml-2',
+                            isChecked ? 'text-muted-foreground' : 'text-foreground'
+                          )}
+                        >
+                          {item.amount && renderAmountValue(item.amount, isScaled, isChecked)}
+                          {item.amount && item.unit ? ' ' : ''}
+                          {item.unit && (
+                            <span className={isChecked ? 'text-muted-foreground' : 'text-foreground'}>
+                              {item.unit}
+                            </span>
+                          )}
                         </span>
                       )}
-                    </span>
-                  )}
-                  <span>{item.name}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )

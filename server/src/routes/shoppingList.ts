@@ -46,12 +46,12 @@ router.get('/', async (_req, res) => {
         .filter((item): item is ShoppingListItem => item !== null)
     }
 
-    // 2. Fetch recent shopping list history snapshots
+    // 2. Fetch recent shopping list history snapshots (most recent 10)
     const historyRows = await db
       .select()
       .from(shoppingListHistory)
       .orderBy(desc(shoppingListHistory.createdAt))
-      .limit(30)
+      .limit(10)
 
     const formattedHistory: ShoppingListHistoryItem[] = historyRows.map((h) => ({
       id: h.id,
@@ -248,6 +248,19 @@ router.post('/clear', async (_req, res) => {
         recipeTitles,
         ingredientCount: uniqueNames.size,
       })
+
+      // Keep only the most recent 10 history snapshots
+      const allHistories = await db
+        .select({ id: shoppingListHistory.id })
+        .from(shoppingListHistory)
+        .orderBy(desc(shoppingListHistory.createdAt))
+
+      if (allHistories.length > 10) {
+        const toDeleteIds = allHistories.slice(10).map((h) => h.id)
+        if (toDeleteIds.length > 0) {
+          await db.delete(shoppingListHistory).where(inArray(shoppingListHistory.id, toDeleteIds))
+        }
+      }
 
       // 2. Delete all active items
       await db.delete(shoppingListItems)
