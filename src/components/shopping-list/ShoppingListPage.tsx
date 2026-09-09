@@ -73,10 +73,32 @@ export function ShoppingListPage({
   const [activeTab, setActiveTab] = useState<'per_recipe' | 'consolidated'>('per_recipe')
   const [historyOpen, setHistoryOpen] = useState(false)
   const [clearing, setClearing] = useState(false)
+  const [openRecipeMap, setOpenRecipeMap] = useState<Record<number, boolean>>({})
   const [multiplierModalRecipe, setMultiplierModalRecipe] = useState<{
     recipeId: number
     multiplier: number
   } | null>(null)
+
+  const handleToggleIngredient = (recipeId: number, itemKey: string) => {
+    const item = items.find((i) => i.recipe_id === recipeId)
+    if (item) {
+      const checkedSet = new Set(item.checked_ingredients || [])
+      const willBeChecked = !checkedSet.has(itemKey)
+      const scaledIngs = scaleIngredients(item.recipe?.ingredients || [], item.multiplier || 1)
+
+      // If this toggle completes the recipe (all ingredients checked), auto-close it
+      if (willBeChecked) {
+        const willAllBeChecked = scaledIngs.every((ing, idx) => {
+          const k = String(ing.id ?? idx)
+          return k === itemKey || checkedSet.has(k)
+        })
+        if (willAllBeChecked) {
+          setOpenRecipeMap((prev) => ({ ...prev, [recipeId]: false }))
+        }
+      }
+    }
+    onToggleIngredientInRecipe(recipeId, itemKey)
+  }
 
   const handleClear = async () => {
     if (items.length === 0) return
@@ -112,13 +134,13 @@ export function ShoppingListPage({
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size="lg"
             onClick={handleClear}
             disabled={clearing}
-            className="h-9 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/40 cursor-pointer gap-1.5 shrink-0"
+            className="text-muted-foreground hover:text-destructive hover:border-destructive/40 cursor-pointer shrink-0"
             title="Clear all recipes from the shopping list"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-4 w-4" />
             <span>Clear</span>
           </Button>
         )}
@@ -195,18 +217,36 @@ export function ShoppingListPage({
             const checkedCount = scaledIngredients.filter((_, idx) =>
               checkedSet.has(String(scaledIngredients[idx]?.id ?? idx))
             ).length
+            const isAllChecked = scaledIngredients.length > 0 && checkedCount === scaledIngredients.length
+            const isOpen = openRecipeMap[item.recipe_id] ?? !isAllChecked
 
             return (
               <Collapsible
                 key={item.recipe_id}
-                defaultOpen={true}
-                className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden transition-colors"
+                open={isOpen}
+                onOpenChange={(openState) => {
+                  setOpenRecipeMap((prev) => ({ ...prev, [item.recipe_id]: openState }))
+                }}
+                className={cn(
+                  'rounded-2xl border border-border bg-card shadow-xs overflow-hidden transition-all',
+                  isAllChecked && 'opacity-75 border-border/60'
+                )}
               >
                 {/* Recipe Card Header */}
-                <div className="p-3.5 sm:p-4 bg-muted/30 flex items-center justify-between gap-3 border-b border-border/50">
+                <div
+                  className={cn(
+                    'p-3.5 sm:p-4 bg-muted/30 flex items-center justify-between gap-3 border-b border-border/50 transition-colors',
+                    isAllChecked && 'bg-muted/15'
+                  )}
+                >
                   <div className="flex items-center gap-3 min-w-0">
-                    <CollapsibleTrigger className="flex items-center gap-2.5 text-left group cursor-pointer select-none">
-                      <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90 shrink-0" />
+                    <CollapsibleTrigger className="flex items-center gap-3 text-left group cursor-pointer select-none py-0.5">
+                      <ChevronDown
+                        className={cn(
+                          'h-5 w-5 text-muted-foreground group-hover:text-foreground transition-transform duration-200 shrink-0',
+                          !isOpen && '-rotate-90'
+                        )}
+                      />
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <h3
@@ -217,13 +257,22 @@ export function ShoppingListPage({
                               }
                             }}
                             className={cn(
-                              'text-sm sm:text-base font-semibold text-foreground truncate',
+                              'text-sm sm:text-base font-semibold truncate transition-all',
+                              isAllChecked
+                                ? 'line-through text-muted-foreground opacity-60'
+                                : 'text-foreground',
                               onViewRecipe && 'hover:underline cursor-pointer'
                             )}
                           >
                             {recipe.title}
                           </h3>
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-mono">
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              'text-[10px] px-1.5 py-0 h-4 font-mono transition-colors',
+                              isAllChecked && 'opacity-60'
+                            )}
+                          >
                             {checkedCount}/{scaledIngredients.length}
                           </Badge>
                         </div>
@@ -246,89 +295,94 @@ export function ShoppingListPage({
                   </div>
 
                   {/* Recipe Header Actions: Multiplier & Remove */}
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
+                      size="lg"
                       onClick={(e) => {
                         e.stopPropagation()
                         setMultiplierModalRecipe({ recipeId: item.recipe_id, multiplier })
                       }}
                       className={cn(
-                        'h-8 px-2.5 text-xs cursor-pointer rounded-lg gap-1.5 font-mono transition-colors border',
+                        'cursor-pointer rounded-lg font-mono transition-colors border',
                         multiplier !== 1
                           ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/25 font-bold shadow-2xs'
                           : 'text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/20 border-transparent'
                       )}
                       title="Adjust recipe yield multiplier"
                     >
-                      <Scale className="h-3.5 w-3.5" />
+                      <Scale className="h-4 w-4" />
                       <span>{multiplier}×</span>
                     </Button>
 
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
+                      size="lg"
                       onClick={(e) => {
                         e.stopPropagation()
                         onRemoveRecipe(item.recipe_id)
                       }}
-                      className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer rounded-lg gap-1"
+                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer rounded-lg"
                       title="Remove recipe from shopping list"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <X className="h-4 w-4" />
                       <span className="hidden sm:inline">Remove</span>
                     </Button>
                   </div>
                 </div>
 
                 {/* Collapsible Recipe Ingredients List */}
-                <CollapsibleContent className="p-3 sm:p-4 space-y-1">
+                <CollapsibleContent className="p-2 sm:p-3 pt-1">
                   {scaledIngredients.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic py-1">
+                    <p className="text-xs text-muted-foreground italic py-3 px-3">
                       No ingredients in this recipe.
                     </p>
                   ) : (
                     scaledIngredients.map((ing, idx) => {
                       const itemKey = String(ing.id ?? idx)
                       const isChecked = checkedSet.has(itemKey)
+                      const displayQty = [ing.amount, ing.unit].filter(Boolean).join(' ')
 
                       return (
-                        <div
-                          key={itemKey}
-                          onClick={() => onToggleIngredientInRecipe(item.recipe_id, itemKey)}
-                          className={cn(
-                            'flex items-start gap-3 py-1.5 px-2.5 rounded-xl cursor-pointer transition-colors select-none hover:bg-muted/40',
-                            isChecked ? 'text-muted-foreground line-through opacity-70' : 'text-foreground'
-                          )}
-                        >
+                        <div key={itemKey}>
+                          {idx > 0 && <div className="border-t border-border/40 mx-3 sm:mx-4 my-0.5" />}
                           <div
+                            onClick={() => handleToggleIngredient(item.recipe_id, itemKey)}
                             className={cn(
-                              'mt-0.5 h-4.5 w-4.5 rounded flex items-center justify-center shrink-0 transition-colors border',
-                              isChecked
-                                ? 'bg-primary border-primary text-primary-foreground'
-                                : 'border-border bg-card hover:border-primary/50'
+                              'flex items-start gap-3.5 py-3.5 sm:py-3 px-3 sm:px-4 rounded-xl cursor-pointer transition-colors select-none hover:bg-muted/40 min-h-[3rem]',
+                              isChecked ? 'text-muted-foreground opacity-70' : 'text-foreground'
                             )}
                           >
-                            {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
-                          </div>
+                            <div
+                              className={cn(
+                                'mt-0.5 h-5 w-5 rounded-md flex items-center justify-center shrink-0 transition-colors border',
+                                isChecked
+                                  ? 'bg-primary border-primary text-primary-foreground'
+                                  : 'border-border bg-card hover:border-primary/50'
+                              )}
+                            >
+                              {isChecked && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                            </div>
 
-                          <div className="flex-1 min-w-0 text-sm flex items-baseline justify-between gap-2">
-                            <span className={cn('font-normal', isChecked && 'line-through')}>
-                              {ing.name}
-                            </span>
-                            {(ing.amount || ing.unit) && (
-                              <span
-                                className={cn(
-                                  'text-xs font-mono shrink-0',
-                                  isChecked ? 'text-muted-foreground' : 'text-muted-foreground font-medium'
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-baseline justify-between gap-2">
+                                <span className={cn('text-sm sm:text-[15px] font-medium', isChecked && 'line-through')}>
+                                  {ing.name}
+                                </span>
+                                {displayQty && (
+                                  <span
+                                    className={cn(
+                                      'text-xs sm:text-sm font-mono font-medium shrink-0',
+                                      isChecked ? 'text-muted-foreground' : 'text-foreground'
+                                    )}
+                                  >
+                                    {displayQty}
+                                  </span>
                                 )}
-                              >
-                                {ing.amount} {ing.unit}
-                              </span>
-                            )}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )
@@ -341,83 +395,85 @@ export function ShoppingListPage({
         </div>
       ) : (
         /* TAB 2: CONSOLIDATED VIEW */
-        <div className="rounded-2xl border border-border bg-card p-3 sm:p-5 shadow-xs space-y-1">
+        <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden p-2 sm:p-3">
           {consolidated.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic py-2">
+            <p className="text-xs text-muted-foreground italic p-4 sm:p-5">
               No ingredients to display.
             </p>
           ) : (
-            consolidated.map((item) => {
+            consolidated.map((item, idx) => {
               const isChecked = item.isChecked
               const isPartial = item.isPartial
 
               return (
-                <div
-                  key={item.name}
-                  onClick={() => onToggleConsolidatedIngredient(item.name)}
-                  className={cn(
-                    'flex items-start gap-3 py-2 px-3 rounded-xl cursor-pointer transition-colors select-none hover:bg-muted/40',
-                    isChecked ? 'text-muted-foreground line-through opacity-70' : 'text-foreground'
-                  )}
-                >
+                <div key={item.name}>
+                  {idx > 0 && <div className="border-t border-border/40 mx-3 sm:mx-4 my-0.5" />}
                   <div
+                    onClick={() => onToggleConsolidatedIngredient(item.name)}
                     className={cn(
-                      'mt-0.5 h-4.5 w-4.5 rounded flex items-center justify-center shrink-0 transition-colors border',
-                      isChecked || isPartial
-                        ? 'bg-primary border-primary text-primary-foreground'
-                        : 'border-border bg-card hover:border-primary/50'
+                      'flex items-start gap-3.5 py-3.5 sm:py-3 px-3 sm:px-4 rounded-xl cursor-pointer transition-colors select-none hover:bg-muted/40 min-h-[3rem]',
+                      isChecked ? 'text-muted-foreground opacity-70' : 'text-foreground'
                     )}
                   >
-                    {isChecked ? (
-                      <Check className="h-3 w-3 stroke-[3]" />
-                    ) : isPartial ? (
-                      <Minus className="h-3 w-3 stroke-[3]" />
-                    ) : null}
-                  </div>
+                    <div
+                      className={cn(
+                        'mt-0.5 h-5 w-5 rounded-md flex items-center justify-center shrink-0 transition-colors border',
+                        isChecked || isPartial
+                          ? 'bg-primary border-primary text-primary-foreground'
+                          : 'border-border bg-card hover:border-primary/50'
+                      )}
+                    >
+                      {isChecked ? (
+                        <Check className="h-3.5 w-3.5 stroke-[3]" />
+                      ) : isPartial ? (
+                        <Minus className="h-3.5 w-3.5 stroke-[3]" />
+                      ) : null}
+                    </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className={cn('text-sm font-medium', isChecked && 'line-through')}>
-                        {item.name}
-                      </span>
-                      {item.displayQuantity && (
-                        <span
-                          className={cn(
-                            'text-xs font-mono font-semibold shrink-0',
-                            isChecked ? 'text-muted-foreground' : 'text-foreground'
-                          )}
-                        >
-                          {item.displayQuantity}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className={cn('text-sm sm:text-[15px] font-medium', isChecked && 'line-through')}>
+                          {item.name}
                         </span>
+                        {item.displayQuantity && (
+                          <span
+                            className={cn(
+                              'text-xs sm:text-sm font-mono font-medium shrink-0',
+                              isChecked ? 'text-muted-foreground' : 'text-foreground'
+                            )}
+                          >
+                            {item.displayQuantity}
+                          </span>
+                        )}
+                      </div>
+                      {item.instances.length > 1 && (
+                        <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1">
+                          <span className="opacity-80">From:</span>
+                          {item.instances.map((inst, idx) => (
+                            <span
+                              key={`${inst.recipeId}-${inst.itemKey}-${idx}`}
+                              className="inline-flex items-center gap-1"
+                            >
+                              <span
+                                className={cn(
+                                  inst.isChecked
+                                    ? 'line-through opacity-50'
+                                    : 'text-foreground/80 font-normal'
+                                )}
+                              >
+                                {inst.recipeTitle}
+                                {(inst.amount || inst.unit) && (
+                                  <span className="font-mono text-[11px] ml-1 opacity-75">
+                                    ({[inst.amount, inst.unit].filter(Boolean).join(' ')})
+                                  </span>
+                                )}
+                              </span>
+                              {idx < item.instances.length - 1 && <span className="opacity-40">,</span>}
+                            </span>
+                          ))}
+                        </div>
                       )}
                     </div>
-                    {item.instances.length > 1 && (
-                      <div className="text-[11px] text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5">
-                        <span className="opacity-80">From:</span>
-                        {item.instances.map((inst, idx) => (
-                          <span
-                            key={`${inst.recipeId}-${inst.itemKey}-${idx}`}
-                            className="inline-flex items-center gap-1"
-                          >
-                            <span
-                              className={cn(
-                                inst.isChecked
-                                  ? 'line-through opacity-50'
-                                  : 'text-foreground/80 font-normal'
-                              )}
-                            >
-                              {inst.recipeTitle}
-                              {(inst.amount || inst.unit) && (
-                                <span className="font-mono text-[10px] ml-1 opacity-75">
-                                  ({[inst.amount, inst.unit].filter(Boolean).join(' ')})
-                                </span>
-                              )}
-                            </span>
-                            {idx < item.instances.length - 1 && <span className="opacity-40">,</span>}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </div>
               )
@@ -432,22 +488,22 @@ export function ShoppingListPage({
         onOpenChange={setHistoryOpen}
         className="rounded-2xl border border-border/80 bg-muted/20 overflow-hidden"
       >
-        <CollapsibleTrigger className="w-full flex items-center justify-between p-4 text-xs sm:text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer group select-none">
-          <span className="flex items-center gap-2">
-            <History className="h-4 w-4" />
+        <CollapsibleTrigger className="w-full flex items-center p-4 sm:p-4.5 text-sm sm:text-base font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer group select-none gap-3">
+          <ChevronDown
+            className={cn(
+              'h-5 w-5 text-muted-foreground group-hover:text-foreground transition-transform duration-200 shrink-0',
+              !historyOpen && '-rotate-90'
+            )}
+          />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <History className="h-4.5 w-4.5 shrink-0" />
             <span>Recipe history</span>
             {history.length > 0 && (
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-bold font-mono">
                 {history.length}
               </Badge>
             )}
-          </span>
-          <ChevronDown
-            className={cn(
-              'h-4 w-4 text-muted-foreground group-hover:text-foreground transition-transform duration-200',
-              historyOpen && 'rotate-180'
-            )}
-          />
+          </div>
         </CollapsibleTrigger>
 
         <CollapsibleContent className="p-4 pt-0 space-y-3">

@@ -17,7 +17,10 @@ export function FilterTemplateChips({
   onSaveCurrentAsTemplate,
   hasActiveFilters,
 }: FilterTemplateChipsProps) {
-  if (templates.length === 0 && !hasActiveFilters) {
+  // Only show the 5 most recent templates in the quick use chips
+  const visibleTemplates = templates.slice(0, 5)
+
+  if (visibleTemplates.length === 0 && !hasActiveFilters) {
     return null
   }
 
@@ -33,7 +36,7 @@ export function FilterTemplateChips({
         <span>Templates:</span>
       </span>
 
-      {templates.map((template) => {
+      {visibleTemplates.map((template) => {
         const isActive = matchingTemplate?.id === template.id
 
         return (
