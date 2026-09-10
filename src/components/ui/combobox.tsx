@@ -1,8 +1,7 @@
-"use client"
-
 import * as React from "react"
 import { Combobox as ComboboxPrimitive } from "@base-ui/react"
 import { cn } from "cn"
+import { useIsMobile } from "@/hooks/useIsMobile"
 
 import {
   InputGroup,
@@ -135,11 +134,15 @@ function ComboboxItem({
   children,
   ...props
 }: ComboboxPrimitive.Item.Props) {
+  const isMobile = useIsMobile()
   return (
     <ComboboxPrimitive.Item
       data-slot="combobox-item"
       className={cn(
-        "relative flex w-full cursor-default items-center gap-2 rounded-md py-2 sm:py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground not-data-[variant=destructive]:data-highlighted:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex w-full cursor-default items-center gap-2 rounded-md outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground not-data-[variant=destructive]:data-highlighted:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        isMobile
+          ? "min-h-11 py-3 pr-9 pl-3 text-base sm:text-sm"
+          : "min-h-8 py-1.5 pr-8 pl-2 text-sm sm:text-xs",
         className
       )}
       {...props}
@@ -147,10 +150,15 @@ function ComboboxItem({
       {children}
       <ComboboxPrimitive.ItemIndicator
         render={
-          <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center" />
+          <span
+            className={cn(
+              "pointer-events-none absolute flex items-center justify-center",
+              isMobile ? "right-3 size-5" : "right-2 size-4"
+            )}
+          />
         }
       >
-        <CheckIcon className="pointer-events-none" />
+        <CheckIcon className={cn("pointer-events-none", isMobile ? "size-4.5" : "size-4")} />
       </ComboboxPrimitive.ItemIndicator>
     </ComboboxPrimitive.Item>
   )
@@ -216,11 +224,13 @@ function ComboboxChips({
   ...props
 }: React.ComponentPropsWithRef<typeof ComboboxPrimitive.Chips> &
   ComboboxPrimitive.Chips.Props) {
+  const isMobile = useIsMobile()
   return (
     <ComboboxPrimitive.Chips
       data-slot="combobox-chips"
       className={cn(
-        "flex min-h-10 sm:min-h-9 w-full flex-wrap items-center gap-1.5 rounded-lg border border-input bg-transparent dark:bg-input/30 px-3 py-1.5 text-sm sm:text-xs transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50",
+        "flex w-full flex-wrap items-center gap-1.5 rounded-lg border border-input bg-transparent dark:bg-input/30 px-3 transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50",
+        isMobile ? "min-h-12 py-2 text-sm" : "min-h-10 sm:min-h-9 py-1.5 text-sm sm:text-xs",
         className
       )}
       {...props}
@@ -236,11 +246,13 @@ function ComboboxChip({
 }: ComboboxPrimitive.Chip.Props & {
   showRemove?: boolean
 }) {
+  const isMobile = useIsMobile()
   return (
     <ComboboxPrimitive.Chip
       data-slot="combobox-chip"
       className={cn(
-        "flex h-6.5 sm:h-6 w-fit items-center justify-center gap-1.5 rounded-md bg-muted px-2 text-xs font-medium whitespace-nowrap text-foreground has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:opacity-50",
+        "flex w-fit items-center justify-center gap-1.5 rounded-md bg-muted px-2 font-medium whitespace-nowrap text-foreground has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:opacity-50",
+        isMobile ? "h-8 text-sm px-2.5" : "h-6.5 sm:h-6 text-xs",
         className
       )}
       {...props}
@@ -248,10 +260,13 @@ function ComboboxChip({
       {children}
       {showRemove && (
         <ComboboxPrimitive.ChipRemove
-          className="rounded p-0.5 text-muted-foreground hover:bg-muted-foreground/20 hover:text-foreground cursor-pointer transition-colors -mr-0.5"
+          className={cn(
+            "rounded p-0.5 text-muted-foreground hover:bg-muted-foreground/20 hover:text-foreground cursor-pointer transition-colors -mr-0.5",
+            isMobile && "p-1"
+          )}
           data-slot="combobox-chip-remove"
         >
-          <XIcon className="h-3 w-3 pointer-events-none" />
+          <XIcon className={cn("pointer-events-none", isMobile ? "size-3.5" : "size-3")} />
         </ComboboxPrimitive.ChipRemove>
       )}
     </ComboboxPrimitive.Chip>

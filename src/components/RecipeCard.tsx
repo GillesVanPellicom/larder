@@ -22,6 +22,7 @@ import {
   Utensils,
 } from 'lucide-react'
 import { cn } from 'cn'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 interface RecipeCardProps {
   recipe: Recipe
@@ -46,6 +47,7 @@ export function RecipeCard({
   onToggleTag,
   onView,
 }: RecipeCardProps) {
+  const isMobile = useIsMobile()
   const hasViolations = violations.length > 0
   const ingredientCount = recipe.ingredients?.length || 0
 
@@ -66,7 +68,7 @@ export function RecipeCard({
           <Tooltip>
             <TooltipTrigger
               render={
-                <div className="flex h-8.5 w-8.5 items-center justify-center rounded-lg bg-destructive text-white shadow-md backdrop-blur-xs transition-transform hover:scale-105 cursor-help">
+                <div className="flex h-8.5 w-8.5 items-center justify-center rounded-lg bg-destructive text-white shadow-md backdrop-blur-xs transition-transform hover:scale-105 active:scale-95 cursor-pointer touch-manipulation">
                   <AlertTriangle className="h-4.5 w-4.5" />
                 </div>
               }
@@ -90,7 +92,11 @@ export function RecipeCard({
       <div
         className={cn(
           "absolute top-2.5 right-2.5 z-20 transition-opacity duration-150",
-          isInShoppingList ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          isInShoppingList
+            ? "opacity-100"
+            : isMobile
+              ? "opacity-100"
+              : "opacity-0 group-hover:opacity-100"
         )}
         onClick={(e) => e.stopPropagation()}
       >
@@ -105,7 +111,9 @@ export function RecipeCard({
                   "h-8.5 w-8.5 rounded-lg backdrop-blur-md shadow-md border cursor-pointer transition-all",
                   isInShoppingList
                     ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
-                    : "bg-black/80 text-white border-white/20 hover:bg-black/90 hover:scale-105"
+                    : isMobile
+                      ? "bg-black/35 text-white/80 border-white/20 hover:bg-black/60 active:bg-black/80 active:scale-95"
+                      : "bg-black/80 text-white border-white/20 hover:bg-black/90 hover:scale-105"
                 )}
                 aria-label={isInShoppingList ? "Remove from shopping list" : "Add to shopping list"}
               >

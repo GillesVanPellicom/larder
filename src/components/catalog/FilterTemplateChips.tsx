@@ -33,7 +33,7 @@ export function FilterTemplateChips({
     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
       <span className="text-xs text-muted-foreground font-medium flex items-center gap-1 mr-0.5 select-none">
         <Bookmark className="h-3.5 w-3.5 text-primary" />
-        <span>Templates:</span>
+        <span>Presets:</span>
       </span>
 
       {visibleTemplates.map((template) => {
@@ -49,7 +49,7 @@ export function FilterTemplateChips({
                 ? 'bg-primary text-primary-foreground border-primary shadow-xs font-semibold'
                 : 'bg-card/70 hover:bg-muted/80 text-foreground border-border hover:border-border/80'
             }`}
-            title={`Apply "${template.name}" filter template`}
+            title={`Apply "${template.name}" filter preset`}
           >
             {isActive && <Check className="h-3 w-3 shrink-0" />}
             <span>{template.name}</span>
@@ -62,10 +62,10 @@ export function FilterTemplateChips({
           type="button"
           onClick={onSaveCurrentAsTemplate}
           className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border border-dashed border-border/80 bg-muted/30 text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:border-border transition-all cursor-pointer select-none"
-          title="Save current active filters as template"
+          title="Save current active filters as preset"
         >
           <Plus className="h-3 w-3" />
-          <span>Save template</span>
+          <span>Save preset</span>
         </button>
       )}
     </div>

@@ -45,7 +45,7 @@ export function FilterTemplatesTab({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-semibold text-muted-foreground">
-            Saved templates
+            Saved presets
           </span>
           <InfoTooltip content="Saved filter presets can be applied with a single click from the catalog or filter drawer." />
         </div>
@@ -57,7 +57,7 @@ export function FilterTemplatesTab({
             <Bookmark className="h-5 w-5" />
           </div>
           <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">No saved templates</p>
+            <p className="text-sm font-medium text-foreground">No saved presets</p>
             <p className="text-xs text-muted-foreground max-w-[240px] leading-relaxed">
               Set your favorite filter combinations on the Filters tab and save them for 1-click reuse.
             </p>

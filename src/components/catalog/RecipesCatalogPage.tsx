@@ -21,6 +21,7 @@ import { Database, Loader2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useDeviceSettings } from '@/lib/deviceSettings'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 interface RecipesCatalogPageProps {
   recipes: Recipe[]
@@ -76,6 +77,7 @@ export function RecipesCatalogPage({
   onViewRecipe,
 }: RecipesCatalogPageProps) {
   const [saveModalOpen, setSaveModalOpen] = useState(false)
+  const isMobile = useIsMobile()
   const { settings, setSetting } = useDeviceSettings()
   const pageSize = settings.recipesPerPage || 12
 
@@ -183,12 +185,12 @@ export function RecipesCatalogPage({
         </div>
       </div>
 
-      {/* Floating Action Button for New Recipe (Mobile only, replaces toolbar Add button) */}
+      {/* Floating Action Button for New Recipe (Always shown on mobile/tablet, falls back to sm:hidden on desktop) */}
       <FloatingActionButton
         icon={<Plus />}
         onClick={onNewRecipe}
         aria-label="New recipe"
-        containerClassName="sm:hidden"
+        containerClassName={isMobile ? '' : 'sm:hidden'}
         tooltip={
           <KbdGroup>
             <Kbd>{isMac() ? '⌘' : 'Ctrl'}</Kbd>
@@ -208,6 +210,7 @@ export function RecipesCatalogPage({
         onResetFilters={onResetFilters}
         onOpenFilterDrawer={onOpenFilterDrawer}
         onNewRecipe={onNewRecipe}
+        isMobile={isMobile}
       />
 
       {/* Template Chips and Active Filters */}

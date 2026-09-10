@@ -243,7 +243,7 @@ export function FilterDrawer({
                 )}
               </div>
               <SheetDescription className="sr-only">
-                Filter recipe catalog by tags, ingredients, time, search, and saved templates
+                Filter recipe catalog by tags, ingredients, time, search, and saved presets
               </SheetDescription>
             </SheetHeader>
 
@@ -284,7 +284,7 @@ export function FilterDrawer({
               >
                 <span className="flex items-center gap-2">
                   <Bookmark className="h-4 w-4 shrink-0" />
-                  <span>Templates</span>
+                  <span>Presets</span>
                 </span>
                 {templates.length > 0 && (
                   <Badge
@@ -495,7 +495,7 @@ export function FilterDrawer({
                   className="cursor-pointer text-xs gap-1.5 text-muted-foreground hover:text-foreground"
                 >
                   <Bookmark className="h-3.5 w-3.5" />
-                  Save as template
+                  Save as preset
                 </Button>
 
                 <div className="flex items-center gap-2">

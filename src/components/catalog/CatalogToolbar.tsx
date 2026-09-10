@@ -17,6 +17,7 @@ interface CatalogToolbarProps {
   onResetFilters: () => void
   onOpenFilterDrawer: () => void
   onNewRecipe: () => void
+  isMobile?: boolean
 }
 
 export function CatalogToolbar({
@@ -26,6 +27,7 @@ export function CatalogToolbar({
   onResetFilters,
   onOpenFilterDrawer,
   onNewRecipe,
+  isMobile = false,
 }: CatalogToolbarProps) {
   const [draftQuery, setDraftQuery] = useState(searchQuery)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -67,7 +69,7 @@ export function CatalogToolbar({
               handleCommit()
             }
           }}
-          className="pl-9.5 pr-9 text-base md:text-sm bg-card border-border shadow-2xs"
+          className="pl-9.5 pr-9 text-base md:text-sm bg-card border-border shadow-2xs h-12 sm:h-10"
         />
         {draftQuery && (
           <button
@@ -90,13 +92,13 @@ export function CatalogToolbar({
                 <Button
                   type="button"
                   variant="outline"
-                  size="icon"
+                  size="icon-lg"
                   onClick={onResetFilters}
                   disabled={activeFiltersCount === 0}
                   className="border-border cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label="Reset filters"
                 >
-                  <RotateCcw className="h-4 w-4" />
+                  <RotateCcw className="h-5 w-5 sm:h-4.5 sm:w-4.5" />
                 </Button>
               }
             />
@@ -110,12 +112,12 @@ export function CatalogToolbar({
                 <Button
                   type="button"
                   variant="outline"
-                  size="icon"
+                  size="icon-lg"
                   onClick={() => onOpenFilterDrawer()}
                   className="border-border cursor-pointer relative"
                   aria-label="Filter recipes"
                 >
-                  <Filter className="h-4 w-4" />
+                  <Filter className="h-5 w-5 sm:h-4.5 sm:w-4.5" />
                 </Button>
               }
             />
@@ -134,17 +136,20 @@ export function CatalogToolbar({
         )}
       </div>
 
-      {/* Primary Add Recipe Button (Desktop Only) */}
-      <Button
-        type="button"
-        variant="default"
-        onClick={onNewRecipe}
-        className="hidden sm:inline-flex items-center gap-1.5 shrink-0 shadow-2xs font-semibold cursor-pointer"
-        aria-label="Add recipe"
-      >
-        <Plus className="h-4 w-4" />
-        <span>Add</span>
-      </Button>
+      {/* Primary Add Recipe Button (Desktop Only, hidden when mobile/tablet device is detected) */}
+      {!isMobile && (
+        <Button
+          type="button"
+          variant="default"
+          size="lg"
+          onClick={onNewRecipe}
+          className="hidden sm:inline-flex items-center gap-1.5 shrink-0 shadow-2xs font-semibold cursor-pointer"
+          aria-label="Add recipe"
+        >
+          <Plus className="h-4.5 w-4.5" />
+          <span>Add</span>
+        </Button>
+      )}
     </div>
   )
 }

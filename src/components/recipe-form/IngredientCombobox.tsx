@@ -4,6 +4,7 @@ import { ingredientsApi } from '@/services/api'
 import { CreateIngredientModal } from './CreateIngredientModal'
 import { Check, Loader2, MoreHorizontal, Plus } from 'lucide-react'
 import { cn } from 'cn'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 interface IngredientComboboxProps {
   value: string
@@ -25,6 +26,7 @@ export function IngredientCombobox({
   className = '',
   autoFocus = false,
 }: IngredientComboboxProps) {
+  const isMobile = useIsMobile()
   const [inputValue, setInputValue] = useState(value)
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -286,7 +288,7 @@ export function IngredientCombobox({
 
       {/* Popover Results Dropdown */}
       {isOpen && (showCreateOption || results.length > 0 || hasMore) && (
-        <div className="absolute left-0 top-full mt-1.5 z-50 w-full rounded-xl border border-border bg-popover/95 p-1 text-popover-foreground shadow-xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100 max-h-60 overflow-y-auto">
+        <div className="absolute left-0 top-full mt-1.5 z-50 w-full rounded-xl border border-border bg-popover/95 p-1 text-popover-foreground shadow-xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100 max-h-72 sm:max-h-60 overflow-y-auto">
           {/* Top Option: Create New Ingredient */}
           {showCreateOption && (
             <>
@@ -297,13 +299,16 @@ export function IngredientCombobox({
                   handleOpenCreateModal(trimmedQuery)
                 }}
                 className={cn(
-                  'flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold cursor-pointer transition-colors text-primary',
+                  'flex w-full items-center gap-2 rounded-lg cursor-pointer transition-colors text-primary',
+                  isMobile
+                    ? 'min-h-11 px-3 py-2.5 text-sm font-semibold'
+                    : 'min-h-8 px-2.5 py-1.5 text-xs font-semibold',
                   highlightedIndex === 0
                     ? 'bg-primary/15 text-primary'
                     : 'hover:bg-primary/10'
                 )}
               >
-                <Plus className="h-3.5 w-3.5 shrink-0" />
+                <Plus className={cn("shrink-0", isMobile ? "h-4 w-4" : "h-3.5 w-3.5")} />
                 <span className="truncate">
                   Create new ingredient &ldquo;<span className="font-bold">{trimmedQuery}</span>&rdquo;
                 </span>
@@ -327,21 +332,29 @@ export function IngredientCombobox({
                   handleSelect(item.name)
                 }}
                 className={cn(
-                  'flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium cursor-pointer transition-colors text-foreground',
+                  'flex w-full items-center justify-between rounded-lg cursor-pointer transition-colors text-foreground',
+                  isMobile
+                    ? 'min-h-11 px-3 py-2.5 text-base sm:text-sm font-medium'
+                    : 'min-h-8 px-2.5 py-1.5 text-xs font-medium',
                   isHighlighted
                     ? 'bg-accent text-accent-foreground font-semibold'
                     : 'hover:bg-accent/60'
                 )}
               >
                 <span className="truncate">{item.name}</span>
-                {isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0 ml-2" />}
+                {isSelected && (
+                  <Check className={cn("text-primary shrink-0 ml-2", isMobile ? "h-4 w-4" : "h-3.5 w-3.5")} />
+                )}
               </button>
             )
           })}
 
           {/* Bottom Ellipsis Indicator for More Results */}
           {hasMore && (
-            <div className="flex items-center justify-center gap-1.5 py-1.5 px-2 text-[11px] text-muted-foreground border-t border-border/40 mt-1 select-none">
+            <div className={cn(
+              "flex items-center justify-center gap-1.5 text-muted-foreground border-t border-border/40 mt-1 select-none",
+              isMobile ? "py-2.5 px-3 text-xs" : "py-1.5 px-2 text-[11px]"
+            )}>
               <MoreHorizontal className="h-3.5 w-3.5 opacity-60" />
               <span>More results available, keep typing...</span>
             </div>

@@ -12,28 +12,28 @@ export const fabWrapperPositions: Record<
   { container: string; inner: string }
 > = {
   'bottom-right': {
-    container: 'fixed inset-x-0 bottom-0 pointer-events-none z-40 pb-6 sm:pb-8',
-    inner: 'mx-auto w-full max-w-7xl px-4 sm:px-6 flex justify-end',
+    container: 'fixed inset-x-0 bottom-0 pointer-events-none z-40 pb-6 sm:pb-9',
+    inner: 'mx-auto w-full max-w-7xl px-6 sm:px-9 flex justify-end',
   },
   'bottom-left': {
-    container: 'fixed inset-x-0 bottom-0 pointer-events-none z-40 pb-6 sm:pb-8',
-    inner: 'mx-auto w-full max-w-7xl px-4 sm:px-6 flex justify-start',
+    container: 'fixed inset-x-0 bottom-0 pointer-events-none z-40 pb-6 sm:pb-9',
+    inner: 'mx-auto w-full max-w-7xl px-6 sm:px-9 flex justify-start',
   },
   'bottom-center': {
-    container: 'fixed inset-x-0 bottom-0 pointer-events-none z-40 pb-6 sm:pb-8',
-    inner: 'mx-auto w-full max-w-7xl px-4 sm:px-6 flex justify-center',
+    container: 'fixed inset-x-0 bottom-0 pointer-events-none z-40 pb-6 sm:pb-9',
+    inner: 'mx-auto w-full max-w-7xl px-6 sm:px-9 flex justify-center',
   },
   'top-right': {
-    container: 'fixed inset-x-0 top-0 pointer-events-none z-40 pt-5 sm:pt-6',
-    inner: 'mx-auto w-full max-w-7xl px-4 sm:px-6 flex justify-end',
+    container: 'fixed inset-x-0 top-0 pointer-events-none z-40 pt-6 sm:pt-9',
+    inner: 'mx-auto w-full max-w-7xl px-6 sm:px-9 flex justify-end',
   },
   'top-left': {
-    container: 'fixed inset-x-0 top-0 pointer-events-none z-40 pt-5 sm:pt-6',
-    inner: 'mx-auto w-full max-w-7xl px-4 sm:px-6 flex justify-start',
+    container: 'fixed inset-x-0 top-0 pointer-events-none z-40 pt-6 sm:pt-9',
+    inner: 'mx-auto w-full max-w-7xl px-6 sm:px-9 flex justify-start',
   },
   'top-center': {
-    container: 'fixed inset-x-0 top-0 pointer-events-none z-40 pt-5 sm:pt-6',
-    inner: 'mx-auto w-full max-w-7xl px-4 sm:px-6 flex justify-center',
+    container: 'fixed inset-x-0 top-0 pointer-events-none z-40 pt-6 sm:pt-9',
+    inner: 'mx-auto w-full max-w-7xl px-6 sm:px-9 flex justify-center',
   },
 }
 

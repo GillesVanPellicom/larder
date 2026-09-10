@@ -9,7 +9,8 @@ import type {
   RecipeTags,
   TagCategory,
 } from '@/shared/types'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Loader2 } from 'lucide-react'
+import { cn } from 'cn'
 import { ConfirmUnsavedDialog } from '@/components/ConfirmUnsavedDialog'
 import { RecipeBasicFields } from './RecipeBasicFields'
 import { RecipeImageUpload } from './RecipeImageUpload'
@@ -96,6 +97,7 @@ export function RecipeFormPage({
   onSave,
   hideTopBar = false,
 }: RecipeFormPageProps) {
+  const isEditMode = Boolean(recipe && recipe.id)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -126,6 +128,13 @@ export function RecipeFormPage({
     initialState.instructionsHtml
   )
   const [tags, setTags] = useState<RecipeTags>(initialState.tags)
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+  }, [])
 
   useEffect(() => {
     setCurrentRecipe(recipe)
@@ -468,18 +477,23 @@ export function RecipeFormPage({
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-32 sm:pb-36 animate-in fade-in duration-150">
+    <div
+      className={cn(
+        'max-w-7xl mx-auto space-y-6 animate-in fade-in duration-150',
+        isEditMode ? 'pb-32 sm:pb-36' : 'pb-16 sm:pb-20'
+      )}
+    >
       {/* Top Action Bar */}
       {!hideTopBar && (
         <div className="flex items-center justify-between">
           <Button
             variant="outline"
-            size="icon"
+            size="icon-lg"
             onClick={handleBackClick}
             title="Back"
-            className="h-9 w-9 cursor-pointer border-border hover:bg-muted text-foreground shrink-0"
+            className="cursor-pointer border-border hover:bg-muted text-foreground shrink-0"
           >
-            <ArrowLeft className="h-4.5 w-4.5" />
+            <ArrowLeft className="h-5 w-5 sm:h-4.5 sm:w-4.5" />
           </Button>
         </div>
       )}
@@ -548,16 +562,34 @@ export function RecipeFormPage({
           isMandatory={Boolean(mandatory.instructions !== false)}
           error={fieldErrors.instructions}
         />
+
+        {/* For Create Recipe: Large Primary Save Button at the bottom */}
+        {!isEditMode && (
+          <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-border/60">
+            {error && <p className="text-xs text-destructive font-medium">{error}</p>}
+            <Button
+              type="submit"
+              size="lg"
+              disabled={submitting}
+              className="cursor-pointer gap-2 w-full sm:w-auto"
+            >
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              <span>Save</span>
+            </Button>
+          </div>
+        )}
       </form>
 
-      {/* Floating Sticky Save Bar */}
-      <SaveBar
-        isDirty={isDirty}
-        submitting={submitting}
-        error={error}
-        onDiscard={handleDiscard}
-        formId="recipe-form"
-      />
+      {/* Floating Sticky Save Bar (Edit Mode Only) */}
+      {isEditMode && (
+        <SaveBar
+          isDirty={isDirty}
+          submitting={submitting}
+          error={error}
+          onDiscard={handleDiscard}
+          formId="recipe-form"
+        />
+      )}
 
       {/* Confirmation Dialog for Back Navigation */}
       <ConfirmUnsavedDialog

@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ArrowLeft, ExternalLink, MoreHorizontal, Pencil, RotateCcw, Scale, ShoppingBag, Trash2 } from 'lucide-react'
+import { ArrowLeft, ExternalLink, MoreHorizontal, Pencil, Scale, ShoppingBag, Trash2 } from 'lucide-react'
 import { RecipeHero } from './RecipeHero'
 import { RecipeIngredientsList } from './RecipeIngredientsList'
 import { RecipeInstructionsView } from './RecipeInstructionsView'
@@ -113,7 +113,7 @@ export function RecipeViewPage({
         <div className="flex items-center justify-between">
           <Button
             variant="outline"
-            size="icon"
+            size="icon-lg"
             onClick={onBack}
             title="Back"
             className="cursor-pointer border-border hover:bg-muted text-foreground"
@@ -126,7 +126,7 @@ export function RecipeViewPage({
               render={
                 <Button
                   variant="outline"
-                  size="icon"
+                  size="icon-lg"
                   className="cursor-pointer border-border hover:bg-muted text-foreground"
                   title="Recipe options"
                 >
@@ -150,18 +150,8 @@ export function RecipeViewPage({
                 className="cursor-pointer gap-2 py-2 text-xs font-medium text-foreground"
               >
                 <Scale className="h-4 w-4" />
-                <span>Yield multiplier</span>
+                <span>Adjust yield</span>
               </DropdownMenuItem>
-
-              {yieldMultiplier !== 1 && (
-                <DropdownMenuItem
-                  onClick={() => setYieldMultiplier(1)}
-                  className="cursor-pointer gap-2 text-xs py-1.5 text-muted-foreground hover:text-foreground"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  <span>Reset to 1×</span>
-                </DropdownMenuItem>
-              )}
 
               <DropdownMenuSeparator />
 

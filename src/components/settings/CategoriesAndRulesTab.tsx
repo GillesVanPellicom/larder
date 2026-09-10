@@ -34,6 +34,7 @@ import {
 import { tagsApi } from '@/services/api'
 import { TagConflictDialog, type DeleteConflictData } from './TagConflictDialog'
 import { SaveBar } from '@/components/ui/save-bar'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 export interface CategoriesAndRulesTabProps {
   categories: TagCategory[]
@@ -50,6 +51,7 @@ export function CategoriesAndRulesTab({
   onSaveConfig,
   onDirtyChange,
 }: CategoriesAndRulesTabProps) {
+  const isMobile = useIsMobile()
   // Category state (defaults to '' so user selects what to edit)
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
 
@@ -515,7 +517,11 @@ export function CategoriesAndRulesTab({
                           setIsSectionPickerOpen(false)
                           setSectionSearch('')
                         }}
-                        className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-semibold cursor-pointer transition-colors ${
+                        className={`flex w-full items-center justify-between rounded-lg cursor-pointer transition-colors ${
+                          isMobile
+                            ? 'min-h-11 px-3 py-2.5 text-base sm:text-sm font-semibold'
+                            : 'min-h-8 px-2.5 py-1.5 text-xs font-semibold'
+                        } ${
                           selectedCategoryId === 'basic_details'
                             ? 'bg-primary text-primary-foreground'
                             : 'hover:bg-accent hover:text-accent-foreground text-foreground'
@@ -523,7 +529,7 @@ export function CategoriesAndRulesTab({
                       >
                         <span>Basic Recipe Details</span>
                         {selectedCategoryId === 'basic_details' && (
-                          <Check className="h-3.5 w-3.5" />
+                          <Check className={isMobile ? "h-4 w-4" : "h-3.5 w-3.5"} />
                         )}
                       </button>
                     </div>
@@ -547,9 +553,13 @@ export function CategoriesAndRulesTab({
                           setIsCreateCategoryModalOpen(true)
                         }
                       }}
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 cursor-pointer transition-colors"
+                      className={`flex w-full items-center gap-2 rounded-lg cursor-pointer transition-colors text-primary hover:bg-primary/10 ${
+                        isMobile
+                          ? 'min-h-11 px-3 py-2.5 text-sm font-semibold'
+                          : 'min-h-8 px-2.5 py-1.5 text-xs font-semibold'
+                      }`}
                     >
-                      <Plus className="h-3.5 w-3.5" />
+                      <Plus className={isMobile ? "h-4 w-4" : "h-3.5 w-3.5"} />
                       <span>
                         {sectionSearch.trim()
                           ? `Create category "${sectionSearch.trim()}"`
@@ -566,14 +576,18 @@ export function CategoriesAndRulesTab({
                           setIsSectionPickerOpen(false)
                           setSectionSearch('')
                         }}
-                        className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium cursor-pointer transition-colors ${
+                        className={`flex w-full items-center justify-between rounded-lg cursor-pointer transition-colors ${
+                          isMobile
+                            ? 'min-h-11 px-3 py-2.5 text-base sm:text-sm font-medium'
+                            : 'min-h-8 px-2.5 py-1.5 text-xs font-medium'
+                        } ${
                           selectedCategoryId === c.id
                             ? 'bg-primary text-primary-foreground font-semibold'
                             : 'hover:bg-accent hover:text-accent-foreground text-foreground'
                         }`}
                       >
                         <span>{c.name}</span>
-                        {selectedCategoryId === c.id && <Check className="h-3.5 w-3.5" />}
+                        {selectedCategoryId === c.id && <Check className={isMobile ? "h-4 w-4" : "h-3.5 w-3.5"} />}
                       </button>
                     ))}
                   </div>

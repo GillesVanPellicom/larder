@@ -10,6 +10,7 @@ import {
 import type { PageView, Recipe } from '@/shared/types'
 import { Menu, Settings } from 'lucide-react'
 import { cn } from 'cn'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 import { Badge } from '@/components/ui/badge'
 
@@ -30,6 +31,7 @@ export function AppHeader({
   isDatabaseConnected = true,
   className = '',
 }: AppHeaderProps) {
+  const isMobile = useIsMobile()
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
 
   const handleNav = (view: PageView, recipe: Recipe | null = null) => {
@@ -61,28 +63,28 @@ export function AppHeader({
           {/* Left Area: Desktop Tabs & Mobile Menu Button */}
           <div className="flex-1 flex items-center justify-start min-w-0">
             {/* Mobile Menu Button */}
-            <div className={cn('flex lg:hidden', !isDatabaseConnected && 'invisible')}>
+            <div className={cn(isMobile ? 'flex' : 'flex lg:hidden', !isDatabaseConnected && 'invisible')}>
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
+                size="icon-lg"
                 onClick={() => setMobileDrawerOpen(true)}
-                className="rounded-full h-9 w-9 text-foreground hover:bg-muted/80 cursor-pointer shrink-0"
+                className="rounded-full text-foreground hover:bg-muted/80 cursor-pointer shrink-0"
                 aria-label="Open navigation menu"
               >
-                <Menu className="h-5 w-5" />
+                <Menu className="h-5.5 w-5.5 sm:h-5 sm:w-5" />
               </Button>
             </div>
 
             {/* Desktop Tabs */}
-            <nav className={cn('hidden lg:flex items-center gap-1.5', !isDatabaseConnected && 'invisible')}>
+            <nav className={cn(isMobile ? 'hidden' : 'hidden lg:flex items-center gap-2', !isDatabaseConnected && 'invisible')}>
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
+                size="default"
                 onClick={() => handleNav('recipes', null)}
                 className={cn(
-                  'rounded-full text-xs font-light px-3.5 h-9 tracking-[0.16em] uppercase transition-colors cursor-pointer text-foreground',
+                  'rounded-full text-xs font-light px-4.5 h-10 tracking-[0.18em] uppercase transition-colors cursor-pointer text-foreground',
                   isRecipesActive
                     ? 'bg-muted/90 shadow-2xs'
                     : 'hover:bg-muted/40'
@@ -94,10 +96,10 @@ export function AppHeader({
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
+                size="default"
                 onClick={() => handleNav('shopping-list', null)}
                 className={cn(
-                  'rounded-full text-xs font-light px-3.5 h-9 tracking-[0.16em] uppercase transition-colors cursor-pointer text-foreground whitespace-nowrap gap-1.5',
+                  'rounded-full text-xs font-light px-4.5 h-10 tracking-[0.18em] uppercase transition-colors cursor-pointer text-foreground whitespace-nowrap gap-2',
                   isShoppingListActive
                     ? 'bg-muted/90 shadow-2xs'
                     : 'hover:bg-muted/40'
@@ -107,7 +109,7 @@ export function AppHeader({
                 {shoppingListCount !== undefined && shoppingListCount > 0 && (
                   <Badge
                     variant="secondary"
-                    className="text-[10px] px-1.5 py-0 h-4 font-bold font-mono bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                    className="text-xs px-2 py-0.5 h-5 font-bold font-mono bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
                   >
                     {shoppingListCount}
                   </Badge>
@@ -117,10 +119,10 @@ export function AppHeader({
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
+                size="default"
                 onClick={() => handleNav('ingredients', null)}
                 className={cn(
-                  'rounded-full text-xs font-light px-3.5 h-9 tracking-[0.16em] uppercase transition-colors cursor-pointer text-foreground',
+                  'rounded-full text-xs font-light px-4.5 h-10 tracking-[0.18em] uppercase transition-colors cursor-pointer text-foreground',
                   isIngredientsActive
                     ? 'bg-muted/90 shadow-2xs'
                     : 'hover:bg-muted/40'
@@ -145,24 +147,24 @@ export function AppHeader({
           {/* Right Area: Desktop Settings & Mobile Symmetry Spacer */}
           <div className="flex-1 flex items-center justify-end min-w-0">
             {/* Desktop Settings Button */}
-            <div className="hidden lg:flex items-center">
+            <div className={isMobile ? 'hidden' : 'hidden lg:flex items-center'}>
               <Tooltip>
                 <TooltipTrigger
                   render={
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon"
+                      size="icon-lg"
                       onClick={() => handleSettings()}
                       className={cn(
-                        'rounded-full h-10 w-10 sm:h-11 sm:w-11 cursor-pointer transition-colors shrink-0 text-foreground',
+                        'rounded-full cursor-pointer transition-colors shrink-0 text-foreground',
                         isSettingsActive
                           ? 'bg-muted/90 shadow-2xs'
                           : 'hover:bg-muted/40'
                       )}
                       aria-label="Settings"
                     >
-                      <Settings className="h-5 w-5 sm:h-5.5 sm:w-5.5" />
+                      <Settings className="h-5.5 w-5.5 sm:h-5 sm:w-5" />
                     </Button>
                   }
                 />
@@ -171,7 +173,7 @@ export function AppHeader({
             </div>
 
             {/* Mobile Spacer to keep "LARDER" perfectly centered */}
-            <div className="flex lg:hidden w-9 h-9 pointer-events-none" aria-hidden="true" />
+            <div className={cn(isMobile ? 'flex' : 'flex lg:hidden', 'size-12 sm:size-10 pointer-events-none')} aria-hidden="true" />
           </div>
         </div>
       </header>

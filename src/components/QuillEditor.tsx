@@ -83,6 +83,12 @@ export function QuillEditor({
       lastEmittedValueRef.current = quill.getSemanticHTML().trim()
     }
 
+    // Ensure Quill does not steal focus automatically on mount
+    quill.blur()
+    if (quill.root && typeof quill.root.blur === 'function') {
+      quill.root.blur()
+    }
+
     const handleTextChange = (_delta: unknown, _oldDelta: unknown, source: string) => {
       if (isInternalChangeRef.current || source !== 'user') return
       const isQuillEmpty = quill.getText().trim() === ''
@@ -113,6 +119,7 @@ export function QuillEditor({
       setQuillContent(quill, value)
       lastEmittedValueRef.current = (value || '').trim()
       isInternalChangeRef.current = false
+      quill.blur()
     }
   }, [value])
 

@@ -1,7 +1,67 @@
-import { useLayoutEffect, useRef, useState } from "react"
+import * as React from "react"
+import { useLayoutEffect, useRef, useState, useEffect, useContext, createContext, useMemo } from "react"
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "cn"
+import { useIsMobile } from "@/hooks/useIsMobile"
+
+// Global single-listener mobile tooltip coordinator
+let activeMobileClose: (() => void) | null = null
+let activeMobileTrigger: HTMLElement | null = null
+
+function registerActiveMobileTooltip(closeFn: () => void, triggerEl: HTMLElement | null) {
+  if (activeMobileClose && activeMobileClose !== closeFn) {
+    activeMobileClose()
+  }
+  activeMobileClose = closeFn
+  activeMobileTrigger = triggerEl
+}
+
+function unregisterActiveMobileTooltip(closeFn?: () => void) {
+  if (!closeFn || activeMobileClose === closeFn) {
+    activeMobileClose = null
+    activeMobileTrigger = null
+  }
+}
+
+// Single window listener for all tooltips when any mobile tooltip is open
+if (typeof window !== "undefined") {
+  window.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (!activeMobileClose) return
+      const target = e.target as Node | null
+      if (!target) return
+
+      // If clicked inside the active trigger, let the trigger handler toggle it
+      if (activeMobileTrigger && activeMobileTrigger.contains(target)) {
+        return
+      }
+
+      // If clicked inside the tooltip popup itself, don't close it
+      const popup = (target as HTMLElement).closest?.('[data-slot="tooltip-content"]')
+      if (popup) {
+        return
+      }
+
+      // Outside tap: close active tooltip
+      const close = activeMobileClose
+      activeMobileClose = null
+      activeMobileTrigger = null
+      close()
+    },
+    true
+  )
+}
+
+interface TooltipContextValue {
+  isOpen: boolean
+  setIsOpen: (open: boolean) => void
+  isMobile: boolean
+  triggerRef: React.MutableRefObject<HTMLElement | null>
+}
+
+const TooltipContext = createContext<TooltipContextValue | null>(null)
 
 function TooltipProvider({
   delay = 0,
@@ -16,12 +76,99 @@ function TooltipProvider({
   )
 }
 
-function Tooltip({ ...props }: TooltipPrimitive.Root.Props) {
-  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+function Tooltip({
+  open: controlledOpen,
+  onOpenChange,
+  children,
+  ...props
+}: TooltipPrimitive.Root.Props) {
+  const isMobile = useIsMobile()
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const triggerRef = useRef<HTMLElement | null>(null)
+
+  const isControlled = controlledOpen !== undefined
+  const isOpen = isControlled ? controlledOpen : uncontrolledOpen
+
+  const handleOpenChange = (
+    nextOpen: boolean,
+    details: TooltipPrimitive.Root.ChangeEventDetails
+  ) => {
+    if (!isControlled) {
+      setUncontrolledOpen(nextOpen)
+    }
+    onOpenChange?.(nextOpen, details)
+  }
+
+  const setOpen = (next: boolean) => {
+    if (!isControlled) {
+      setUncontrolledOpen(next)
+    }
+    onOpenChange?.(next, { reason: 'triggerPress', preventUnmountOnClose: () => {} } as any)
+  }
+
+  useEffect(() => {
+    if (isMobile && isOpen) {
+      const closeFn = () => {
+        if (!isControlled) {
+          setUncontrolledOpen(false)
+        }
+        onOpenChange?.(false, { reason: 'outsidePress', preventUnmountOnClose: () => {} } as any)
+      }
+      registerActiveMobileTooltip(closeFn, triggerRef.current)
+
+      return () => {
+        unregisterActiveMobileTooltip(closeFn)
+      }
+    }
+  }, [isMobile, isOpen, isControlled, onOpenChange])
+
+  const contextValue = useMemo(
+    () => ({
+      isOpen,
+      setIsOpen: setOpen,
+      isMobile,
+      triggerRef,
+    }),
+    [isOpen, isMobile]
+  )
+
+  return (
+    <TooltipContext.Provider value={contextValue}>
+      <TooltipPrimitive.Root
+        data-slot="tooltip"
+        {...(isMobile ? { open: isOpen, onOpenChange: handleOpenChange } : {})}
+        {...props}
+      >
+        {children}
+      </TooltipPrimitive.Root>
+    </TooltipContext.Provider>
+  )
 }
 
-function TooltipTrigger({ ...props }: TooltipPrimitive.Trigger.Props) {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />
+function TooltipTrigger({
+  onClick,
+  ...props
+}: TooltipPrimitive.Trigger.Props) {
+  const ctx = useContext(TooltipContext)
+
+  const handleClick: TooltipPrimitive.Trigger.Props['onClick'] = (e) => {
+    onClick?.(e)
+    if (ctx?.isMobile) {
+      if (e.currentTarget) {
+        ctx.triggerRef.current = e.currentTarget as HTMLElement
+      }
+      ctx.setIsOpen(!ctx.isOpen)
+    }
+  }
+
+  return (
+    <TooltipPrimitive.Trigger
+      data-slot="tooltip-trigger"
+      closeOnClick={ctx?.isMobile ? false : props.closeOnClick}
+      onClick={handleClick}
+      {...props}
+    />
+  )
 }
 
 interface TooltipContentProps

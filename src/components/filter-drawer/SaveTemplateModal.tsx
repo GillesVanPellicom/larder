@@ -77,10 +77,10 @@ export function SaveTemplateModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base font-bold text-foreground">
             <Bookmark className="h-4 w-4 text-primary" />
-            {existingTemplate ? 'Rename template' : 'Save filter template'}
+            {existingTemplate ? 'Rename preset' : 'Save filter preset'}
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Save the current filter configuration as a reusable template
+            Save the current filter configuration as a reusable preset
           </DialogDescription>
         </DialogHeader>
 
@@ -94,11 +94,11 @@ export function SaveTemplateModal({
             }
           }}
         >
-          {/* Template Name Input */}
+          {/* Preset Name Input */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-1.5">
               <label className="text-xs font-semibold text-foreground">
-                Template name
+                Preset name
               </label>
               <InfoTooltip content="Give this filter preset a recognizable name for quick 1-click filtering." />
             </div>

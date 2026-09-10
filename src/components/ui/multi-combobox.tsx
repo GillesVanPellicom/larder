@@ -101,7 +101,7 @@ export function MultiCombobox({
                 value={item}
                 disabled={disabledItem}
                 className={cn(
-                  "text-xs cursor-pointer",
+                  "cursor-pointer",
                   disabledItem && "opacity-40 cursor-not-allowed"
                 )}
               >
