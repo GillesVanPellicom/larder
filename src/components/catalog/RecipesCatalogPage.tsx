@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useDeviceSettings } from '@/lib/deviceSettings'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { useSwipe } from '@/hooks/useSwipe'
 
 interface RecipesCatalogPageProps {
   recipes: Recipe[]
@@ -105,6 +106,23 @@ export function RecipesCatalogPage({
     onPageChange(1)
   }
 
+  // Swipe navigation on mobile/touch devices (Swipe Left: Next page, Swipe Right: Prev page)
+  const swipeHandlers = useSwipe({
+    enabled: isMobile && totalPages > 1,
+    minDistance: 80,
+    maxDistanceYRatio: 0.65,
+    onSwipeLeft: () => {
+      if (currentPage < totalPages) {
+        handlePageChange(currentPage + 1)
+      }
+    },
+    onSwipeRight: () => {
+      if (currentPage > 1) {
+        handlePageChange(currentPage - 1)
+      }
+    },
+  })
+
   // Keyboard arrow keys navigation (Left Arrow: Prev, Right Arrow: Next)
   useEffect(() => {
     if (totalPages <= 1) return
@@ -161,7 +179,7 @@ export function RecipesCatalogPage({
   }
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-6.5rem)]">
+    <div className="flex flex-col min-h-[calc(100vh-6.5rem)]" {...swipeHandlers}>
       {/* Top Header */}
       <div className="flex items-center justify-between gap-4 mb-6">
         <div>

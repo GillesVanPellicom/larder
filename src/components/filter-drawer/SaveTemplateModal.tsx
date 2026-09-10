@@ -186,7 +186,7 @@ export function SaveTemplateModal({
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size="lg"
               onClick={() => onOpenChange(false)}
               disabled={loading}
               className="cursor-pointer"
@@ -195,12 +195,12 @@ export function SaveTemplateModal({
             </Button>
             <Button
               type="button"
-              size="sm"
+              size="lg"
               onClick={handleSubmit}
               disabled={isInvalid || loading}
               className="cursor-pointer gap-1.5"
             >
-              {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               Save
             </Button>
           </DialogFooter>

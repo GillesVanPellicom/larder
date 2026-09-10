@@ -107,8 +107,8 @@ export function AppHeader({
                 <span>SHOPPING LIST</span>
                 {shoppingListCount !== undefined && shoppingListCount > 0 && (
                   <Badge
-                    variant="secondary"
-                    className="text-xs px-2 py-0.5 h-5 font-bold font-mono bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                    variant="default"
+                    className="min-w-5 h-5 px-1.5 flex items-center justify-center text-[11px] font-semibold font-mono leading-none tabular-nums text-center"
                   >
                     {shoppingListCount}
                   </Badge>
@@ -203,8 +203,8 @@ export function AppHeader({
                 <span>SHOPPING LIST</span>
                 {shoppingListCount !== undefined && shoppingListCount > 0 && (
                   <Badge
-                    variant="secondary"
-                    className="text-xs px-2 py-0.5 h-5 font-bold font-mono bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                    variant="default"
+                    className="min-w-5 h-5 px-1.5 flex items-center justify-center text-[11px] font-semibold font-mono leading-none tabular-nums text-center"
                   >
                     {shoppingListCount}
                   </Badge>

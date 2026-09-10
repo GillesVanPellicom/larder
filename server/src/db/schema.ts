@@ -88,6 +88,7 @@ export const shoppingListHistory = pgTable('shopping_list_history', {
   id: serial('id').primaryKey(),
   recipeIds: jsonb('recipe_ids').$type<number[]>().default([]).notNull(),
   recipeTitles: jsonb('recipe_titles').$type<string[]>().default([]).notNull(),
+  recipeMultipliers: jsonb('recipe_multipliers').$type<Record<string, number>>().default({}).notNull(),
   ingredientCount: integer('ingredient_count').default(0).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })

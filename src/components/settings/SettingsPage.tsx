@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { InfoTab } from './InfoTab'
 import { CategoriesAndRulesTab } from './CategoriesAndRulesTab'
 import { IntegrationsTab } from './IntegrationsTab'
@@ -22,6 +22,8 @@ export interface SettingsPageProps {
   metadataConfig: MetadataConfig | null
   categories: TagCategory[]
   initialTab?: SettingsTabId
+  activeTab?: SettingsTabId
+  onTabChange?: (tab: SettingsTabId) => void
   onSaveConfig: (config: MetadataConfig) => Promise<void>
   onRefreshCategories: () => Promise<void>
 }
@@ -30,13 +32,21 @@ export function SettingsPage({
   metadataConfig,
   categories,
   initialTab = 'info',
+  activeTab,
+  onTabChange,
   onSaveConfig,
   onRefreshCategories,
 }: SettingsPageProps) {
-  const [activeSubTab, setActiveSubTab] = useState<SettingsTabId>(initialTab)
+  const [activeSubTab, setActiveSubTab] = useState<SettingsTabId>(activeTab ?? initialTab)
   const [isRulesDirty, setIsRulesDirty] = useState(false)
   const [pendingTab, setPendingTab] = useState<SettingsTabId | null>(null)
   const { theme, setTheme } = useTheme()
+
+  useEffect(() => {
+    if (activeTab && activeTab !== activeSubTab) {
+      setActiveSubTab(activeTab)
+    }
+  }, [activeTab])
 
   const handleTabChange = (newTab: SettingsTabId) => {
     if (newTab === activeSubTab) return
@@ -44,6 +54,7 @@ export function SettingsPage({
       setPendingTab(newTab)
     } else {
       setActiveSubTab(newTab)
+      onTabChange?.(newTab)
     }
   }
 

@@ -173,11 +173,11 @@ export function YieldMultiplierDialog({
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
+                size="lg"
                 onClick={handleReset}
-                className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                className="text-muted-foreground hover:text-foreground cursor-pointer"
               >
-                <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                <RotateCcw className="h-4 w-4 mr-1.5" />
                 Reset
               </Button>
             )}
@@ -187,17 +187,17 @@ export function YieldMultiplierDialog({
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size="lg"
               onClick={() => onOpenChange(false)}
-              className="text-xs cursor-pointer"
+              className="cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               type="button"
-              size="sm"
+              size="lg"
               onClick={handleApply}
-              className="text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 cursor-pointer min-w-20"
+              className="font-semibold bg-primary text-primary-foreground hover:opacity-90 cursor-pointer min-w-20"
             >
               Apply
             </Button>

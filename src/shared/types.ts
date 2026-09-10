@@ -28,6 +28,7 @@ export type PageView =
   | 'ingredients'
 
 export type SettingsTabId = 'info' | 'rules' | 'ingredients' | 'appearance' | 'integrations'
+export type ShoppingListTabId = 'per_recipe' | 'consolidated' | 'history'
 
 // Category ID -> Array of tag values (e.g. { season: ['Winter', 'Spring'], course: ['Main'] })
 export type RecipeTags = Record<string, string[]>
@@ -228,8 +229,10 @@ export interface ShoppingListHistoryItem {
   id: number
   recipe_ids: number[]
   recipe_titles: string[]
+  recipe_multipliers?: Record<string, number>
   ingredient_count: number
   created_at: string
+  recipes?: Recipe[]
 }
 
 export interface ConsolidatedIngredient {

@@ -818,17 +818,17 @@ export function CategoriesAndRulesTab({
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
+                  size="lg"
                   onClick={() => setIsAddTagModalOpen(false)}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  size="sm"
+                  size="lg"
                   disabled={!newTagNameInput.trim()}
                 >
-                  Add Tag
+                  Add
                 </Button>
               </DialogFooter>
             </form>
@@ -872,14 +872,14 @@ export function CategoriesAndRulesTab({
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
+                  size="lg"
                   onClick={() => setIsCreateCategoryModalOpen(false)}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  size="sm"
+                  size="lg"
                   disabled={!newCategoryModalName.trim()}
                 >
                   Create
@@ -925,7 +925,7 @@ export function CategoriesAndRulesTab({
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
+                  size="lg"
                   onClick={() => {
                     if (!tagModal) return
                     handleLocalDeleteTag(tagModal.categoryId, tagModal.tag)
@@ -940,14 +940,14 @@ export function CategoriesAndRulesTab({
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
+                    size="lg"
                     onClick={() => setTagModal(null)}
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
-                    size="sm"
+                    size="lg"
                     disabled={!tagModalName.trim() || tagModalName.trim() === tagModal.tag}
                   >
                     Save

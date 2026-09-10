@@ -179,9 +179,11 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
           id SERIAL PRIMARY KEY,
           recipe_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
           recipe_titles JSONB NOT NULL DEFAULT '[]'::jsonb,
+          recipe_multipliers JSONB NOT NULL DEFAULT '{}'::jsonb,
           ingredient_count INTEGER NOT NULL DEFAULT 0,
           created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+        ALTER TABLE shopping_list_history ADD COLUMN IF NOT EXISTS recipe_multipliers JSONB NOT NULL DEFAULT '{}'::jsonb;
       `)
 
       if (isInitialDatabase) {
@@ -204,6 +206,8 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
         if (!isProductionEnv) {
           await seedDev(db, pool)
         }
+        const { recipeViolationService } = await import('../services/recipeViolationService')
+        await recipeViolationService.recalculateAllViolations()
       }
 
       console.log('[Database] Database migration ready.')

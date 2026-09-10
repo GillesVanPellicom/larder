@@ -47,18 +47,22 @@ export function ConfirmUnsavedDialog({
         </AlertDialogHeader>
 
         <AlertDialogFooter className="mt-4 gap-2">
-          <AlertDialogCancel className="border-border text-foreground hover:bg-muted cursor-pointer">
+          <AlertDialogCancel
+            size="lg"
+            className="border-border text-foreground hover:bg-muted cursor-pointer"
+          >
             Keep Editing
           </AlertDialogCancel>
           <AlertDialogAction
+            size="lg"
             onClick={(e) => {
               e.preventDefault()
               onConfirmDiscard()
               onOpenChange(false)
             }}
-            className="bg-destructive text-white hover:bg-destructive/90 cursor-pointer text-xs"
+            className="bg-destructive text-white hover:bg-destructive/90 cursor-pointer"
           >
-            <RotateCcw className="h-3.5 w-3.5 mr-1" />
+            <RotateCcw className="h-4 w-4 mr-1.5" />
             {confirmText}
           </AlertDialogAction>
         </AlertDialogFooter>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,23 +23,32 @@ import {
   X,
 } from 'lucide-react'
 import { cn } from 'cn'
-import type { ConsolidatedIngredient, Recipe, ShoppingListItem } from '@/shared/types'
+import type {
+  ConsolidatedIngredient,
+  Recipe,
+  ShoppingListHistoryItem,
+  ShoppingListItem,
+  ShoppingListTabId,
+  TagCategory,
+  TimeTrackingMode,
+} from '@/shared/types'
 import { formatRelativeDate } from '@/lib/dateTime'
 import { formatGracefulNumber, scaleIngredients, scaleYield } from '@/lib/recipeMath'
 import { YieldMultiplierDialog } from '@/components/recipe-view/YieldMultiplierDialog'
+import { RecipeCard } from '@/components/RecipeCard'
 
 export interface ShoppingListPageProps {
   items: ShoppingListItem[]
-  history: Array<{
-    id: number
-    recipe_ids: number[]
-    recipe_titles: string[]
-    ingredient_count: number
-    created_at: string
-  }>
+  history: ShoppingListHistoryItem[]
   loading: boolean
   consolidated: ConsolidatedIngredient[]
   uniqueIngredientsCount: number
+  categories?: TagCategory[]
+  timeTrackingMode?: TimeTrackingMode
+  activeTab?: ShoppingListTabId
+  onTabChange?: (tab: ShoppingListTabId) => void
+  isRecipeInShoppingList?: (recipeId: number) => boolean
+  onToggleShoppingListRecipe?: (recipeId: number, checkedIngredients?: string[], multiplier?: number) => Promise<void>
   onToggleIngredientInRecipe: (recipeId: number, itemKey: string) => Promise<void>
   onToggleConsolidatedIngredient: (ingredientName: string) => Promise<void>
   onUpdateRecipeMultiplier?: (recipeId: number, multiplier: number) => Promise<void>
@@ -72,6 +81,12 @@ export function ShoppingListPage({
   loading,
   consolidated,
   uniqueIngredientsCount,
+  categories = [],
+  timeTrackingMode = 'prep_and_cook',
+  activeTab: controlledActiveTab,
+  onTabChange,
+  isRecipeInShoppingList,
+  onToggleShoppingListRecipe,
   onToggleIngredientInRecipe,
   onToggleConsolidatedIngredient,
   onUpdateRecipeMultiplier,
@@ -83,7 +98,7 @@ export function ShoppingListPage({
   onViewRecipeById,
   onNavigateToCatalog,
 }: ShoppingListPageProps) {
-  const [activeTab, setActiveTab] = useState<'per_recipe' | 'consolidated' | 'history'>('per_recipe')
+  const [activeTab, setActiveTab] = useState<ShoppingListTabId>(controlledActiveTab ?? 'per_recipe')
   const [clearing, setClearing] = useState(false)
   const [openRecipeMap, setOpenRecipeMap] = useState<Record<number, boolean>>({})
   const [openHistoryId, setOpenHistoryId] = useState<number | null>(null)
@@ -93,6 +108,18 @@ export function ShoppingListPage({
     yieldAmount?: number | string | null
     yieldUnit?: string | null
   } | null>(null)
+
+  useEffect(() => {
+    if (controlledActiveTab && controlledActiveTab !== activeTab) {
+      setActiveTab(controlledActiveTab)
+    }
+  }, [controlledActiveTab])
+
+  const handleTabChange = (newTab: ShoppingListTabId) => {
+    if (newTab === activeTab) return
+    setActiveTab(newTab)
+    onTabChange?.(newTab)
+  }
 
   const handleToggleIngredient = (recipeId: number, itemKey: string) => {
     const item = items.find((i) => i.recipe_id === recipeId)
@@ -149,7 +176,7 @@ export function ShoppingListPage({
         <div className="flex items-center gap-2 sm:gap-6">
           <button
             type="button"
-            onClick={() => setActiveTab('per_recipe')}
+            onClick={() => handleTabChange('per_recipe')}
             className={cn(
               'group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer',
               activeTab === 'per_recipe'
@@ -163,7 +190,7 @@ export function ShoppingListPage({
 
           <button
             type="button"
-            onClick={() => setActiveTab('consolidated')}
+            onClick={() => handleTabChange('consolidated')}
             className={cn(
               'group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer',
               activeTab === 'consolidated'
@@ -178,7 +205,7 @@ export function ShoppingListPage({
 
         <button
           type="button"
-          onClick={() => setActiveTab('history')}
+          onClick={() => handleTabChange('history')}
           className={cn(
             'group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer',
             activeTab === 'history'
@@ -210,6 +237,22 @@ export function ShoppingListPage({
           ) : (
             history.slice(0, 10).map((h, idx) => {
               const isOpen = openHistoryId === h.id
+              const headerTitles =
+                h.recipe_titles.length === 0
+                  ? 'Saved list'
+                  : h.recipe_titles
+                      .map((title, tIdx) => {
+                        const recipeId = h.recipe_ids?.[tIdx]
+                        const mult =
+                          recipeId && h.recipe_multipliers
+                            ? h.recipe_multipliers[String(recipeId)] ?? h.recipe_multipliers[recipeId]
+                            : undefined
+                        if (mult && Math.abs(mult - 1) > 0.001) {
+                          return `${title} (${formatGracefulNumber(mult)}×)`
+                        }
+                        return title
+                      })
+                      .join(', ')
 
               return (
                 <Collapsible
@@ -219,7 +262,7 @@ export function ShoppingListPage({
                     setOpenHistoryId(openState ? h.id : null)
                   }}
                 >
-                  {idx > 0 && <div className="border-t border-border/40 mx-3 sm:mx-4 my-0.5" />}
+                  {idx > 0 && <div className="border-t border-border mx-3 sm:mx-4 my-0.5" />}
                   <div className="py-0.5 px-0.5">
                     <CollapsibleTrigger className="flex items-center gap-3 text-left group cursor-pointer select-none py-3.5 sm:py-3 px-3 sm:px-4 rounded-xl transition-colors hover:bg-muted/40 w-full min-h-[3.25rem]">
                       <ChevronDown
@@ -232,11 +275,9 @@ export function ShoppingListPage({
                         <div className="flex items-baseline justify-between gap-2">
                           <div
                             className="text-sm sm:text-[15px] font-medium text-foreground truncate"
-                            title={h.recipe_titles.join(', ')}
+                            title={headerTitles}
                           >
-                            {h.recipe_titles.length === 0
-                              ? 'Saved list'
-                              : h.recipe_titles.join(', ')}
+                            {headerTitles}
                           </div>
                         </div>
 
@@ -253,50 +294,79 @@ export function ShoppingListPage({
                       </div>
                     </CollapsibleTrigger>
 
-                    {/* Expanded Content: Dish List + Action Buttons (shown only when opened) */}
+                    {/* Expanded Content: Recipe Cards Grid + Action Buttons (shown only when opened) */}
                     <CollapsibleContent className="px-3 sm:px-4 pb-3 pt-0.5">
-                      <div className="pl-8 sm:pl-8 pt-2.5 border-t border-border/40 space-y-3">
-                        {/* Ordered Dish Titles */}
-                        <div className="space-y-2">
-                          {h.recipe_titles.length === 0 ? (
-                            <p className="text-xs text-muted-foreground italic">No recipe titles recorded.</p>
-                          ) : (
-                            h.recipe_titles.map((title, tIdx) => {
+                      <div className="pt-3 border-t border-border space-y-4">
+                        {/* Recipe Cards Grid */}
+                        {h.recipes && h.recipes.length > 0 ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {h.recipes.map((recipe) => {
+                              const multiplier =
+                                h.recipe_multipliers?.[String(recipe.id)] ??
+                                h.recipe_multipliers?.[recipe.id] ??
+                                1
+                              const inActiveList = isRecipeInShoppingList
+                                ? isRecipeInShoppingList(recipe.id)
+                                : items.some((i) => i.recipe_id === recipe.id)
+
+                              return (
+                                <RecipeCard
+                                  key={recipe.id}
+                                  recipe={recipe}
+                                  categories={categories}
+                                  timeTrackingMode={timeTrackingMode}
+                                  multiplier={multiplier}
+                                  isInShoppingList={inActiveList}
+                                  onToggleShoppingList={() => {
+                                    if (onToggleShoppingListRecipe) {
+                                      void onToggleShoppingListRecipe(recipe.id, undefined, multiplier)
+                                    } else if (inActiveList) {
+                                      void onRemoveRecipe(recipe.id)
+                                    }
+                                  }}
+                                  onView={(r) => {
+                                    if (onViewRecipe) {
+                                      onViewRecipe(r)
+                                    } else if (onViewRecipeById) {
+                                      onViewRecipeById(r.id)
+                                    }
+                                  }}
+                                />
+                              )
+                            })}
+                          </div>
+                        ) : h.recipe_titles.length === 0 ? (
+                          <p className="text-xs text-muted-foreground italic">No recipes in this snapshot.</p>
+                        ) : (
+                          /* Fallback if recipe records are not available */
+                          <div className="space-y-2">
+                            {h.recipe_titles.map((title, tIdx) => {
                               const recipeId = h.recipe_ids?.[tIdx]
+                              const mult =
+                                recipeId && h.recipe_multipliers
+                                  ? h.recipe_multipliers[String(recipeId)] ?? h.recipe_multipliers[recipeId]
+                                  : undefined
                               return (
                                 <div
                                   key={`${h.id}-${recipeId ?? tIdx}-${tIdx}`}
-                                  className="flex items-baseline gap-2 text-sm text-foreground"
+                                  className="flex items-center justify-between text-sm text-foreground py-1"
                                 >
-                                  <span className="text-xs text-muted-foreground font-mono w-4 shrink-0 select-none">
-                                    {tIdx + 1}.
-                                  </span>
-                                  {recipeId && (onViewRecipeById || onViewRecipe) ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        if (onViewRecipeById && recipeId) {
-                                          onViewRecipeById(recipeId)
-                                        } else if (onViewRecipe && recipeId) {
-                                          const found = items.find((i) => i.recipe_id === recipeId)?.recipe
-                                          if (found) onViewRecipe(found)
-                                        }
-                                      }}
-                                      className="hover:underline hover:text-primary transition-colors cursor-pointer text-left font-medium"
-                                      title={`View ${title}`}
+                                  <span className="font-medium">{title}</span>
+                                  {mult && Math.abs(mult - 1) > 0.001 && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="font-mono text-xs text-amber-600 dark:text-amber-400"
                                     >
-                                      {title}
-                                    </button>
-                                  ) : (
-                                    <span className="font-medium">{title}</span>
+                                      {formatGracefulNumber(mult)}×
+                                    </Badge>
                                   )}
                                 </div>
                               )
-                            })
-                          )}
-                        </div>
+                            })}
+                          </div>
+                        )}
 
-                        {/* Actions: Remove (left) and Load (right) */}
+                        {/* Actions: Delete (left) and Load (right) */}
                         <div className="flex items-center justify-end gap-2 pt-2">
                           <Button
                             type="button"
@@ -320,7 +390,7 @@ export function ShoppingListPage({
                             onClick={(e) => {
                               e.stopPropagation()
                               onLoadHistory(h.id)
-                              setActiveTab('per_recipe')
+                              handleTabChange('per_recipe')
                             }}
                             className="cursor-pointer rounded-xl text-sm font-medium gap-2 shrink-0"
                             title="Load recipes into shopping list"
@@ -395,18 +465,61 @@ export function ShoppingListPage({
                 {/* Recipe Card Header */}
                 <div
                   className={cn(
-                    'p-3.5 sm:p-4 bg-muted/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 border-b border-border/50 transition-colors',
+                    'relative overflow-hidden p-3.5 sm:p-4 bg-muted/30 flex flex-row items-center justify-between gap-2.5 sm:gap-3 border-b border-border/50 transition-colors',
                     isAllChecked && 'bg-muted/15'
                   )}
                 >
-                  <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto flex-1">
-                    <CollapsibleTrigger className="flex items-center gap-3 text-left group cursor-pointer select-none py-0.5 min-w-0 flex-1 w-full">
+                  {/* Background Recipe Image (1/2 width on left behind text with light blur fading to transparent) */}
+                  {recipe.image_url && (
+                    <div className="absolute inset-y-0 left-0 w-1/2 pointer-events-none overflow-hidden select-none [mask-image:linear-gradient(to_right,black_20%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_right,black_20%,transparent_100%)]">
+                      <img
+                        src={recipe.image_url}
+                        alt=""
+                        aria-hidden="true"
+                        className="h-full w-full object-cover blur-[2px] scale-110 opacity-30 dark:opacity-35"
+                      />
+                    </div>
+                  )}
+
+                  {/* Left: Chevron, Multiplier & Title/Metadata */}
+                  <div className="relative z-10 flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                    {/* Chevron Toggle Trigger */}
+                    <CollapsibleTrigger className="flex items-center text-left group cursor-pointer select-none py-1 shrink-0">
                       <ChevronDown
                         className={cn(
                           'h-5 w-5 text-muted-foreground group-hover:text-foreground transition-transform duration-300 shrink-0',
                           !isOpen && '-rotate-90'
                         )}
                       />
+                    </CollapsibleTrigger>
+
+                    {/* Multiplier Button (placed on left) */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setMultiplierModalRecipe({
+                          recipeId: item.recipe_id,
+                          multiplier,
+                          yieldAmount: recipe.yield_amount,
+                          yieldUnit: recipe.yield_unit,
+                        })
+                      }}
+                      className={cn(
+                        'cursor-pointer rounded-xl font-mono transition-colors border px-2.5 sm:px-3 h-8 sm:h-9 text-xs sm:text-sm font-medium shrink-0',
+                        Math.abs(multiplier - 1) > 0.001
+                          ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/25 font-bold shadow-2xs'
+                          : 'text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/20 border-transparent bg-background/50 backdrop-blur-xs'
+                      )}
+                      title="Adjust recipe yield multiplier"
+                    >
+                      <span>{formatGracefulNumber(multiplier)}×</span>
+                    </Button>
+
+                    {/* Title & Metadata (also acts as collapsible trigger) */}
+                    <CollapsibleTrigger className="flex items-center text-left group cursor-pointer select-none min-w-0 flex-1 py-1">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 min-w-0">
                           <h3
@@ -430,13 +543,14 @@ export function ShoppingListPage({
                           <Badge
                             variant="secondary"
                             className={cn(
-                              'text-xs px-2.5 py-0.5 h-5.5 font-mono font-medium transition-colors shrink-0',
+                              'text-xs px-2.5 py-0.5 h-5.5 font-mono font-medium transition-colors shrink-0 bg-background/60 backdrop-blur-xs',
                               isAllChecked && 'opacity-60'
                             )}
                           >
                             {checkedCount}/{scaledIngredients.length}
                           </Badge>
                         </div>
+
                         <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 truncate">
                           {recipe.total_time_minutes > 0 && (
                             <span className="inline-flex items-center gap-1 shrink-0">
@@ -460,32 +574,8 @@ export function ShoppingListPage({
                     </CollapsibleTrigger>
                   </div>
 
-                  {/* Recipe Header Actions: Multiplier & Remove */}
-                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="lg"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setMultiplierModalRecipe({
-                          recipeId: item.recipe_id,
-                          multiplier,
-                          yieldAmount: recipe.yield_amount,
-                          yieldUnit: recipe.yield_unit,
-                        })
-                      }}
-                      className={cn(
-                        'cursor-pointer rounded-xl font-mono transition-colors border px-3.5 sm:px-4 text-sm sm:text-base font-medium',
-                        Math.abs(multiplier - 1) > 0.001
-                          ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/25 font-bold shadow-2xs'
-                          : 'text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/20 border-transparent'
-                      )}
-                      title="Adjust recipe yield multiplier"
-                    >
-                      <span>{formatGracefulNumber(multiplier)}×</span>
-                    </Button>
-
+                  {/* Right: Remove Button */}
+                  <div className="relative z-10 flex items-center shrink-0">
                     <Button
                       type="button"
                       variant="ghost"

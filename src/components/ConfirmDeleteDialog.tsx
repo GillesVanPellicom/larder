@@ -50,20 +50,22 @@ export function ConfirmDeleteDialog({
 
         <AlertDialogFooter className="mt-4 gap-2">
           <AlertDialogCancel
+            size="lg"
             disabled={loading}
             className="border-border text-foreground hover:bg-muted"
           >
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
+            size="lg"
             onClick={(e) => {
               e.preventDefault()
               void onConfirm()
             }}
             disabled={loading}
-            className="bg-destructive text-white hover:bg-destructive/90 cursor-pointer text-xs"
+            className="bg-destructive text-white hover:bg-destructive/90 cursor-pointer"
           >
-            <AlertTriangle className="h-3.5 w-3.5 mr-1" />
+            <AlertTriangle className="h-4 w-4 mr-1.5" />
             {loading ? 'Deleting...' : confirmText}
           </AlertDialogAction>
         </AlertDialogFooter>

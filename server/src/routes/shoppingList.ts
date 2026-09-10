@@ -3,7 +3,7 @@ import { desc, eq, inArray } from 'drizzle-orm'
 import { db } from '../db'
 import { recipes, shoppingListItems, shoppingListHistory } from '../db/schema'
 import { attachIngredientsToRecipes } from '../services/recipeQueryService'
-import type { ShoppingListHistoryItem, ShoppingListItem } from '../../../shared/types'
+import type { Recipe, ShoppingListHistoryItem, ShoppingListItem } from '../../../shared/types'
 
 const router = Router()
 
@@ -53,13 +53,35 @@ router.get('/', async (_req, res) => {
       .orderBy(desc(shoppingListHistory.createdAt))
       .limit(10)
 
-    const formattedHistory: ShoppingListHistoryItem[] = historyRows.map((h) => ({
-      id: h.id,
-      recipe_ids: h.recipeIds || [],
-      recipe_titles: h.recipeTitles || [],
-      ingredient_count: h.ingredientCount,
-      created_at: h.createdAt.toISOString(),
-    }))
+    let historyRecipesMap = new Map<number, Recipe>()
+    const allHistoryRecipeIds = Array.from(
+      new Set(historyRows.flatMap((h) => h.recipeIds || []))
+    )
+
+    if (allHistoryRecipeIds.length > 0) {
+      const historyRecipeRows = await db
+        .select()
+        .from(recipes)
+        .where(inArray(recipes.id, allHistoryRecipeIds))
+      const fullHistoryRecipes = await attachIngredientsToRecipes(historyRecipeRows)
+      historyRecipesMap = new Map(fullHistoryRecipes.map((r) => [r.id, r]))
+    }
+
+    const formattedHistory: ShoppingListHistoryItem[] = historyRows.map((h) => {
+      const snapshotRecipes = (h.recipeIds || [])
+        .map((id) => historyRecipesMap.get(id))
+        .filter((r): r is NonNullable<typeof r> => r !== undefined)
+
+      return {
+        id: h.id,
+        recipe_ids: h.recipeIds || [],
+        recipe_titles: h.recipeTitles || [],
+        recipe_multipliers: (h.recipeMultipliers as Record<string, number>) || {},
+        ingredient_count: h.ingredientCount,
+        created_at: h.createdAt.toISOString(),
+        recipes: snapshotRecipes,
+      }
+    })
 
     res.json({
       items: formattedItems,
@@ -235,6 +257,12 @@ router.post('/clear', async (_req, res) => {
 
       const recipeTitles = recipeRows.map((r) => r.title)
 
+      // Collect multipliers for each recipe
+      const recipeMultipliers: Record<string, number> = {}
+      for (const r of listRows) {
+        recipeMultipliers[String(r.recipeId)] = Number(r.multiplier || 1)
+      }
+
       // Calculate total unique ingredients for the snapshot
       const fullRecipes = await attachIngredientsToRecipes(
         await db.select().from(recipes).where(inArray(recipes.id, recipeIds))
@@ -246,6 +274,7 @@ router.post('/clear', async (_req, res) => {
       await db.insert(shoppingListHistory).values({
         recipeIds,
         recipeTitles,
+        recipeMultipliers,
         ingredientCount: uniqueNames.size,
       })
 
@@ -292,9 +321,12 @@ router.post('/load-history/:id', async (req, res) => {
     }
 
     const recipeIds = history.recipeIds || []
+    const multipliers = (history.recipeMultipliers as Record<string, number>) || {}
+
     if (recipeIds.length > 0) {
-      // Insert into shopping list items (ignore if already in list)
       for (const rId of recipeIds) {
+        const itemMultiplier = multipliers[String(rId)] ?? multipliers[rId] ?? 1
+
         const existing = await db
           .select()
           .from(shoppingListItems)
@@ -311,9 +343,19 @@ router.post('/load-history/:id', async (req, res) => {
             await db.insert(shoppingListItems).values({
               recipeId: rId,
               checkedIngredients: [],
+              multiplier: String(itemMultiplier),
               sortOrder: 0,
             })
           }
+        } else {
+          // If already in shopping list, update its multiplier to match history
+          await db
+            .update(shoppingListItems)
+            .set({
+              multiplier: String(itemMultiplier),
+              updatedAt: new Date(),
+            })
+            .where(eq(shoppingListItems.recipeId, rId))
         }
       }
     }

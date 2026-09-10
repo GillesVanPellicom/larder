@@ -104,23 +104,23 @@ export function TagConflictDialog({
           </div>
         )}
 
-        <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-border">
+        <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-3">
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size="lg"
             onClick={onClose}
-            className="text-xs cursor-pointer"
+            className="cursor-pointer"
           >
             Cancel
           </Button>
           <Button
             type="button"
             variant="destructive"
-            size="sm"
+            size="lg"
             disabled={loading}
             onClick={onStripAndRemove}
-            className="text-xs cursor-pointer"
+            className="cursor-pointer"
           >
             Strip From Recipes & Delete
           </Button>

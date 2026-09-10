@@ -110,7 +110,7 @@ export class RecipeViolationService {
       }
     }
     if (mandatory.ingredients && ingredientsCount === 0) {
-      violations.push({ field: 'ingredients', message: 'At least one ingredient is required' })
+      violations.push({ field: 'ingredients', message: `At least one ingredient is required (has ${ingredientsCount})` })
     }
 
     // 7. Mandatory Instructions
@@ -164,18 +164,18 @@ export class RecipeViolationService {
           field: `tags.${cat.id}`,
           message:
             minAllowed === 1
-              ? `Must have at least one tag in category "${cat.name}"`
-              : `Must have at least ${minAllowed} tags in category "${cat.name}"`,
+              ? `Must have at least 1 tag in category "${cat.name}" (has ${count})`
+              : `Must have at least ${minAllowed} tags in category "${cat.name}" (has ${count})`,
         })
       } else if (count > maxAllowed) {
         violations.push({
           field: `tags.${cat.id}`,
           message:
             maxAllowed === 0
-              ? `Category "${cat.name}" does not allow any tags (max 0), but recipe has ${count} tag${count > 1 ? 's' : ''}: ${catTags.join(', ')}`
+              ? `Category "${cat.name}" allows no tags (max 0, has ${count}: ${catTags.join(', ')})`
               : maxAllowed === 1
-              ? `Category "${cat.name}" is exclusive (single tag only), but recipe has ${count} tags: ${catTags.join(', ')}`
-              : `Category "${cat.name}" allows at most ${maxAllowed} tags, but recipe has ${count} tags: ${catTags.join(', ')}`,
+              ? `Category "${cat.name}" allows at most 1 tag (has ${count}: ${catTags.join(', ')})`
+              : `Category "${cat.name}" allows at most ${maxAllowed} tags (has ${count}: ${catTags.join(', ')})`,
         })
       }
     }

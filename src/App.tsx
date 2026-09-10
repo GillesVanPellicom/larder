@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { CreateRecipeDTO, Recipe, SettingsTabId } from '@/shared/types'
+import type { CreateRecipeDTO, Recipe } from '@/shared/types'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppHeader } from '@/components/navigation/AppHeader'
 import { RecipesCatalogPage } from '@/components/catalog/RecipesCatalogPage'
@@ -22,8 +22,12 @@ export function App() {
   const {
     currentView,
     selectedRecipe,
+    settingsTab,
+    shoppingListTab,
     updateRecipe,
     navigateTo,
+    navigateToSettingsTab,
+    navigateToShoppingListTab,
     handleBack,
     handleDeletedTransition,
   } = useNavigation()
@@ -82,7 +86,6 @@ export function App() {
   const [filterDrawerTab, setFilterDrawerTab] = useState<'filters' | 'templates' | undefined>(undefined)
   const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [settingsTab, setSettingsTab] = useState<SettingsTabId>('info')
 
   // Global Keyboard Shortcuts (Cmd+F / Ctrl+F, Cmd+N / Ctrl+N)
   useAppKeyboardShortcuts({
@@ -185,10 +188,7 @@ export function App() {
               }
               navigateTo(view, null)
             }}
-            onOpenSettings={(tab) => {
-              if (tab) setSettingsTab(tab)
-              navigateTo('settings', null)
-            }}
+            onOpenSettings={(tab) => navigateToSettingsTab(tab || 'info')}
             shoppingListCount={uniqueIngredientsCount}
             isDatabaseConnected={isDatabaseConnected}
           />
@@ -219,10 +219,7 @@ export function App() {
                 setFilterDrawerOpen(true)
               }}
               onNewRecipe={() => navigateTo('recipe-form', null)}
-              onOpenSettings={(tab) => {
-                if (tab) setSettingsTab(tab)
-                navigateTo('settings', null)
-              }}
+              onOpenSettings={(tab) => navigateToSettingsTab(tab || 'info')}
               isRecipeInShoppingList={isRecipeInShoppingList}
               onToggleShoppingList={(recipe) => void toggleRecipeInShoppingList(recipe.id)}
               onViewRecipe={(recipe) => navigateTo('recipe-view', recipe)}
@@ -282,7 +279,8 @@ export function App() {
             <SettingsPage
               metadataConfig={metadataConfig}
               categories={categories}
-              initialTab={settingsTab}
+              activeTab={settingsTab}
+              onTabChange={navigateToSettingsTab}
               onSaveConfig={saveConfig}
               onRefreshCategories={fetchCategories}
             />
@@ -296,6 +294,12 @@ export function App() {
               loading={shoppingListLoading}
               consolidated={consolidatedIngredients}
               uniqueIngredientsCount={uniqueIngredientsCount}
+              categories={categories}
+              timeTrackingMode={metadataConfig?.timeTrackingMode}
+              activeTab={shoppingListTab}
+              onTabChange={navigateToShoppingListTab}
+              isRecipeInShoppingList={isRecipeInShoppingList}
+              onToggleShoppingListRecipe={toggleRecipeInShoppingList}
               onToggleIngredientInRecipe={toggleIngredientInRecipe}
               onToggleConsolidatedIngredient={toggleConsolidatedIngredient}
               onUpdateRecipeMultiplier={updateRecipeMultiplier}
@@ -314,7 +318,8 @@ export function App() {
             <SettingsPage
               metadataConfig={metadataConfig}
               categories={categories}
-              initialTab="ingredients"
+              activeTab="ingredients"
+              onTabChange={navigateToSettingsTab}
               onSaveConfig={saveConfig}
               onRefreshCategories={fetchCategories}
             />

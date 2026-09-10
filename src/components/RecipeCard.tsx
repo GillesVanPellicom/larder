@@ -23,14 +23,16 @@ import {
 } from 'lucide-react'
 import { cn } from 'cn'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { formatGracefulNumber, scaleYield } from '@/lib/recipeMath'
 
 interface RecipeCardProps {
   recipe: Recipe
   violations?: RecipeViolation[]
-  categories: TagCategory[]
+  categories?: TagCategory[]
   timeTrackingMode?: TimeTrackingMode
   selectedTags?: Record<string, string[]>
   isInShoppingList?: boolean
+  multiplier?: number
   onToggleShoppingList?: (recipe: Recipe) => void
   onToggleTag?: (catId: string, tag: string) => void
   onView: (recipe: Recipe) => void
@@ -39,10 +41,11 @@ interface RecipeCardProps {
 export function RecipeCard({
   recipe,
   violations = [],
-  categories,
+  categories = [],
   timeTrackingMode = 'prep_and_cook',
   selectedTags,
   isInShoppingList = false,
+  multiplier = 1,
   onToggleShoppingList,
   onToggleTag,
   onView,
@@ -50,6 +53,7 @@ export function RecipeCard({
   const isMobile = useIsMobile()
   const hasViolations = violations.length > 0
   const ingredientCount = recipe.ingredients?.length || 0
+  const isScaled = multiplier && Math.abs(multiplier - 1) > 0.001
 
   return (
     <Card
@@ -161,7 +165,16 @@ export function RecipeCard({
             {Boolean(recipe.yield_amount) && (
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/80 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md shadow-md border border-white/10">
                 <Users className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                <span>{recipe.yield_amount} {recipe.yield_unit || 'servings'}</span>
+                <span>
+                  {isScaled
+                    ? scaleYield(recipe.yield_amount, multiplier, recipe.yield_unit) || `${recipe.yield_amount} ${recipe.yield_unit || 'servings'}`
+                    : `${recipe.yield_amount} ${recipe.yield_unit || 'servings'}`}
+                </span>
+              </span>
+            )}
+            {isScaled && (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/90 text-black px-2.5 py-1 text-xs font-bold shadow-md border border-amber-400/40">
+                {formatGracefulNumber(multiplier)}×
               </span>
             )}
             {ingredientCount > 0 && (

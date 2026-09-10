@@ -138,7 +138,7 @@ export function EditIngredientModal({
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size="lg"
               onClick={() => onOpenChange(false)}
               disabled={loading}
               className="cursor-pointer"
@@ -147,7 +147,7 @@ export function EditIngredientModal({
             </Button>
             <Button
               type="button"
-              size="sm"
+              size="lg"
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
