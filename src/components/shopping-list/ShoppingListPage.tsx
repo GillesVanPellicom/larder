@@ -15,10 +15,9 @@ import {
   ListFilter,
   Loader2,
   Minus,
-  RotateCcw,
-  Scale,
   ShoppingBag,
   Trash2,
+  Upload,
   Users,
   Utensils,
   X,
@@ -26,7 +25,7 @@ import {
 import { cn } from 'cn'
 import type { ConsolidatedIngredient, Recipe, ShoppingListItem } from '@/shared/types'
 import { formatRelativeDate } from '@/lib/dateTime'
-import { scaleIngredients, scaleYield } from '@/lib/recipeMath'
+import { formatGracefulNumber, scaleIngredients, scaleYield } from '@/lib/recipeMath'
 import { YieldMultiplierDialog } from '@/components/recipe-view/YieldMultiplierDialog'
 
 export interface ShoppingListPageProps {
@@ -73,9 +72,12 @@ export function ShoppingListPage({
   const [activeTab, setActiveTab] = useState<'per_recipe' | 'consolidated' | 'history'>('per_recipe')
   const [clearing, setClearing] = useState(false)
   const [openRecipeMap, setOpenRecipeMap] = useState<Record<number, boolean>>({})
+  const [openHistoryId, setOpenHistoryId] = useState<number | null>(null)
   const [multiplierModalRecipe, setMultiplierModalRecipe] = useState<{
     recipeId: number
     multiplier: number
+    yieldAmount?: number | string | null
+    yieldUnit?: string | null
   } | null>(null)
 
   const handleToggleIngredient = (recipeId: number, itemKey: string) => {
@@ -192,28 +194,69 @@ export function ShoppingListPage({
               </p>
             </div>
           ) : (
-            history.slice(0, 10).map((h, idx) => (
-              <div key={h.id}>
-                {idx > 0 && <div className="border-t border-border/40 mx-3 sm:mx-4 my-0.5" />}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 py-3.5 sm:py-3 px-3 sm:px-4 rounded-xl transition-colors select-none hover:bg-muted/40 min-h-[3rem]">
-                  <div className="flex items-start gap-3.5 min-w-0 flex-1">
-                    <div className="mt-0.5 h-5 w-5 rounded-md flex items-center justify-center shrink-0 transition-colors border border-border bg-card text-muted-foreground">
-                      <History className="h-3.5 w-3.5" />
-                    </div>
+            history.slice(0, 10).map((h, idx) => {
+              const isOpen = openHistoryId === h.id
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <div
-                          className="text-sm sm:text-[15px] font-medium text-foreground truncate"
-                          title={h.recipe_titles.join(', ')}
-                        >
+              return (
+                <Collapsible
+                  key={h.id}
+                  open={isOpen}
+                  onOpenChange={(openState) => {
+                    setOpenHistoryId(openState ? h.id : null)
+                  }}
+                >
+                  {idx > 0 && <div className="border-t border-border/40 mx-3 sm:mx-4 my-0.5" />}
+                  <div className="py-0.5 px-0.5">
+                    <CollapsibleTrigger className="flex items-center gap-3 text-left group cursor-pointer select-none py-3.5 sm:py-3 px-3 sm:px-4 rounded-xl transition-colors hover:bg-muted/40 w-full min-h-[3.25rem]">
+                      <ChevronDown
+                        className={cn(
+                          'h-5 w-5 text-muted-foreground group-hover:text-foreground transition-transform duration-300 shrink-0',
+                          !isOpen && '-rotate-90'
+                        )}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <div
+                            className="text-sm sm:text-[15px] font-medium text-foreground truncate"
+                            title={h.recipe_titles.join(', ')}
+                          >
+                            {h.recipe_titles.length === 0
+                              ? 'Saved list'
+                              : h.recipe_titles.join(', ')}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 truncate">
+                          <span className="inline-flex items-center gap-1 shrink-0">
+                            <Clock className="h-3 w-3" />
+                            {formatRelativeDate(h.created_at)}
+                          </span>
+                          <span className="inline-flex items-center gap-1 truncate">
+                            <ShoppingBag className="h-3 w-3 shrink-0" />
+                            <span>{h.ingredient_count} ingredient{h.ingredient_count !== 1 ? 's' : ''}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </CollapsibleTrigger>
+
+                    {/* Expanded Content: Dish List + Action Buttons (shown only when opened) */}
+                    <CollapsibleContent className="px-3 sm:px-4 pb-3 pt-0.5">
+                      <div className="pl-8 sm:pl-8 pt-2.5 border-t border-border/40 space-y-3">
+                        {/* Ordered Dish Titles */}
+                        <div className="space-y-2">
                           {h.recipe_titles.length === 0 ? (
-                            <span>Saved list</span>
+                            <p className="text-xs text-muted-foreground italic">No recipe titles recorded.</p>
                           ) : (
                             h.recipe_titles.map((title, tIdx) => {
                               const recipeId = h.recipe_ids?.[tIdx]
                               return (
-                                <span key={`${h.id}-${recipeId ?? tIdx}-${tIdx}`}>
+                                <div
+                                  key={`${h.id}-${recipeId ?? tIdx}-${tIdx}`}
+                                  className="flex items-baseline gap-2 text-sm text-foreground"
+                                >
+                                  <span className="text-xs text-muted-foreground font-mono w-4 shrink-0 select-none">
+                                    {tIdx + 1}.
+                                  </span>
                                   {recipeId && (onViewRecipeById || onViewRecipe) ? (
                                     <button
                                       type="button"
@@ -231,60 +274,53 @@ export function ShoppingListPage({
                                       {title}
                                     </button>
                                   ) : (
-                                    <span>{title}</span>
+                                    <span className="font-medium">{title}</span>
                                   )}
-                                  {tIdx < h.recipe_titles.length - 1 && (
-                                    <span className="text-muted-foreground font-normal ml-0.5 mr-1.5">,</span>
-                                  )}
-                                </span>
+                                </div>
                               )
                             })
                           )}
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 truncate">
-                        <span className="inline-flex items-center gap-1 shrink-0">
-                          <Clock className="h-3 w-3" />
-                          {formatRelativeDate(h.created_at)}
-                        </span>
-                        <span className="inline-flex items-center gap-1 truncate">
-                          <ShoppingBag className="h-3 w-3 shrink-0" />
-                          <span>{h.ingredient_count} ingredient{h.ingredient_count !== 1 ? 's' : ''}</span>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                        {/* Actions: Remove (left) and Load (right) */}
+                        <div className="flex items-center justify-end gap-2 pt-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-lg"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onDeleteHistory(h.id)
+                            }}
+                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer rounded-xl shrink-0"
+                            title="Delete history entry"
+                            aria-label="Delete history entry"
+                          >
+                            <Trash2 className="h-5 w-5 sm:h-4.5 sm:w-4.5" />
+                          </Button>
 
-                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        onLoadHistory(h.id)
-                        setActiveTab('per_recipe')
-                      }}
-                      className="h-8 px-2.5 text-xs gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-lg"
-                      title="Load recipes into shopping list"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                      <span>Load</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onDeleteHistory(h.id)}
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer rounded-lg"
-                      title="Delete history entry"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="lg"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onLoadHistory(h.id)
+                              setActiveTab('per_recipe')
+                            }}
+                            className="cursor-pointer rounded-xl text-sm font-medium gap-2 shrink-0"
+                            title="Load recipes into shopping list"
+                          >
+                            <Upload className="h-4.5 w-4.5 sm:h-4 sm:w-4" />
+                            <span>Load</span>
+                          </Button>
+                        </div>
+                      </div>
+                    </CollapsibleContent>
                   </div>
-                </div>
-              </div>
-            ))
+                </Collapsible>
+              )
+            })
           )}
         </div>
       ) : loading && isEmpty ? (
@@ -352,7 +388,7 @@ export function ShoppingListPage({
                     <CollapsibleTrigger className="flex items-center gap-3 text-left group cursor-pointer select-none py-0.5 min-w-0 flex-1 w-full">
                       <ChevronDown
                         className={cn(
-                          'h-5 w-5 text-muted-foreground group-hover:text-foreground transition-transform duration-200 shrink-0',
+                          'h-5 w-5 text-muted-foreground group-hover:text-foreground transition-transform duration-300 shrink-0',
                           !isOpen && '-rotate-90'
                         )}
                       />
@@ -379,7 +415,7 @@ export function ShoppingListPage({
                           <Badge
                             variant="secondary"
                             className={cn(
-                              'text-[10px] px-1.5 py-0 h-4 font-mono transition-colors shrink-0',
+                              'text-xs px-2.5 py-0.5 h-5.5 font-mono font-medium transition-colors shrink-0',
                               isAllChecked && 'opacity-60'
                             )}
                           >
@@ -409,36 +445,40 @@ export function ShoppingListPage({
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
+                      size="lg"
                       onClick={(e) => {
                         e.stopPropagation()
-                        setMultiplierModalRecipe({ recipeId: item.recipe_id, multiplier })
+                        setMultiplierModalRecipe({
+                          recipeId: item.recipe_id,
+                          multiplier,
+                          yieldAmount: recipe.yield_amount,
+                          yieldUnit: recipe.yield_unit,
+                        })
                       }}
                       className={cn(
-                        'cursor-pointer rounded-lg font-mono transition-colors border h-8 sm:h-9 px-2.5 sm:px-3 text-xs sm:text-sm',
-                        multiplier !== 1
+                        'cursor-pointer rounded-xl font-mono transition-colors border px-3.5 sm:px-4 text-sm sm:text-base font-medium',
+                        Math.abs(multiplier - 1) > 0.001
                           ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/25 font-bold shadow-2xs'
                           : 'text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/20 border-transparent'
                       )}
                       title="Adjust recipe yield multiplier"
                     >
-                      <Scale className="h-4 w-4" />
-                      <span>{multiplier}×</span>
+                      <span>{formatGracefulNumber(multiplier)}×</span>
                     </Button>
 
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
+                      size="icon-lg"
                       onClick={(e) => {
                         e.stopPropagation()
                         onRemoveRecipe(item.recipe_id)
                       }}
-                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer rounded-lg h-8 sm:h-9 px-2.5 sm:px-3 text-xs sm:text-sm"
+                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer rounded-xl shrink-0"
                       title="Remove recipe from shopping list"
+                      aria-label="Remove recipe from shopping list"
                     >
-                      <X className="h-4 w-4" />
-                      <span>Remove</span>
+                      <X className="h-5 w-5 sm:h-4.5 sm:w-4.5" />
                     </Button>
                   </div>
                 </div>
@@ -623,6 +663,8 @@ export function ShoppingListPage({
           if (!open) setMultiplierModalRecipe(null)
         }}
         currentMultiplier={multiplierModalRecipe?.multiplier || 1}
+        baseYieldAmount={multiplierModalRecipe?.yieldAmount}
+        yieldUnit={multiplierModalRecipe?.yieldUnit}
         onApplyMultiplier={(newMultiplier) => {
           if (multiplierModalRecipe && onUpdateRecipeMultiplier) {
             void onUpdateRecipeMultiplier(multiplierModalRecipe.recipeId, newMultiplier)

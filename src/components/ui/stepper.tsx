@@ -224,7 +224,14 @@ export function Stepper({
               className="h-12 sm:h-11 min-w-16 max-w-44 text-4xl font-extrabold tracking-tight text-foreground font-mono text-center bg-background border border-primary/40 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 px-2 py-0 leading-none"
             />
             {symbol && (
-              <span className="text-2xl font-bold text-amber-500 ml-1.5 select-none leading-none">
+              <span
+                className={cn(
+                  'select-none leading-none ml-1.5',
+                  typeof symbol === 'string' && symbol.length > 1
+                    ? 'text-sm sm:text-base font-semibold text-muted-foreground ml-2'
+                    : 'text-2xl font-bold text-amber-500'
+                )}
+              >
                 {symbol}
               </span>
             )}
@@ -242,7 +249,14 @@ export function Stepper({
               {formatGracefulNumber(effectiveValue)}
             </span>
             {symbol && (
-              <span className="text-2xl font-bold text-amber-500 ml-1.5 select-none leading-none">
+              <span
+                className={cn(
+                  'select-none leading-none ml-1.5',
+                  typeof symbol === 'string' && symbol.length > 1
+                    ? 'text-sm sm:text-base font-semibold text-muted-foreground ml-2'
+                    : 'text-2xl font-bold text-amber-500'
+                )}
+              >
                 {symbol}
               </span>
             )}

@@ -196,10 +196,10 @@ export function RecipeViewPage({
         onOpenYieldModal={() => setYieldModalOpen(true)}
       />
 
-      {/* Two Column Layout: Ingredients & Method */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Two Column Layout: Ingredients & Method (stacked on mobile & portrait tablet, side-by-side on desktop/landscape) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Ingredients Column */}
-        <div className="md:col-span-1">
+        <div className="lg:col-span-1">
           <RecipeIngredientsList
             ingredients={displayIngredients}
             checkedIngredients={checkedIngredients}
@@ -212,7 +212,7 @@ export function RecipeViewPage({
         </div>
 
         {/* Instructions Column */}
-        <div className="md:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6">
           <RecipeInstructionsView instructions={recipe.instructions} />
 
           {/* Originally Adapted From */}
@@ -233,6 +233,8 @@ export function RecipeViewPage({
         onOpenChange={setYieldModalOpen}
         currentMultiplier={yieldMultiplier}
         onApplyMultiplier={handleApplyYieldMultiplier}
+        baseYieldAmount={recipe.yield_amount}
+        yieldUnit={recipe.yield_unit}
       />
     </div>
   )

@@ -21,7 +21,9 @@ function CollapsibleContent({
       data-slot="collapsible-content"
       {...props}
     >
-      <div className={cn("overflow-hidden min-h-0", className)}>{children}</div>
+      <div className="overflow-hidden min-h-0">
+        <div className={typeof className === 'function' ? undefined : cn(className)}>{children}</div>
+      </div>
     </CollapsiblePrimitive.Panel>
   )
 }

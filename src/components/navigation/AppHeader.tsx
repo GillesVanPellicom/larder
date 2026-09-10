@@ -61,7 +61,7 @@ export function AppHeader({
           {/* Left Area: Desktop Tabs & Mobile Menu Button */}
           <div className="flex-1 flex items-center justify-start min-w-0">
             {/* Mobile Menu Button */}
-            <div className={cn('flex md:hidden', !isDatabaseConnected && 'invisible')}>
+            <div className={cn('flex lg:hidden', !isDatabaseConnected && 'invisible')}>
               <Button
                 type="button"
                 variant="ghost"
@@ -75,7 +75,7 @@ export function AppHeader({
             </div>
 
             {/* Desktop Tabs */}
-            <nav className={cn('hidden md:flex items-center gap-1.5', !isDatabaseConnected && 'invisible')}>
+            <nav className={cn('hidden lg:flex items-center gap-1.5', !isDatabaseConnected && 'invisible')}>
               <Button
                 type="button"
                 variant="ghost"
@@ -136,7 +136,7 @@ export function AppHeader({
             <button
               type="button"
               onClick={() => handleNav('recipes', null)}
-              className="font-extralight tracking-[0.24em] sm:tracking-[0.3em] text-xl sm:text-2xl md:text-3xl uppercase text-foreground select-none hover:opacity-80 transition-opacity cursor-pointer text-center px-3 py-1"
+              className="font-extralight tracking-[0.24em] sm:tracking-[0.3em] text-xl sm:text-2xl lg:text-3xl uppercase text-foreground select-none hover:opacity-80 transition-opacity cursor-pointer text-center px-3 py-1"
             >
               LARDER
             </button>
@@ -145,7 +145,7 @@ export function AppHeader({
           {/* Right Area: Desktop Settings & Mobile Symmetry Spacer */}
           <div className="flex-1 flex items-center justify-end min-w-0">
             {/* Desktop Settings Button */}
-            <div className="hidden md:flex items-center">
+            <div className="hidden lg:flex items-center">
               <Tooltip>
                 <TooltipTrigger
                   render={
@@ -171,7 +171,7 @@ export function AppHeader({
             </div>
 
             {/* Mobile Spacer to keep "LARDER" perfectly centered */}
-            <div className="flex md:hidden w-9 h-9 pointer-events-none" aria-hidden="true" />
+            <div className="flex lg:hidden w-9 h-9 pointer-events-none" aria-hidden="true" />
           </div>
         </div>
       </header>

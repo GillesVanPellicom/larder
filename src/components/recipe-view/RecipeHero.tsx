@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { formatGracefulNumber } from '@/lib/recipeMath'
 import type { Recipe, TagCategory, TimeTrackingMode } from '@/shared/types'
 
@@ -47,6 +48,7 @@ export function RecipeHero({
   onOpenYieldModal,
 }: RecipeHeroProps) {
   const hasTags = Object.keys(recipe.tags || {}).length > 0
+  const isScaled = Math.abs(yieldMultiplier - 1) > 0.001
 
   return (
     <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
@@ -95,12 +97,28 @@ export function RecipeHero({
         {/* Prep Time (Shown in prep_and_cook only) */}
         {timeTrackingMode === 'prep_and_cook' && (
           <div className="bg-card py-3 px-2 sm:py-3.5 sm:px-4 text-center">
-            <span className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-semibold block">
-              Prep Time
-            </span>
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                Prep Time
+              </span>
+              <InfoTooltip
+                content={
+                  isScaled
+                    ? 'Active hands-on time spent preparing, chopping, and measuring ingredients. Note: prep time may vary with adjusted recipe yield.'
+                    : 'Active hands-on time spent preparing, chopping, and measuring ingredients.'
+                }
+              />
+            </div>
             <div className="flex items-center justify-center gap-1 mt-1">
               <span className="text-sm sm:text-base font-bold text-foreground">
-                {recipe.prep_time_minutes > 0 ? `${recipe.prep_time_minutes} min` : '—'}
+                {recipe.prep_time_minutes > 0 ? (
+                  <>
+                    {isScaled && <span className="text-amber-600 dark:text-amber-400 font-bold mr-0.5">~</span>}
+                    {recipe.prep_time_minutes} min
+                  </>
+                ) : (
+                  '—'
+                )}
               </span>
             </div>
           </div>
@@ -109,12 +127,28 @@ export function RecipeHero({
         {/* Cook Time (Shown in prep_and_cook only) */}
         {timeTrackingMode === 'prep_and_cook' && (
           <div className="bg-card py-3 px-2 sm:py-3.5 sm:px-4 text-center">
-            <span className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-semibold block">
-              Cook Time
-            </span>
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                Cook Time
+              </span>
+              <InfoTooltip
+                content={
+                  isScaled
+                    ? 'Time spent actively baking, roasting, simmering, or cooking on heat. Note: cooking time may vary with adjusted recipe yield.'
+                    : 'Time spent actively baking, roasting, simmering, or cooking on heat.'
+                }
+              />
+            </div>
             <div className="flex items-center justify-center gap-1 mt-1">
               <span className="text-sm sm:text-base font-bold text-foreground">
-                {recipe.cook_time_minutes > 0 ? `${recipe.cook_time_minutes} min` : '—'}
+                {recipe.cook_time_minutes > 0 ? (
+                  <>
+                    {isScaled && <span className="text-amber-600 dark:text-amber-400 font-bold mr-0.5">~</span>}
+                    {recipe.cook_time_minutes} min
+                  </>
+                ) : (
+                  '—'
+                )}
               </span>
             </div>
           </div>
@@ -123,12 +157,28 @@ export function RecipeHero({
         {/* Total Time (Shown in prep_and_cook and total_only) */}
         {timeTrackingMode !== 'no_cook' && (
           <div className="bg-card py-3 px-2 sm:py-3.5 sm:px-4 text-center">
-            <span className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-semibold block">
-              Total Time
-            </span>
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                Total Time
+              </span>
+              <InfoTooltip
+                content={
+                  isScaled
+                    ? 'Total elapsed duration from initial preparation to the finished dish. Note: total time may vary with adjusted recipe yield.'
+                    : 'Total elapsed duration from initial preparation to the finished dish.'
+                }
+              />
+            </div>
             <div className="flex items-center justify-center gap-1 mt-1">
               <span className="text-sm sm:text-base font-bold text-foreground">
-                {recipe.total_time_minutes > 0 ? `${recipe.total_time_minutes} min` : '—'}
+                {recipe.total_time_minutes > 0 ? (
+                  <>
+                    {isScaled && <span className="text-amber-600 dark:text-amber-400 font-bold mr-0.5">~</span>}
+                    {recipe.total_time_minutes} min
+                  </>
+                ) : (
+                  '—'
+                )}
               </span>
             </div>
           </div>
@@ -152,9 +202,12 @@ export function RecipeHero({
           }`}
           title={onOpenYieldModal ? 'Click to adjust recipe yield' : undefined}
         >
-          <span className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-semibold block">
-            Yield
-          </span>
+          <div className="flex items-center justify-center gap-1">
+            <span className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+              Yield
+            </span>
+            <InfoTooltip content="The total number of portions or servings this recipe produces. Click to adjust ingredient quantities." />
+          </div>
           <div className="flex items-center justify-center gap-1 mt-1 flex-wrap">
             <span className="text-sm sm:text-base font-bold text-foreground underline underline-offset-4 decoration-muted-foreground/50 group-hover:decoration-foreground transition-colors">
               {renderYieldValue(

@@ -390,7 +390,7 @@
 [data-slot="collapsible-content"] {
   display: grid;
   grid-template-rows: 1fr;
-  transition: grid-template-rows 220ms cubic-bezier(0.2, 0, 0, 1), opacity 180ms ease-out;
+  transition: grid-template-rows 320ms cubic-bezier(0.2, 0, 0, 1), opacity 260ms ease-out;
   opacity: 1;
 }
 

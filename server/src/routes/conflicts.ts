@@ -26,11 +26,6 @@ router.get('/', async (_req, res) => {
       totalConflicts: conflicts.length,
       conflicts,
     })
-
-    res.json({
-      totalConflicts: conflicts.length,
-      conflicts,
-    })
   } catch (err: unknown) {
     const details = err instanceof Error ? err.message : String(err)
     console.error('Failed to get conflicts:', err)
