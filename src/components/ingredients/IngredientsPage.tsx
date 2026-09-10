@@ -190,7 +190,7 @@ export function IngredientsPage({ embedded = false }: IngredientsPageProps = {})
             placeholder="Search ingredients..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9.5 pr-9 bg-card border-border shadow-2xs h-12 sm:h-10 text-base md:text-sm"
+            className="pl-10 pr-9 bg-card border-border shadow-2xs h-12 sm:h-10 text-base md:text-sm"
           />
           {searchQuery && (
             <button

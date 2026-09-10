@@ -82,7 +82,7 @@ export function UnitStepper({
       {/* Unified Input Box (Amount + Vertical Divider + Unit) */}
       <div
         className={cn(
-          'relative flex-1 min-w-0 flex items-center h-10 sm:h-9 rounded-lg border bg-transparent dark:bg-input/30 transition-colors overflow-hidden',
+          'relative flex-1 min-w-0 flex items-center h-12 sm:h-9 rounded-lg border bg-transparent dark:bg-input/30 transition-colors overflow-hidden',
           'focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50',
           hasError ? 'border-destructive ring-destructive/20 ring-2' : 'border-input'
         )}
@@ -113,7 +113,7 @@ export function UnitStepper({
           }}
           aria-label={amountAriaLabel}
           placeholder={amountPlaceholder}
-          className="w-12 sm:w-11 shrink-0 text-center font-medium font-mono text-base md:text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground disabled:opacity-50 px-2 h-full"
+          className="w-14 sm:w-11 shrink-0 text-center font-medium font-mono text-base md:text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground disabled:opacity-50 px-2 h-full"
         />
 
         {/* Divider */}
@@ -144,10 +144,10 @@ export function UnitStepper({
           size="icon"
           onClick={() => handleStep('down')}
           disabled={isMinusDisabled}
-          className="h-10 w-10 sm:h-9 sm:w-9 cursor-pointer border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+          className="h-12 w-12 sm:h-9 sm:w-9 cursor-pointer border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
           title={step ? `Decrease by ${step}` : 'Decrease'}
         >
-          <Minus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+          <Minus className="h-4.5 w-4.5 sm:h-3.5 sm:w-3.5" />
         </Button>
         <Button
           type="button"
@@ -155,10 +155,10 @@ export function UnitStepper({
           size="icon"
           onClick={() => handleStep('up')}
           disabled={isPlusDisabled}
-          className="h-10 w-10 sm:h-9 sm:w-9 cursor-pointer border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+          className="h-12 w-12 sm:h-9 sm:w-9 cursor-pointer border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
           title={step ? `Increase by ${step}` : 'Increase'}
         >
-          <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+          <Plus className="h-4.5 w-4.5 sm:h-3.5 sm:w-3.5" />
         </Button>
       </ButtonGroup>
     </div>

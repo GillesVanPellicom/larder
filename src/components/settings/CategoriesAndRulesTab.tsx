@@ -443,7 +443,7 @@ export function CategoriesAndRulesTab({
       <button
         type="button"
         onClick={() => setIsSectionPickerOpen((prev) => !prev)}
-        className="flex h-10 w-full items-center justify-between rounded-xl border border-input bg-card px-3.5 py-2 text-sm font-semibold text-foreground shadow-2xs hover:bg-accent/40 focus:outline-hidden focus:ring-2 focus:ring-ring/50 cursor-pointer transition-colors"
+        className="flex h-12 sm:h-10 w-full items-center justify-between rounded-xl border border-input bg-card px-3.5 py-2 text-base sm:text-sm font-semibold text-foreground shadow-2xs hover:bg-accent/40 focus:outline-hidden focus:ring-2 focus:ring-ring/50 cursor-pointer transition-colors"
       >
         <span className={!selectedCategoryId ? 'text-muted-foreground font-normal' : ''}>
           {selectedDisplayLabel}
@@ -462,7 +462,7 @@ export function CategoriesAndRulesTab({
               value={sectionSearch}
               onChange={(e) => setSectionSearch(e.target.value)}
               autoFocus
-              className="h-8 pl-8 text-xs bg-muted/40 border-border"
+              className="h-10 sm:h-8 pl-8 text-sm sm:text-xs bg-muted/40 border-border"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && sectionSearch.trim() && !exactCategoryMatch) {
                   e.preventDefault()
@@ -756,7 +756,7 @@ export function CategoriesAndRulesTab({
                     setTagModal({ categoryId: activeCategory.id, tag })
                     setTagModalName(tag)
                   }}
-                  className="inline-flex items-center px-3.5 py-2 rounded-xl text-sm font-medium bg-muted/40 hover:bg-muted/80 text-foreground border border-border/70 hover:border-border transition-colors cursor-pointer select-none"
+                  className="inline-flex items-center min-h-11 sm:min-h-0 px-3.5 py-2 rounded-xl text-base sm:text-sm font-medium bg-muted/40 hover:bg-muted/80 text-foreground border border-border/70 hover:border-border transition-colors cursor-pointer select-none"
                 >
                   <span>{tag}</span>
                 </button>
@@ -769,10 +769,10 @@ export function CategoriesAndRulesTab({
                   setNewTagNameInput('')
                   setIsAddTagModalOpen(true)
                 }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs transition-colors cursor-pointer select-none"
+                className="inline-flex items-center min-h-11 sm:min-h-0 gap-1.5 px-3.5 py-2 rounded-xl text-base sm:text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs transition-colors cursor-pointer select-none"
                 title="Add new tag"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-4.5 w-4.5 sm:h-4 sm:w-4" />
                 <span>Add tag</span>
               </button>
             </div>

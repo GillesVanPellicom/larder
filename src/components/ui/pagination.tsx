@@ -51,7 +51,7 @@ function PaginationLink({
       size={size}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "h-8.5 w-8.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors",
+        "h-10 w-10 sm:h-8.5 sm:w-8.5 rounded-lg text-sm sm:text-xs font-semibold cursor-pointer transition-colors",
         isActive
           ? "bg-primary text-primary-foreground shadow-xs"
           : "border-border hover:bg-muted text-foreground",
@@ -74,12 +74,12 @@ function PaginationPrevious({
       aria-label="Previous page"
       title="Previous"
       className={cn(
-        "h-8.5 w-8.5 rounded-lg border-border cursor-pointer hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed",
+        "h-10 w-10 sm:h-8.5 sm:w-8.5 rounded-lg border-border cursor-pointer hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed",
         className
       )}
       {...props}
     >
-      <ChevronLeft className="h-4 w-4" />
+      <ChevronLeft className="h-4.5 w-4.5 sm:h-4 sm:w-4" />
     </Button>
   )
 }
@@ -96,12 +96,12 @@ function PaginationNext({
       aria-label="Next page"
       title="Next"
       className={cn(
-        "h-8.5 w-8.5 rounded-lg border-border cursor-pointer hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed",
+        "h-10 w-10 sm:h-8.5 sm:w-8.5 rounded-lg border-border cursor-pointer hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed",
         className
       )}
       {...props}
     >
-      <ChevronRight className="h-4 w-4" />
+      <ChevronRight className="h-4.5 w-4.5 sm:h-4 sm:w-4" />
     </Button>
   )
 }

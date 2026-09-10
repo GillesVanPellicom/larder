@@ -130,7 +130,7 @@ export function Stepper({
   if (variant === 'small') {
     return (
       <div className={cn('flex items-center gap-1.5 w-full', className)}>
-        <div className="relative flex-1 min-w-[4rem] sm:min-w-0 flex items-center h-10 sm:h-9 rounded-lg border border-input bg-transparent dark:bg-input/30 px-3 py-1.5 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+        <div className="relative flex-1 min-w-[4rem] sm:min-w-0 flex items-center h-12 sm:h-9 rounded-lg border border-input bg-transparent dark:bg-input/30 px-3.5 sm:px-3 py-2 sm:py-1.5 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
           <input
             ref={inputRef}
             type="text"
@@ -166,10 +166,10 @@ export function Stepper({
             size="icon"
             onClick={() => handleStep('down')}
             disabled={isMinusDisabled}
-            className="h-10 w-10 sm:h-9 sm:w-9 cursor-pointer border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+            className="h-12 w-12 sm:h-9 sm:w-9 cursor-pointer border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
             title={step ? `Decrease by ${step}` : 'Decrease'}
           >
-            <Minus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+            <Minus className="h-4.5 w-4.5 sm:h-3.5 sm:w-3.5" />
           </Button>
           <Button
             type="button"
@@ -177,10 +177,10 @@ export function Stepper({
             size="icon"
             onClick={() => handleStep('up')}
             disabled={isPlusDisabled}
-            className="h-10 w-10 sm:h-9 sm:w-9 cursor-pointer border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+            className="h-12 w-12 sm:h-9 sm:w-9 cursor-pointer border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
             title={step ? `Increase by ${step}` : 'Increase'}
           >
-            <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+            <Plus className="h-4.5 w-4.5 sm:h-3.5 sm:w-3.5" />
           </Button>
         </ButtonGroup>
       </div>
@@ -353,7 +353,7 @@ export function PresetStepper({
                 onClick={() => handlePresetClick(sc.value)}
                 disabled={stepperProps.disabled}
                 className={cn(
-                  'px-1.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold border transition-all cursor-pointer text-center select-none disabled:opacity-50 disabled:cursor-not-allowed',
+                  'px-1.5 py-2.5 sm:py-1.5 min-h-11 sm:min-h-0 rounded-xl text-sm sm:text-xs font-bold border transition-all cursor-pointer text-center select-none disabled:opacity-50 disabled:cursor-not-allowed',
                   isActive
                     ? 'bg-primary text-primary-foreground border-primary shadow-xs'
                     : 'bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted/50'

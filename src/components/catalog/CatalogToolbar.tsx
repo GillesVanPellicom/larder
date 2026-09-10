@@ -55,7 +55,7 @@ export function CatalogToolbar({
       {/* Search Input (Executed on Enter) */}
       <div className="relative flex-1">
         <Search
-          className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
           onClick={handleCommit}
         />
         <Input
@@ -69,7 +69,7 @@ export function CatalogToolbar({
               handleCommit()
             }
           }}
-          className="pl-9.5 pr-9 text-base md:text-sm bg-card border-border shadow-2xs h-12 sm:h-10"
+          className="pl-10 pr-9 text-base md:text-sm bg-card border-border shadow-2xs h-12 sm:h-10"
         />
         {draftQuery && (
           <button

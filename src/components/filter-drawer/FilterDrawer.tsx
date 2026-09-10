@@ -308,7 +308,7 @@ export function FilterDrawer({
                     Text search
                   </label>
                   <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <Input
                       placeholder="Search recipes, instructions..."
                       value={draftCriteria.searchQuery}
@@ -321,13 +321,13 @@ export function FilterDrawer({
                           handleApply()
                         }
                       }}
-                      className="pl-8 text-sm"
+                      className="pl-9.5 pr-9 text-sm"
                     />
                     {draftCriteria.searchQuery && (
                       <button
                         type="button"
                         onClick={handleClearSearch}
-                        className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
                       >
                         <X className="h-4 w-4" />
                       </button>
