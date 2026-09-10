@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { InfoTab } from './InfoTab'
 import { CategoriesAndRulesTab } from './CategoriesAndRulesTab'
 import { IntegrationsTab } from './IntegrationsTab'
+import { IngredientsPage } from '@/components/ingredients/IngredientsPage'
 import { useTheme } from '@/hooks/useTheme'
-import { usePwa } from '@/hooks/usePwa'
-import type { MetadataConfig, TagCategory } from '@/shared/types'
+import type { MetadataConfig, SettingsTabId, TagCategory } from '@/shared/types'
 import { ConfirmUnsavedDialog } from '@/components/ConfirmUnsavedDialog'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import {
+  Carrot,
   Check,
-  Download,
+  Info,
   Moon,
   Palette,
   Plug,
@@ -20,7 +21,7 @@ import {
 export interface SettingsPageProps {
   metadataConfig: MetadataConfig | null
   categories: TagCategory[]
-  initialTab?: 'rules' | 'appearance' | 'integrations'
+  initialTab?: SettingsTabId
   onSaveConfig: (config: MetadataConfig) => Promise<void>
   onRefreshCategories: () => Promise<void>
 }
@@ -28,17 +29,16 @@ export interface SettingsPageProps {
 export function SettingsPage({
   metadataConfig,
   categories,
-  initialTab = 'rules',
+  initialTab = 'info',
   onSaveConfig,
   onRefreshCategories,
 }: SettingsPageProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'rules' | 'appearance' | 'integrations'>(initialTab)
+  const [activeSubTab, setActiveSubTab] = useState<SettingsTabId>(initialTab)
   const [isRulesDirty, setIsRulesDirty] = useState(false)
-  const [pendingTab, setPendingTab] = useState<'rules' | 'appearance' | 'integrations' | null>(null)
+  const [pendingTab, setPendingTab] = useState<SettingsTabId | null>(null)
   const { theme, setTheme } = useTheme()
-  const { canInstall, isInstalled, triggerInstall } = usePwa()
 
-  const handleTabChange = (newTab: 'rules' | 'appearance' | 'integrations') => {
+  const handleTabChange = (newTab: SettingsTabId) => {
     if (newTab === activeSubTab) return
     if (isRulesDirty) {
       setPendingTab(newTab)
@@ -51,25 +51,33 @@ export function SettingsPage({
     <div className="space-y-6 w-full max-w-7xl mx-auto pb-32 sm:pb-36 animate-in fade-in duration-150">
       {/* Top Header */}
       <div className="flex items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-light tracking-wide text-foreground">
-              Settings
-            </h1>
-            <InfoTooltip content="Configure tag categories, metadata validation rules, integrations, and application appearance." />
-          </div>
-          <p className="mt-1 text-xs sm:text-sm text-muted-foreground font-light">
-            Manage recipe rules, theme preferences, and connected services.
-          </p>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-light tracking-wide text-foreground">
+            Settings
+          </h1>
+          <InfoTooltip content="Configure app information, recipe rules, ingredients, appearance, and integrations." />
         </div>
       </div>
 
       {/* Primary Tabs */}
-      <div className="flex items-center gap-2 sm:gap-6 border-b border-border">
+      <div className="flex items-center gap-2 sm:gap-6 border-b border-border overflow-x-auto overflow-y-hidden select-none">
+        <button
+          type="button"
+          onClick={() => handleTabChange('info')}
+          className={`group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer shrink-0 ${
+            activeSubTab === 'info'
+              ? 'border-foreground text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+          }`}
+        >
+          <Info className="h-4 w-4" />
+          <span>Info</span>
+        </button>
+
         <button
           type="button"
           onClick={() => handleTabChange('rules')}
-          className={`group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer ${
+          className={`group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer shrink-0 ${
             activeSubTab === 'rules'
               ? 'border-foreground text-foreground'
               : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -82,7 +90,7 @@ export function SettingsPage({
         <button
           type="button"
           onClick={() => handleTabChange('appearance')}
-          className={`group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer ${
+          className={`group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer shrink-0 ${
             activeSubTab === 'appearance'
               ? 'border-foreground text-foreground'
               : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -94,8 +102,21 @@ export function SettingsPage({
 
         <button
           type="button"
+          onClick={() => handleTabChange('ingredients')}
+          className={`group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer shrink-0 ${
+            activeSubTab === 'ingredients'
+              ? 'border-foreground text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+          }`}
+        >
+          <Carrot className="h-4 w-4" />
+          <span>Ingredients</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => handleTabChange('integrations')}
-          className={`group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer ${
+          className={`group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer shrink-0 ${
             activeSubTab === 'integrations'
               ? 'border-foreground text-foreground'
               : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -106,7 +127,12 @@ export function SettingsPage({
         </button>
       </div>
 
-      {/* Tab 1: Categories & Rules Manager */}
+      {/* Tab 1: App Info */}
+      {activeSubTab === 'info' && (
+        <InfoTab />
+      )}
+
+      {/* Tab 2: Categories & Rules Manager */}
       {activeSubTab === 'rules' && (
         <CategoriesAndRulesTab
           categories={categories}
@@ -120,14 +146,9 @@ export function SettingsPage({
         />
       )}
 
-      {/* Tab 2: Integrations */}
-      {activeSubTab === 'integrations' && (
-        <IntegrationsTab />
-      )}
-
       {/* Tab 3: Appearance & Theme */}
       {activeSubTab === 'appearance' && (
-        <div className="space-y-6 max-w-2xl animate-in fade-in duration-150">
+        <div className="space-y-6 w-full animate-in fade-in duration-150">
           <div className="rounded-2xl border border-border bg-card p-6 space-y-6 shadow-xs">
             <div>
               <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
@@ -202,52 +223,17 @@ export function SettingsPage({
               </div>
             </div>
           </div>
-
-          {/* Progressive Web App Install Option */}
-          <div className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-                    Desktop & Mobile App
-                  </h2>
-                  {isInstalled && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                      <Check className="h-3 w-3" /> Installed
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {isInstalled
-                    ? 'Larder is running as a standalone app on your device.'
-                    : 'Download Larder as a standalone desktop or mobile application for instant launch.'}
-                </p>
-              </div>
-
-              {!isInstalled && canInstall && (
-                <Button
-                  size="sm"
-                  onClick={triggerInstall}
-                  className="cursor-pointer gap-1.5 shrink-0"
-                >
-                  <Download className="h-4 w-4" />
-                  <span>Install App</span>
-                </Button>
-              )}
-            </div>
-
-            {!isInstalled && !canInstall && (
-              <div className="p-3.5 rounded-xl border border-border/80 bg-muted/30 text-xs text-muted-foreground space-y-1.5">
-                <p className="font-semibold text-foreground flex items-center gap-1.5">
-                  <Download className="h-3.5 w-3.5" /> Installing on Desktop (Chrome, Edge, Brave)
-                </p>
-                <p>
-                  Click the <strong>Install</strong> icon (⊕) in your browser's address bar, or click the browser menu (⋮) → <strong>Install Larder</strong> to add it to your desktop dock or taskbar.
-                </p>
-              </div>
-            )}
-          </div>
         </div>
+      )}
+
+      {/* Tab 4: Ingredients Manager */}
+      {activeSubTab === 'ingredients' && (
+        <IngredientsPage embedded />
+      )}
+
+      {/* Tab 5: Integrations */}
+      {activeSubTab === 'integrations' && (
+        <IntegrationsTab />
       )}
 
       {/* Confirmation Dialog for Tab Switching */}

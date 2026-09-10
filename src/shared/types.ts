@@ -27,6 +27,8 @@ export type PageView =
   | 'shopping-list'
   | 'ingredients'
 
+export type SettingsTabId = 'info' | 'rules' | 'ingredients' | 'appearance' | 'integrations'
+
 // Category ID -> Array of tag values (e.g. { season: ['Winter', 'Spring'], course: ['Main'] })
 export type RecipeTags = Record<string, string[]>
 

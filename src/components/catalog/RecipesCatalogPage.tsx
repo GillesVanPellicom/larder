@@ -4,6 +4,7 @@ import type {
   FilterTemplate,
   Recipe,
   RecipeViolation,
+  SettingsTabId,
   TagCategory,
   TimeTrackingMode,
 } from '@/shared/types'
@@ -44,7 +45,7 @@ interface RecipesCatalogPageProps {
   onResetFilters: () => void
   onOpenFilterDrawer: (tab?: 'filters' | 'templates') => void
   onNewRecipe: () => void
-  onOpenSettings: (tab?: 'rules' | 'appearance' | 'integrations') => void
+  onOpenSettings: (tab?: SettingsTabId) => void
   isRecipeInShoppingList?: (recipeId: number) => boolean
   onToggleShoppingList?: (recipe: Recipe) => void
   onViewRecipe: (recipe: Recipe) => void

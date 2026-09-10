@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge'
 export interface AppHeaderProps {
   currentView: PageView
   onNavigate: (view: PageView, recipe?: Recipe | null) => void
-  onOpenSettings: (tab?: 'rules' | 'appearance' | 'integrations') => void
+  onOpenSettings: (tab?: 'info' | 'rules' | 'ingredients' | 'appearance' | 'integrations') => void
   shoppingListCount?: number
   isDatabaseConnected?: boolean
   className?: string
@@ -39,7 +39,7 @@ export function AppHeader({
     onNavigate(view, recipe)
   }
 
-  const handleSettings = (tab?: 'rules' | 'appearance' | 'integrations') => {
+  const handleSettings = (tab?: 'info' | 'rules' | 'ingredients' | 'appearance' | 'integrations') => {
     setMobileDrawerOpen(false)
     onOpenSettings(tab)
   }
@@ -47,7 +47,6 @@ export function AppHeader({
   const isRecipesActive =
     currentView === 'recipes' || currentView === 'recipe-view' || currentView === 'recipe-form'
   const isShoppingListActive = currentView === 'shopping-list'
-  const isIngredientsActive = currentView === 'ingredients'
   const isSettingsActive = currentView === 'settings'
 
   return (
@@ -114,21 +113,6 @@ export function AppHeader({
                     {shoppingListCount}
                   </Badge>
                 )}
-              </Button>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="default"
-                onClick={() => handleNav('ingredients', null)}
-                className={cn(
-                  'rounded-full text-xs font-light px-4.5 h-10 tracking-[0.18em] uppercase transition-colors cursor-pointer text-foreground',
-                  isIngredientsActive
-                    ? 'bg-muted/90 shadow-2xs'
-                    : 'hover:bg-muted/40'
-                )}
-              >
-                INGREDIENTS
               </Button>
             </nav>
           </div>
@@ -225,19 +209,6 @@ export function AppHeader({
                     {shoppingListCount}
                   </Badge>
                 )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleNav('ingredients', null)}
-                className={cn(
-                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-light tracking-[0.16em] uppercase transition-colors cursor-pointer text-left text-foreground',
-                  isIngredientsActive
-                    ? 'bg-muted/90 shadow-2xs'
-                    : 'hover:bg-muted/40'
-                )}
-              >
-                INGREDIENTS
               </button>
 
               <hr className="my-1 border-border/60" />

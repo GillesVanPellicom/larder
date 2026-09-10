@@ -19,17 +19,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { MandatoryFieldsConfig, MetadataConfig, TagCategory, TimeTrackingMode } from '@/shared/types'
+import type { MandatoryFieldsConfig, MetadataConfig, TagCategory } from '@/shared/types'
 import {
   Check,
   ChevronDown,
-  Clock,
   Layers,
   Plus,
   Search,
-  Timer,
   Trash2,
-  UtensilsCrossed,
 } from 'lucide-react'
 import { tagsApi } from '@/services/api'
 import { TagConflictDialog, type DeleteConflictData } from './TagConflictDialog'
@@ -117,27 +114,19 @@ export function CategoriesAndRulesTab({
     [metadataConfig]
   )
 
-  const initialTimeMode = useMemo<TimeTrackingMode>(
-    () => metadataConfig?.timeTrackingMode || 'prep_and_cook',
-    [metadataConfig]
-  )
-
   // State
   const [fields, setFields] = useState<MandatoryFieldsConfig>(initialFields)
-  const [timeTrackingMode, setTimeTrackingMode] = useState<TimeTrackingMode>(initialTimeMode)
   const [savingConfig, setSavingConfig] = useState(false)
 
   useEffect(() => {
     setFields(initialFields)
-    setTimeTrackingMode(initialTimeMode)
-  }, [initialFields, initialTimeMode])
+  }, [initialFields])
 
   const isDirty = useMemo(() => {
     const fieldsChanged = JSON.stringify(fields) !== JSON.stringify(initialFields)
-    const modeChanged = timeTrackingMode !== initialTimeMode
     const categoriesChanged = JSON.stringify(localCategories) !== JSON.stringify(categories)
-    return fieldsChanged || modeChanged || categoriesChanged
-  }, [fields, initialFields, timeTrackingMode, initialTimeMode, localCategories, categories])
+    return fieldsChanged || categoriesChanged
+  }, [fields, initialFields, localCategories, categories])
 
   useEffect(() => {
     onDirtyChange?.(isDirty)
@@ -145,7 +134,6 @@ export function CategoriesAndRulesTab({
 
   const handleDiscard = () => {
     setFields(initialFields)
-    setTimeTrackingMode(initialTimeMode)
     setLocalCategories(categories)
   }
 
@@ -157,13 +145,13 @@ export function CategoriesAndRulesTab({
         title: true,
         ingredients: true,
         instructions: true,
-        prep_time_minutes: timeTrackingMode !== 'no_cook' ? Boolean(fields.prep_time_minutes) : false,
-        cook_time_minutes: timeTrackingMode === 'prep_and_cook' ? Boolean(fields.cook_time_minutes) : false,
+        prep_time_minutes: Boolean(fields.prep_time_minutes),
+        cook_time_minutes: Boolean(fields.cook_time_minutes),
       }
       await onSaveConfig({
         mandatoryFields: adjustedFields,
         mandatoryCategories: metadataConfig?.mandatoryCategories || [],
-        timeTrackingMode,
+        timeTrackingMode: 'prep_and_cook',
       })
 
       // Persist local category updates to the server
@@ -386,18 +374,10 @@ export function CategoriesAndRulesTab({
     { key: 'instructions', label: 'Instructions', desc: 'Directions or preparation steps', locked: true },
     { key: 'description', label: 'Description / Summary', desc: 'Short synopsis or backstory for the dish' },
     { key: 'yield_amount', label: 'Yield', desc: 'Portion or serving count' },
+    { key: 'prep_time_minutes', label: 'Prep Time', desc: 'Minutes to prepare ingredients' },
+    { key: 'cook_time_minutes', label: 'Cook Time', desc: 'Minutes to cook dish' },
     { key: 'source_url', label: 'Originally adapted from', desc: 'Attribution, source link, or reference' },
     { key: 'image_url', label: 'Cover Photo', desc: 'Disallow recipes without a hero photo' },
-    ...(timeTrackingMode === 'prep_and_cook'
-      ? [
-          { key: 'prep_time_minutes' as const, label: 'Prep Time', desc: 'Minutes to prepare ingredients' },
-          { key: 'cook_time_minutes' as const, label: 'Cook Time', desc: 'Minutes to cook dish' },
-        ]
-      : timeTrackingMode === 'total_only'
-      ? [
-          { key: 'prep_time_minutes' as const, label: 'Total Time', desc: 'Overall total time requirement' },
-        ]
-      : []),
   ]
 
   const totalTags = activeCategory?.tags?.length || 0
@@ -458,266 +438,165 @@ export function CategoriesAndRulesTab({
     return cat ? cat.name : selectedCategoryId
   }, [selectedCategoryId, localCategories])
 
-  return (
-    <div className="space-y-6">
-      {/* Top Searchable Combobox Selector */}
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-        <div className="space-y-1.5 max-w-md" ref={sectionPickerRef}>
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Section
-            </label>
-            <InfoTooltip content="Search or select a section to configure rules, time tracking, or tags. Type a new name to create a category." />
+  const renderSectionPicker = () => (
+    <div className="relative w-full" ref={sectionPickerRef}>
+      <button
+        type="button"
+        onClick={() => setIsSectionPickerOpen((prev) => !prev)}
+        className="flex h-10 w-full items-center justify-between rounded-xl border border-input bg-card px-3.5 py-2 text-sm font-semibold text-foreground shadow-2xs hover:bg-accent/40 focus:outline-hidden focus:ring-2 focus:ring-ring/50 cursor-pointer transition-colors"
+      >
+        <span className={!selectedCategoryId ? 'text-muted-foreground font-normal' : ''}>
+          {selectedDisplayLabel}
+        </span>
+        <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 opacity-60" />
+      </button>
+
+      {/* Combobox Dropdown */}
+      {isSectionPickerOpen && (
+        <div className="absolute left-0 top-full mt-1.5 z-50 w-full min-w-72 rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-lg backdrop-blur-md animate-in fade-in zoom-in-95 duration-100 text-left">
+          {/* Search Bar */}
+          <div className="relative mb-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search or create..."
+              value={sectionSearch}
+              onChange={(e) => setSectionSearch(e.target.value)}
+              autoFocus
+              className="h-8 pl-8 text-xs bg-muted/40 border-border"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && sectionSearch.trim() && !exactCategoryMatch) {
+                  e.preventDefault()
+                  handleCreateCategory(sectionSearch)
+                }
+              }}
+            />
           </div>
 
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setIsSectionPickerOpen((prev) => !prev)}
-              className="flex h-10 w-full items-center justify-between rounded-xl border border-input bg-card px-3.5 py-2 text-sm font-semibold text-foreground shadow-2xs hover:bg-accent/40 focus:outline-hidden focus:ring-2 focus:ring-ring/50 cursor-pointer transition-colors"
-            >
-              <span className={!selectedCategoryId ? 'text-muted-foreground font-normal' : ''}>
-                {selectedDisplayLabel}
-              </span>
-              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 opacity-60" />
-            </button>
-
-            {/* Combobox Dropdown */}
-            {isSectionPickerOpen && (
-              <div className="absolute left-0 top-full mt-1.5 z-50 w-full min-w-72 rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-lg backdrop-blur-md animate-in fade-in zoom-in-95 duration-100">
-                {/* Search Bar */}
-                <div className="relative mb-1">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                  <Input
-                    placeholder="Search or create..."
-                    value={sectionSearch}
-                    onChange={(e) => setSectionSearch(e.target.value)}
-                    autoFocus
-                    className="h-8 pl-8 text-xs bg-muted/40 border-border"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && sectionSearch.trim() && !exactCategoryMatch) {
-                        e.preventDefault()
-                        handleCreateCategory(sectionSearch)
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="max-h-60 overflow-y-auto py-1 space-y-2">
-                  {/* General Section */}
-                  {basicDetailsMatch && (
-                    <div>
-                      <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                        General
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedCategoryId('basic_details')
-                          setIsSectionPickerOpen(false)
-                          setSectionSearch('')
-                        }}
-                        className={`flex w-full items-center justify-between rounded-lg cursor-pointer transition-colors ${
-                          isMobile
-                            ? 'min-h-11 px-3 py-2.5 text-base sm:text-sm font-semibold'
-                            : 'min-h-8 px-2.5 py-1.5 text-xs font-semibold'
-                        } ${
-                          selectedCategoryId === 'basic_details'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'hover:bg-accent hover:text-accent-foreground text-foreground'
-                        }`}
-                      >
-                        <span>Basic Recipe Details</span>
-                        {selectedCategoryId === 'basic_details' && (
-                          <Check className={isMobile ? "h-4 w-4" : "h-3.5 w-3.5"} />
-                        )}
-                      </button>
-                    </div>
+          <div className="max-h-60 overflow-y-auto py-1 space-y-2">
+            {/* General Section */}
+            {basicDetailsMatch && (
+              <div>
+                <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  General
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategoryId('basic_details')
+                    setIsSectionPickerOpen(false)
+                    setSectionSearch('')
+                  }}
+                  className={`flex w-full items-center justify-between rounded-lg cursor-pointer transition-colors ${
+                    isMobile
+                      ? 'min-h-11 px-3 py-2.5 text-base sm:text-sm font-semibold'
+                      : 'min-h-8 px-2.5 py-1.5 text-xs font-semibold'
+                  } ${
+                    selectedCategoryId === 'basic_details'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-accent hover:text-accent-foreground text-foreground'
+                  }`}
+                >
+                  <span>Basic Recipe Details</span>
+                  {selectedCategoryId === 'basic_details' && (
+                    <Check className={isMobile ? "h-4 w-4" : "h-3.5 w-3.5"} />
                   )}
-
-                  {/* Categories Section */}
-                  <div>
-                    <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                      Tag Categories
-                    </span>
-
-                    {/* First option is always Create New Category */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (sectionSearch.trim()) {
-                          handleCreateCategory(sectionSearch)
-                        } else {
-                          setIsSectionPickerOpen(false)
-                          setNewCategoryModalName('')
-                          setIsCreateCategoryModalOpen(true)
-                        }
-                      }}
-                      className={`flex w-full items-center gap-2 rounded-lg cursor-pointer transition-colors text-primary hover:bg-primary/10 ${
-                        isMobile
-                          ? 'min-h-11 px-3 py-2.5 text-sm font-semibold'
-                          : 'min-h-8 px-2.5 py-1.5 text-xs font-semibold'
-                      }`}
-                    >
-                      <Plus className={isMobile ? "h-4 w-4" : "h-3.5 w-3.5"} />
-                      <span>
-                        {sectionSearch.trim()
-                          ? `Create category "${sectionSearch.trim()}"`
-                          : 'Create new category'}
-                      </span>
-                    </button>
-
-                    {filteredCategories.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCategoryId(c.id)
-                          setIsSectionPickerOpen(false)
-                          setSectionSearch('')
-                        }}
-                        className={`flex w-full items-center justify-between rounded-lg cursor-pointer transition-colors ${
-                          isMobile
-                            ? 'min-h-11 px-3 py-2.5 text-base sm:text-sm font-medium'
-                            : 'min-h-8 px-2.5 py-1.5 text-xs font-medium'
-                        } ${
-                          selectedCategoryId === c.id
-                            ? 'bg-primary text-primary-foreground font-semibold'
-                            : 'hover:bg-accent hover:text-accent-foreground text-foreground'
-                        }`}
-                      >
-                        <span>{c.name}</span>
-                        {selectedCategoryId === c.id && <Check className={isMobile ? "h-4 w-4" : "h-3.5 w-3.5"} />}
-                      </button>
-                    ))}
-                  </div>
-
-                  {!basicDetailsMatch && filteredCategories.length === 0 && !sectionSearch.trim() && (
-                    <p className="py-3 text-center text-xs text-muted-foreground">
-                      No categories found.
-                    </p>
-                  )}
-                </div>
+                </button>
               </div>
+            )}
+
+            {/* Categories Section */}
+            <div>
+              <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                Tag Categories
+              </span>
+
+              {/* First option is always Create New Category */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (sectionSearch.trim()) {
+                    handleCreateCategory(sectionSearch)
+                  } else {
+                    setIsSectionPickerOpen(false)
+                    setNewCategoryModalName('')
+                    setIsCreateCategoryModalOpen(true)
+                  }
+                }}
+                className={`flex w-full items-center gap-2 rounded-lg cursor-pointer transition-colors text-primary hover:bg-primary/10 ${
+                  isMobile
+                    ? 'min-h-11 px-3 py-2.5 text-sm font-semibold'
+                    : 'min-h-8 px-2.5 py-1.5 text-xs font-semibold'
+                }`}
+              >
+                <Plus className={isMobile ? "h-4 w-4" : "h-3.5 w-3.5"} />
+                <span>
+                  {sectionSearch.trim()
+                    ? `Create category "${sectionSearch.trim()}"`
+                    : 'Create new category'}
+                </span>
+              </button>
+
+              {filteredCategories.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategoryId(c.id)
+                    setIsSectionPickerOpen(false)
+                    setSectionSearch('')
+                  }}
+                  className={`flex w-full items-center justify-between rounded-lg cursor-pointer transition-colors ${
+                    isMobile
+                      ? 'min-h-11 px-3 py-2.5 text-base sm:text-sm font-medium'
+                      : 'min-h-8 px-2.5 py-1.5 text-xs font-medium'
+                  } ${
+                    selectedCategoryId === c.id
+                      ? 'bg-primary text-primary-foreground font-semibold'
+                      : 'hover:bg-accent hover:text-accent-foreground text-foreground'
+                  }`}
+                >
+                  <span>{c.name}</span>
+                  {selectedCategoryId === c.id && <Check className={isMobile ? "h-4 w-4" : "h-3.5 w-3.5"} />}
+                </button>
+              ))}
+            </div>
+
+            {!basicDetailsMatch && filteredCategories.length === 0 && !sectionSearch.trim() && (
+              <p className="py-3 text-center text-xs text-muted-foreground">
+                No categories found.
+              </p>
             )}
           </div>
         </div>
-      </div>
+      )}
+    </div>
+  )
 
-      {/* VIEW: Nothing Selected (No border, clean vertically centered) */}
-      {!selectedCategoryId && (
+  return (
+    <div className="space-y-6">
+      {/* VIEW: Nothing Selected (Centered hero with combobox input directly underneath) */}
+      {!selectedCategoryId ? (
         <div className="py-20 text-center flex flex-col items-center justify-center animate-in fade-in duration-150">
           <Layers className="h-10 w-10 text-muted-foreground/35 mb-3" />
           <h3 className="text-base font-semibold text-foreground">Choose section to edit</h3>
-          <p className="text-sm text-muted-foreground mt-1.5 max-w-sm">
-            Select an option from the menu above to manage its settings.
+          <p className="text-sm text-muted-foreground mt-1.5 mb-5 max-w-sm text-center">
+            Select an option below to manage its rules and settings.
           </p>
+          <div className="w-full max-w-sm">
+            {renderSectionPicker()}
+          </div>
         </div>
-      )}
-
-      {/* VIEW A: Basic Recipe Details */}
-      {selectedCategoryId === 'basic_details' && (
-        <div className="space-y-6 animate-in fade-in duration-150">
-          {/* 1. Time Tracking Configuration */}
-          <div className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-xs">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-                Time Tracking
-              </h2>
-              <InfoTooltip content="Control how preparation, cooking, and total durations are captured in recipes and displayed across recipe cards and details." />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-              {/* Option 1: Prep & Cook Time */}
-              <div
-                onClick={() => setTimeTrackingMode('prep_and_cook')}
-                className={`flex flex-col justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  timeTrackingMode === 'prep_and_cook'
-                    ? 'border-primary bg-primary/5 shadow-xs'
-                    : 'border-border bg-muted/20 hover:border-border/80 hover:bg-muted/40'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="p-2 rounded-lg bg-primary/10 text-primary mb-2">
-                    <Clock className="h-5 w-5" />
-                  </div>
-                  {timeTrackingMode === 'prep_and_cook' && (
-                    <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
-                      <Check className="h-3 w-3" />
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <span className="text-sm font-bold text-foreground block">
-                    Prep &amp; Cook Time
-                  </span>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
-                    Capture prep time and cook time separately; total time is calculated automatically.
-                  </p>
-                </div>
-              </div>
-
-              {/* Option 2: Only Total Time */}
-              <div
-                onClick={() => setTimeTrackingMode('total_only')}
-                className={`flex flex-col justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  timeTrackingMode === 'total_only'
-                    ? 'border-primary bg-primary/5 shadow-xs'
-                    : 'border-border bg-muted/20 hover:border-border/80 hover:bg-muted/40'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="p-2 rounded-lg bg-primary/10 text-primary mb-2">
-                    <Timer className="h-5 w-5" />
-                  </div>
-                  {timeTrackingMode === 'total_only' && (
-                    <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
-                      <Check className="h-3 w-3" />
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <span className="text-sm font-bold text-foreground block">
-                    Only Total Time
-                  </span>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
-                    Capture a single overall total duration for recipes without separate prep or cook steps.
-                  </p>
-                </div>
-              </div>
-
-              {/* Option 3: No Cooking Time */}
-              <div
-                onClick={() => setTimeTrackingMode('no_cook')}
-                className={`flex flex-col justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  timeTrackingMode === 'no_cook'
-                    ? 'border-primary bg-primary/5 shadow-xs'
-                    : 'border-border bg-muted/20 hover:border-border/80 hover:bg-muted/40'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="p-2 rounded-lg bg-primary/10 text-primary mb-2">
-                    <UtensilsCrossed className="h-5 w-5" />
-                  </div>
-                  {timeTrackingMode === 'no_cook' && (
-                    <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
-                      <Check className="h-3 w-3" />
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <span className="text-sm font-bold text-foreground block">
-                    No Cooking Time
-                  </span>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
-                    Do not capture or display any preparation, cooking, or total time fields across recipes.
-                  </p>
-                </div>
-              </div>
-            </div>
+      ) : (
+        <>
+          {/* Top Searchable Combobox Selector (Positioned at top left when a section is active) */}
+          <div className="max-w-md">
+            {renderSectionPicker()}
           </div>
 
-          {/* 2. Required Information List */}
+          {/* VIEW A: Basic Recipe Details */}
+          {selectedCategoryId === 'basic_details' && (
+            <div className="space-y-6 animate-in fade-in duration-150">
+          {/* Required Information List */}
           <div className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-xs">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
@@ -900,6 +779,8 @@ export function CategoriesAndRulesTab({
           </div>
         </div>
       )}
+    </>
+  )}
 
       {/* Add Tag Modal */}
       {isAddTagModalOpen && activeCategory && (

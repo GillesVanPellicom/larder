@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { CreateRecipeDTO, Recipe } from '@/shared/types'
+import type { CreateRecipeDTO, Recipe, SettingsTabId } from '@/shared/types'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppHeader } from '@/components/navigation/AppHeader'
 import { RecipesCatalogPage } from '@/components/catalog/RecipesCatalogPage'
@@ -7,7 +7,6 @@ import { RecipeViewPage } from '@/components/recipe-view/RecipeViewPage'
 import { RecipeFormPage } from '@/components/recipe-form/RecipeFormPage'
 import { SettingsPage } from '@/components/settings/SettingsPage'
 import { ShoppingListPage } from '@/components/shopping-list/ShoppingListPage'
-import { IngredientsPage } from '@/components/ingredients/IngredientsPage'
 import { FilterDrawer } from '@/components/filter-drawer/FilterDrawer'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { useNavigation } from '@/hooks/useNavigation'
@@ -83,7 +82,7 @@ export function App() {
   const [filterDrawerTab, setFilterDrawerTab] = useState<'filters' | 'templates' | undefined>(undefined)
   const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [settingsTab, setSettingsTab] = useState<'rules' | 'appearance' | 'integrations'>('rules')
+  const [settingsTab, setSettingsTab] = useState<SettingsTabId>('info')
 
   // Global Keyboard Shortcuts (Cmd+F / Ctrl+F, Cmd+N / Ctrl+N)
   useAppKeyboardShortcuts({
@@ -310,8 +309,16 @@ export function App() {
             />
           )}
 
-          {/* VIEW 6: Ingredients Table */}
-          {currentView === 'ingredients' && <IngredientsPage />}
+          {/* VIEW 6: Ingredients Table (redirected to Settings tab) */}
+          {currentView === 'ingredients' && (
+            <SettingsPage
+              metadataConfig={metadataConfig}
+              categories={categories}
+              initialTab="ingredients"
+              onSaveConfig={saveConfig}
+              onRefreshCategories={fetchCategories}
+            />
+          )}
         </main>
 
         {/* Global Filter Drawer */}

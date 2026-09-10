@@ -21,7 +21,11 @@ import { cn } from 'cn'
 type SortColumn = 'name' | 'created_at' | 'usage_count'
 type SortOrder = 'asc' | 'desc'
 
-export function IngredientsPage() {
+export interface IngredientsPageProps {
+  embedded?: boolean
+}
+
+export function IngredientsPage({ embedded = false }: IngredientsPageProps = {}) {
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [items, setItems] = useState<IngredientRecord[]>([])
@@ -147,31 +151,35 @@ export function IngredientsPage() {
   }
 
   return (
-    <div className="space-y-6 w-full max-w-7xl mx-auto pb-32 sm:pb-36 animate-in fade-in duration-150">
-      {/* Top Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-light tracking-wide text-foreground">
-              Ingredients
-            </h1>
-            <InfoTooltip content="Ingredients used across recipes. Click column headers to sort by name, creation date, or recipe usage." />
+    <div className={cn('space-y-6 w-full animate-in fade-in duration-150', !embedded && 'max-w-7xl mx-auto pb-32 sm:pb-36')}>
+      {!embedded && (
+        <>
+          {/* Top Header */}
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-light tracking-wide text-foreground">
+                  Ingredients
+                </h1>
+                <InfoTooltip content="Ingredients used across recipes. Click column headers to sort by name, creation date, or recipe usage." />
+              </div>
+              <p className="mt-1 text-xs sm:text-sm text-muted-foreground font-light">
+                {loading ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Loading ingredients...</span>
+                  </span>
+                ) : (
+                  `${totalCount} unique ingredient${totalCount === 1 ? '' : 's'}`
+                )}
+              </p>
+            </div>
           </div>
-          <p className="mt-1 text-xs sm:text-sm text-muted-foreground font-light">
-            {loading ? (
-              <span className="inline-flex items-center gap-1.5">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Loading ingredients...</span>
-              </span>
-            ) : (
-              `${totalCount} unique ingredient${totalCount === 1 ? '' : 's'}`
-            )}
-          </p>
-        </div>
-      </div>
 
-      {/* Divider */}
-      <div className="border-b border-border" />
+          {/* Divider */}
+          <div className="border-b border-border" />
+        </>
+      )}
 
       {/* Search Toolbar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
@@ -198,6 +206,22 @@ export function IngredientsPage() {
             </button>
           )}
         </div>
+
+        {embedded && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground self-end sm:self-center font-light">
+            <InfoTooltip content="Ingredients used across recipes. Click column headers to sort by name, creation date, or recipe usage." />
+            <span>
+              {loading ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Loading...</span>
+                </span>
+              ) : (
+                `${totalCount} unique ingredient${totalCount === 1 ? '' : 's'}`
+              )}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Ingredients Table */}

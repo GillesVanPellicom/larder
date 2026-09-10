@@ -26,7 +26,7 @@ export default defineConfig({
         id: "/",
         name: "Larder",
         short_name: "Larder",
-        description: "Culinary recipe management with rich multi-element filtering and metadata rules",
+        description: "A smarter way to decide what to cook, organize your recipes, and handle the busywork around cooking.",
         theme_color: "#0f172a",
         background_color: "#0f172a",
         display: "standalone",

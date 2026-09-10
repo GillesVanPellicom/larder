@@ -5,8 +5,6 @@ import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { databaseApi, storageApi } from '@/services/api'
 import type { DatabaseConfig, StorageConfig } from '@/shared/types'
 import {
-  Database,
-  Cloud,
   Check,
   AlertCircle,
   Loader2,
@@ -262,21 +260,16 @@ export function IntegrationsTab() {
   const isStorageConnected = Boolean(storageConfig?.configured)
 
   return (
-    <div className="space-y-6 max-w-2xl animate-in fade-in duration-150">
+    <div className="space-y-6 w-full animate-in fade-in duration-150">
       {/* 1. Database Connection Card */}
       <div className="rounded-2xl border border-border bg-card p-6 space-y-6 shadow-xs">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-muted text-foreground">
-              <Database className="h-5 w-5" />
-            </div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-foreground">
-                Database
-              </h2>
-              <InfoTooltip content="PostgreSQL 15+ (tested with PostgreSQL 16 & 18). Requires schema permissions to create tables and sequences. Format: postgresql://user:password@host:port/dbname" />
-            </div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold text-foreground">
+              Database
+            </h2>
+            <InfoTooltip content="PostgreSQL 15+ (tested with PostgreSQL 16 & 18). Requires schema permissions to create tables and sequences. Format: postgresql://user:password@host:port/dbname" />
           </div>
 
           <div className="flex items-center gap-2">
@@ -396,16 +389,11 @@ export function IntegrationsTab() {
       <div className="rounded-2xl border border-border bg-card p-6 space-y-6 shadow-xs">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-muted text-foreground">
-              <Cloud className="h-5 w-5" />
-            </div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-foreground">
-                Object Storage
-              </h2>
-              <InfoTooltip content="S3-compatible cloud storage (Cloudflare R2, AWS S3, MinIO, Backblaze B2, Supabase Storage) for uploading recipe cover images. Images are automatically compressed to WebP and named with a UUIDv7." />
-            </div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold text-foreground">
+              Object Storage
+            </h2>
+            <InfoTooltip content="S3-compatible cloud storage (Cloudflare R2, AWS S3, MinIO, Backblaze B2, Supabase Storage) for uploading recipe cover images. Images are automatically compressed to WebP and named with a UUIDv7." />
           </div>
 
           <div className="flex items-center gap-2">
