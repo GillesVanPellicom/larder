@@ -66,6 +66,7 @@ export function App() {
     consolidated: consolidatedIngredients,
     uniqueIngredientsCount,
     isRecipeInShoppingList,
+    getRecipeCheckedIngredients,
     getRecipeMultiplier,
     updateRecipeMultiplier,
     toggleRecipeInShoppingList,
@@ -249,8 +250,12 @@ export function App() {
                     onDeleteRequest={(recipe) => setRecipeToDelete(recipe)}
                     isInShoppingList={isRecipeInShoppingList(activeRecipe.id)}
                     initialYieldMultiplier={getRecipeMultiplier(activeRecipe.id)}
+                    shoppingListCheckedIngredients={getRecipeCheckedIngredients(activeRecipe.id)}
                     onUpdateShoppingListMultiplier={(recipeId, mult) =>
                       void updateRecipeMultiplier(recipeId, mult)
+                    }
+                    onToggleShoppingListIngredient={(recipeId, itemKey) =>
+                      void toggleIngredientInRecipe(recipeId, itemKey)
                     }
                     onToggleShoppingList={(recipe, checked, mult) =>
                       void toggleRecipeInShoppingList(recipe.id, checked, mult)

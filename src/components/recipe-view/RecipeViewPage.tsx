@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -25,7 +25,9 @@ export interface RecipeViewPageProps {
   onDeleteRequest: (recipe: Recipe) => void
   isInShoppingList?: boolean
   initialYieldMultiplier?: number
+  shoppingListCheckedIngredients?: string[]
   onUpdateShoppingListMultiplier?: (recipeId: number, multiplier: number) => void
+  onToggleShoppingListIngredient?: (recipeId: number, itemKey: string) => void
   onToggleShoppingList?: (recipe: Recipe, checkedIngredients?: string[], multiplier?: number) => void
   hideTopBar?: boolean
 }
@@ -70,13 +72,34 @@ export function RecipeViewPage({
   onDeleteRequest,
   isInShoppingList = false,
   initialYieldMultiplier = 1,
+  shoppingListCheckedIngredients,
   onUpdateShoppingListMultiplier,
+  onToggleShoppingListIngredient,
   onToggleShoppingList,
   hideTopBar = false,
 }: RecipeViewPageProps) {
-  const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({})
+  const [localCheckedIngredients, setLocalCheckedIngredients] = useState<Record<string, boolean>>({})
   const [yieldMultiplier, setYieldMultiplier] = useState(initialYieldMultiplier || 1)
   const [yieldModalOpen, setYieldModalOpen] = useState(false)
+
+  // Sync multiplier when changed externally (e.g. from shopping list)
+  useEffect(() => {
+    if (initialYieldMultiplier) {
+      setYieldMultiplier(initialYieldMultiplier)
+    }
+  }, [initialYieldMultiplier])
+
+  // Synchronize checked ingredients with shopping list when recipe is in shopping list
+  const checkedIngredients = useMemo(() => {
+    if (isInShoppingList && shoppingListCheckedIngredients) {
+      const map: Record<string, boolean> = {}
+      for (const key of shoppingListCheckedIngredients) {
+        map[key] = true
+      }
+      return map
+    }
+    return localCheckedIngredients
+  }, [isInShoppingList, shoppingListCheckedIngredients, localCheckedIngredients])
 
   const displayIngredients = useMemo(
     () => scaleIngredients(recipe.ingredients || [], yieldMultiplier),
@@ -89,7 +112,11 @@ export function RecipeViewPage({
   )
 
   const toggleIngredient = (id: string) => {
-    setCheckedIngredients((prev) => ({ ...prev, [id]: !prev[id] }))
+    if (isInShoppingList && onToggleShoppingListIngredient) {
+      onToggleShoppingListIngredient(recipe.id, id)
+    } else {
+      setLocalCheckedIngredients((prev) => ({ ...prev, [id]: !prev[id] }))
+    }
   }
 
   const handleApplyYieldMultiplier = (mult: number) => {

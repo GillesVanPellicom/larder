@@ -52,6 +52,20 @@ export interface ShoppingListPageProps {
   onNavigateToCatalog?: () => void
 }
 
+function renderScaledYield(scaledText: string, isScaled: boolean) {
+  if (!isScaled) return scaledText
+  const match = scaledText.match(/^([\d.,/]+)(.*)$/)
+  if (match) {
+    return (
+      <>
+        <span className="text-amber-600 dark:text-amber-400 font-semibold">{match[1]}</span>
+        <span>{match[2]}</span>
+      </>
+    )
+  }
+  return <span className="text-amber-600 dark:text-amber-400 font-semibold">{scaledText}</span>
+}
+
 export function ShoppingListPage({
   items,
   history,
@@ -355,6 +369,7 @@ export function ShoppingListPage({
           {items.map((item) => {
             const recipe = item.recipe
             const multiplier = item.multiplier || 1
+            const isScaled = Math.abs(multiplier - 1) > 0.001
             const checkedSet = new Set(item.checked_ingredients || [])
             const baseIngredients = recipe?.ingredients || []
             const scaledIngredients = scaleIngredients(baseIngredients, multiplier)
@@ -432,7 +447,12 @@ export function ShoppingListPage({
                           {Boolean(recipe.yield_amount) && (
                             <span className="inline-flex items-center gap-1 min-w-0 truncate">
                               <Users className="h-3 w-3 shrink-0" />
-                              <span className="truncate">{scaledYield || `${recipe.yield_amount} ${recipe.yield_unit || 'servings'}`}</span>
+                              <span className="truncate">
+                                {renderScaledYield(
+                                  scaledYield || `${recipe.yield_amount} ${recipe.yield_unit || 'servings'}`,
+                                  isScaled
+                                )}
+                              </span>
                             </span>
                           )}
                         </div>
