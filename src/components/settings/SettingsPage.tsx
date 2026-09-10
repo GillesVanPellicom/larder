@@ -3,6 +3,7 @@ import { InfoTab } from './InfoTab'
 import { CategoriesAndRulesTab } from './CategoriesAndRulesTab'
 import { IntegrationsTab } from './IntegrationsTab'
 import { IngredientsPage } from '@/components/ingredients/IngredientsPage'
+import { StoresPage } from '@/components/stores/StoresPage'
 import { useTheme } from '@/hooks/useTheme'
 import type { MetadataConfig, SettingsTabId, TagCategory } from '@/shared/types'
 import { ConfirmUnsavedDialog } from '@/components/ConfirmUnsavedDialog'
@@ -15,6 +16,7 @@ import {
   Palette,
   Plug,
   SlidersHorizontal,
+  Store,
   Sun,
 } from 'lucide-react'
 
@@ -122,6 +124,19 @@ export function SettingsPage({
         >
           <Carrot className="h-4 w-4" />
           <span>Ingredients</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('stores')}
+          className={`group relative flex items-center gap-2 px-2 sm:px-3 pb-3 text-sm font-semibold border-b-2 -mb-px transition-all cursor-pointer shrink-0 ${
+            activeSubTab === 'stores'
+              ? 'border-foreground text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+          }`}
+        >
+          <Store className="h-4 w-4" />
+          <span>Stores</span>
         </button>
 
         <button
@@ -242,7 +257,12 @@ export function SettingsPage({
         <IngredientsPage embedded />
       )}
 
-      {/* Tab 5: Integrations */}
+      {/* Tab 5: Stores Manager */}
+      {activeSubTab === 'stores' && (
+        <StoresPage embedded />
+      )}
+
+      {/* Tab 6: Integrations */}
       {activeSubTab === 'integrations' && (
         <IntegrationsTab />
       )}

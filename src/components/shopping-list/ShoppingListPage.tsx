@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -6,16 +6,36 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import {
+  ArrowRightLeft,
   Check,
   ChevronDown,
   Clock,
   History,
   ListFilter,
   Loader2,
-  Minus,
+  MoreHorizontal,
+  MoveRight,
+  Plus,
   ShoppingBag,
+  Store,
+  Tag,
   Trash2,
   Upload,
   Users,
@@ -36,6 +56,8 @@ import { formatRelativeDate } from '@/lib/dateTime'
 import { formatGracefulNumber, scaleIngredients, scaleYield } from '@/lib/recipeMath'
 import { YieldMultiplierDialog } from '@/components/recipe-view/YieldMultiplierDialog'
 import { RecipeCard } from '@/components/RecipeCard'
+import { StoreCombobox } from '@/components/stores/StoreCombobox'
+import { IngredientRow } from '@/components/ingredients/IngredientRow'
 
 export interface ShoppingListPageProps {
   items: ShoppingListItem[]
@@ -43,6 +65,12 @@ export interface ShoppingListPageProps {
   loading: boolean
   consolidated: ConsolidatedIngredient[]
   uniqueIngredientsCount: number
+  storeAssignments?: Record<string, string[]>
+  onUpdateStoreAssignments?: (
+    assignments:
+      | Record<string, string[]>
+      | ((prev: Record<string, string[]>) => Record<string, string[]>)
+  ) => void
   categories?: TagCategory[]
   timeTrackingMode?: TimeTrackingMode
   activeTab?: ShoppingListTabId
@@ -75,12 +103,45 @@ function renderScaledYield(scaledText: string, isScaled: boolean) {
   return <span className="text-amber-600 dark:text-amber-400 font-semibold">{scaledText}</span>
 }
 
+function renderItemInstances(item: ConsolidatedIngredient) {
+  if (item.instances.length <= 1) return null
+  return (
+    <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1">
+      <span className="opacity-80">From:</span>
+      {item.instances.map((inst, instIdx) => (
+        <span
+          key={`${inst.recipeId}-${inst.itemKey}-${instIdx}`}
+          className="inline-flex items-center gap-1"
+        >
+          <span
+            className={cn(
+              inst.isChecked
+                ? 'line-through opacity-50'
+                : 'text-foreground/80 font-normal'
+            )}
+          >
+            {inst.recipeTitle}
+            {(inst.amount || inst.unit) && (
+              <span className="font-mono text-[11px] ml-1 opacity-75">
+                ({[inst.amount, inst.unit].filter(Boolean).join(' ')})
+              </span>
+            )}
+          </span>
+          {instIdx < item.instances.length - 1 && <span className="opacity-40">,</span>}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 export function ShoppingListPage({
   items,
   history,
   loading,
   consolidated,
   uniqueIngredientsCount,
+  storeAssignments: controlledStoreAssignments,
+  onUpdateStoreAssignments,
   categories = [],
   timeTrackingMode = 'prep_and_cook',
   activeTab: controlledActiveTab,
@@ -108,6 +169,191 @@ export function ShoppingListPage({
     yieldAmount?: number | string | null
     yieldUnit?: string | null
   } | null>(null)
+
+  // Internal fallback if storeAssignments not controlled
+  const [internalStoreAssignments, setInternalStoreAssignments] = useState<Record<string, string[]>>({})
+  const storeAssignments = controlledStoreAssignments ?? internalStoreAssignments
+
+  const updateStoreAssignments = useCallback(
+    (
+      updater:
+        | Record<string, string[]>
+        | ((prev: Record<string, string[]>) => Record<string, string[]>)
+    ) => {
+      if (onUpdateStoreAssignments) {
+        onUpdateStoreAssignments(updater)
+      } else {
+        setInternalStoreAssignments((prev) =>
+          typeof updater === 'function' ? updater(prev) : updater
+        )
+      }
+    },
+    [onUpdateStoreAssignments]
+  )
+
+  const [isAssignMode, setIsAssignMode] = useState(false)
+  const [activeAssignStore, setActiveAssignStore] = useState('')
+  const [openStoreMap, setOpenStoreMap] = useState<Record<string, boolean>>({})
+  const [isStoreComboboxShaking, setIsStoreComboboxShaking] = useState(false)
+  const shakeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastShakeTimeRef = useRef<number>(0)
+
+  const triggerStoreComboboxShake = useCallback(() => {
+    const now = Date.now()
+    // 500ms cooldown to match animation duration and prevent overlapping shakes
+    if (now - lastShakeTimeRef.current < 500) {
+      return
+    }
+    lastShakeTimeRef.current = now
+    setIsStoreComboboxShaking(true)
+    if (shakeTimeoutRef.current) {
+      clearTimeout(shakeTimeoutRef.current)
+    }
+    shakeTimeoutRef.current = setTimeout(() => {
+      setIsStoreComboboxShaking(false)
+    }, 500)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (shakeTimeoutRef.current) {
+        clearTimeout(shakeTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const [moveModalState, setMoveModalState] = useState<{
+    open: boolean
+    mode: 'store' | 'item'
+    fromStore?: string
+    itemName?: string
+  } | null>(null)
+  const [moveDestinationStore, setMoveDestinationStore] = useState('')
+
+  // Compute store grouping for consolidated view
+  const { storeNames, storeMap, unassigned, totalAssigned } = useMemo(() => {
+    const sMap: Record<string, ConsolidatedIngredient[]> = {}
+    const unass: ConsolidatedIngredient[] = []
+
+    for (const item of consolidated) {
+      const stack = storeAssignments[item.name.toLowerCase()]
+      const assigned = stack && stack.length > 0 ? stack[stack.length - 1] : undefined
+      if (assigned) {
+        if (!sMap[assigned]) {
+          sMap[assigned] = []
+        }
+        sMap[assigned].push(item)
+      } else {
+        unass.push(item)
+      }
+    }
+
+    const names = Object.keys(sMap).sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' })
+    )
+
+    return {
+      storeNames: names,
+      storeMap: sMap,
+      unassigned: unass,
+      totalAssigned: consolidated.length - unass.length,
+    }
+  }, [consolidated, storeAssignments])
+
+  const handleTapIngredientInAssignMode = (ingredientName: string) => {
+    const targetStore = activeAssignStore.trim()
+    if (!targetStore) {
+      triggerStoreComboboxShake()
+      return
+    }
+    const key = ingredientName.toLowerCase()
+
+    updateStoreAssignments((prev) => {
+      const next = { ...prev }
+      const currentStack = next[key] || []
+      const currentTop = currentStack.length > 0 ? currentStack[currentStack.length - 1] : undefined
+
+      if (currentTop && currentTop.toLowerCase() === targetStore.toLowerCase()) {
+        // Unassigning from current active store: pop it off the stack to revert to the previous store!
+        const poppedStack = currentStack.slice(0, -1)
+        if (poppedStack.length === 0) {
+          delete next[key]
+        } else {
+          next[key] = poppedStack
+        }
+      } else {
+        // Assigning to target store: push target store to the stack
+        const filtered = currentStack.filter((s) => s.toLowerCase() !== targetStore.toLowerCase())
+        next[key] = [...filtered, targetStore]
+      }
+      return next
+    })
+  }
+
+  const handleMassRemoveFromStore = (storeName: string) => {
+    const sNameLower = storeName.toLowerCase()
+    updateStoreAssignments((prev) => {
+      const next = { ...prev }
+      for (const k of Object.keys(next)) {
+        const stack = next[k] || []
+        const filtered = stack.filter((s) => s.toLowerCase() !== sNameLower)
+        if (filtered.length === 0) {
+          delete next[k]
+        } else {
+          next[k] = filtered
+        }
+      }
+      return next
+    })
+  }
+
+  const handleMassMoveStore = (fromStoreName: string, toStoreName: string) => {
+    if (!toStoreName.trim()) return
+    const fromLower = fromStoreName.toLowerCase()
+    const toName = toStoreName.trim()
+    updateStoreAssignments((prev) => {
+      const next = { ...prev }
+      for (const k of Object.keys(next)) {
+        const stack = next[k] || []
+        if (stack.length > 0 && stack[stack.length - 1].toLowerCase() === fromLower) {
+          const filtered = stack.filter((s) => s.toLowerCase() !== toName.toLowerCase())
+          next[k] = [...filtered.filter((s) => s.toLowerCase() !== fromLower), toName]
+        }
+      }
+      return next
+    })
+  }
+
+  const handleMoveSingleItem = (ingredientName: string, toStoreName: string) => {
+    if (!toStoreName.trim()) return
+    const key = ingredientName.toLowerCase()
+    const toName = toStoreName.trim()
+    updateStoreAssignments((prev) => {
+      const next = { ...prev }
+      const currentStack = next[key] || []
+      const filtered = currentStack.filter((s) => s.toLowerCase() !== toName.toLowerCase())
+      next[key] = [...filtered, toName]
+      return next
+    })
+  }
+
+  const handleUnassignSingleItem = (ingredientName: string) => {
+    const key = ingredientName.toLowerCase()
+    updateStoreAssignments((prev) => {
+      const next = { ...prev }
+      const currentStack = next[key] || []
+      if (currentStack.length <= 1) {
+        delete next[key]
+      } else {
+        next[key] = currentStack.slice(0, -1)
+      }
+      return next
+    })
+  }
+
+  const handleClearAllAssignments = () => {
+    updateStoreAssignments(() => ({}))
+  }
 
   useEffect(() => {
     if (controlledActiveTab && controlledActiveTab !== activeTab) {
@@ -140,6 +386,29 @@ export function ShoppingListPage({
       }
     }
     onToggleIngredientInRecipe(recipeId, itemKey)
+  }
+
+  const handleToggleConsolidatedIngredient = (ingredientName: string) => {
+    const normName = ingredientName.toLowerCase()
+    const targetGroup = consolidated.find((c) => c.name.toLowerCase() === normName)
+    if (targetGroup) {
+      const willBeChecked = !targetGroup.isChecked
+      if (willBeChecked) {
+        const stack = storeAssignments[normName] || []
+        const assignedStore = stack.length > 0 ? stack[stack.length - 1] : undefined
+        const storeKey = assignedStore || '__unassigned'
+        const storeItems = assignedStore ? storeMap[assignedStore] || [] : unassigned
+
+        // If every other item in this store is already checked, auto-collapse this store
+        const willAllStoreItemsBeChecked = storeItems.every((item) =>
+          item.name.toLowerCase() === normName || item.isChecked
+        )
+        if (willAllStoreItemsBeChecked) {
+          setOpenStoreMap((prev) => ({ ...prev, [storeKey]: false }))
+        }
+      }
+    }
+    void onToggleConsolidatedIngredient(ingredientName)
   }
 
   const handleClear = async () => {
@@ -608,45 +877,12 @@ export function ShoppingListPage({
                       return (
                         <div key={itemKey}>
                           {idx > 0 && <div className="border-t border-border/40 mx-3 sm:mx-4 my-0.5" />}
-                          <div
+                          <IngredientRow
+                            name={ing.name}
+                            quantity={displayQty || undefined}
+                            isChecked={isChecked}
                             onClick={() => handleToggleIngredient(item.recipe_id, itemKey)}
-                            className={cn(
-                              'flex items-start gap-3.5 py-3.5 sm:py-3 px-3 sm:px-4 rounded-xl cursor-pointer transition-colors select-none hover:bg-muted/40 min-h-[3rem]',
-                              isChecked ? 'text-muted-foreground opacity-70' : 'text-foreground'
-                            )}
-                          >
-                            <div
-                              className={cn(
-                                'mt-0.5 h-5 w-5 rounded-md flex items-center justify-center shrink-0 transition-colors border',
-                                isChecked
-                                  ? 'bg-primary border-primary text-primary-foreground'
-                                  : 'border-border bg-card hover:border-primary/50'
-                              )}
-                            >
-                              {isChecked && <Check className="h-3.5 w-3.5 stroke-[3]" />}
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-baseline justify-between gap-2">
-                                <span
-                                  title={ing.name}
-                                  className={cn('text-sm sm:text-[15px] font-medium truncate', isChecked && 'line-through')}
-                                >
-                                  {ing.name}
-                                </span>
-                                {displayQty && (
-                                  <span
-                                    className={cn(
-                                      'text-xs sm:text-sm font-mono font-medium shrink-0 ml-2',
-                                      isChecked ? 'text-muted-foreground' : 'text-foreground'
-                                    )}
-                                  >
-                                    {displayQty}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
+                          />
                         </div>
                       )
                     })
@@ -658,92 +894,472 @@ export function ShoppingListPage({
         </div>
       ) : (
         /* TAB 2: CONSOLIDATED VIEW */
-        <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden p-2 sm:p-3">
-          {consolidated.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic p-4 sm:p-5">
-              No ingredients to display.
-            </p>
-          ) : (
-            consolidated.map((item, idx) => {
-              const isChecked = item.isChecked
-              const isPartial = item.isPartial
+        <div className="space-y-4">
+          {/* Top Controls Toolbar for Consolidated View */}
+          {consolidated.length > 0 && !isAssignMode && (
+            <div className="flex items-center justify-end p-1">
+              {/* Assign Mode Trigger */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAssignMode(true)}
+                className="gap-1.5 cursor-pointer rounded-xl text-xs h-8.5 font-medium"
+                title="Enter mode to quickly assign ingredients to stores"
+              >
+                <Tag className="h-3.5 w-3.5 text-primary" />
+                <span>Assign stores</span>
+                {totalAssigned > 0 && (
+                  <Badge variant="secondary" className="font-mono text-[11px] px-1.5 py-0 h-4.5">
+                    {totalAssigned}/{consolidated.length}
+                  </Badge>
+                )}
+              </Button>
+            </div>
+          )}
 
-              return (
-                <div key={item.name}>
-                  {idx > 0 && <div className="border-t border-border/40 mx-3 sm:mx-4 my-0.5" />}
-                  <div
-                    onClick={() => onToggleConsolidatedIngredient(item.name)}
+          {/* ASSIGNMENT MODE ACTIVE BANNER / TOOLBAR */}
+          {isAssignMode && (
+            <div className="sticky top-[88px] sm:top-[108px] z-30 rounded-2xl border-2 border-primary/40 bg-card/95 backdrop-blur-md p-3.5 sm:p-4 shadow-md space-y-3 animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground">Store Assignment Mode</span>
+                  <InfoTooltip content="Select a store and tap ingredients to assign them. Tapping an item already assigned to this store will unassign it." />
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  {totalAssigned > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearAllAssignments}
+                      className="text-xs text-muted-foreground hover:text-destructive cursor-pointer h-8"
+                    >
+                      Clear all
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      setIsAssignMode(false)
+                    }}
+                    className="cursor-pointer gap-1.5 font-medium h-8 px-4"
+                  >
+                    <Check className="h-4 w-4" />
+                    <span>Done</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Store Selector & Progress */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2 border-t border-border/60">
+                <div className="flex-1 max-w-sm">
+                  <StoreCombobox
+                    value={activeAssignStore}
+                    onChange={setActiveAssignStore}
+                    placeholder="Select store to assign..."
+                    className={cn(isStoreComboboxShaking && 'animate-head-shake')}
+                  />
+                </div>
+
+                <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
+                  <Badge variant="secondary" className="font-mono text-xs">
+                    {totalAssigned} of {consolidated.length} assigned
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MAIN CONSOLIDATED CONTENT */}
+          {consolidated.length === 0 ? (
+            <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden p-4 sm:p-5">
+              <p className="text-xs text-muted-foreground italic">
+                No ingredients to display.
+              </p>
+            </div>
+          ) : isAssignMode ? (
+            /* ASSIGNMENT MODE: TAP-TO-ASSIGN LIST */
+            <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden p-2 sm:p-3 space-y-1">
+              {consolidated.map((item, idx) => {
+                const stack = storeAssignments[item.name.toLowerCase()] || []
+                const assignedStore = stack.length > 0 ? stack[stack.length - 1] : undefined
+                const isTargetStore =
+                  activeAssignStore &&
+                  assignedStore &&
+                  assignedStore.toLowerCase() === activeAssignStore.trim().toLowerCase()
+                const isOtherStore = assignedStore && !isTargetStore
+
+                return (
+                  <div key={item.name}>
+                    {idx > 0 && <div className="border-t border-border/40 mx-3 sm:mx-4 my-0.5" />}
+                    <IngredientRow
+                      name={
+                        <span
+                          className={cn(
+                            isTargetStore
+                              ? 'font-semibold text-primary dark:text-primary'
+                              : isOtherStore
+                                ? 'text-muted-foreground font-normal'
+                                : 'font-medium text-foreground'
+                          )}
+                        >
+                          {item.name}
+                        </span>
+                      }
+                      quantity={item.displayQuantity || undefined}
+                      onClick={() => handleTapIngredientInAssignMode(item.name)}
+                      dimmed={Boolean(isOtherStore)}
+                      className={cn(
+                        isTargetStore && 'bg-primary/10 border border-primary/40 shadow-2xs font-semibold'
+                      )}
+                      leading={
+                        <div className="shrink-0">
+                          {isTargetStore ? (
+                            <Badge className="bg-primary text-primary-foreground text-xs font-semibold gap-1 py-1">
+                              <Check className="h-3 w-3" />
+                              <span>{assignedStore}</span>
+                            </Badge>
+                          ) : assignedStore ? (
+                            <Badge
+                              variant="secondary"
+                              className="text-xs font-medium gap-1 text-muted-foreground py-1 bg-muted/60"
+                            >
+                              <Store className="h-3 w-3 opacity-60" />
+                              <span>{assignedStore}</span>
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="text-xs text-muted-foreground/70 border-dashed gap-1 py-1 hover:border-primary/50 hover:text-primary"
+                            >
+                              <Plus className="h-3 w-3" />
+                              <span>Assign</span>
+                            </Badge>
+                          )}
+                        </div>
+                      }
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          ) : storeNames.length > 0 ? (
+            /* GROUPED BY STORE: ACCORDIONS PER STORE + UNASSIGNED */
+            <div className="space-y-4">
+              {/* Store Accordions */}
+              {storeNames.map((sName) => {
+                const storeItems = storeMap[sName] || []
+                const checkedCount = storeItems.filter((i) => i.isChecked).length
+                const isAllChecked = storeItems.length > 0 && checkedCount === storeItems.length
+                const isOpen = openStoreMap[sName] ?? !isAllChecked
+
+                return (
+                  <Collapsible
+                    key={sName}
+                    open={isOpen}
+                    onOpenChange={(openState) => {
+                      setOpenStoreMap((prev) => ({ ...prev, [sName]: openState }))
+                    }}
                     className={cn(
-                      'flex items-start gap-3.5 py-3.5 sm:py-3 px-3 sm:px-4 rounded-xl cursor-pointer transition-colors select-none hover:bg-muted/40 min-h-[3rem]',
-                      isChecked ? 'text-muted-foreground opacity-70' : 'text-foreground'
+                      'rounded-2xl border border-border bg-card shadow-xs overflow-hidden transition-all',
+                      isAllChecked && 'opacity-75 border-border/60'
+                    )}
+                  >
+                    {/* Store Accordion Header */}
+                    <div
+                      className={cn(
+                        'p-3 sm:p-3.5 bg-muted/30 flex items-center justify-between gap-3 border-b border-border/50 transition-colors',
+                        isAllChecked && 'bg-muted/15'
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <CollapsibleTrigger className="flex items-center text-left group cursor-pointer select-none py-1 shrink-0">
+                          <ChevronDown
+                            className={cn(
+                              'h-5 w-5 text-muted-foreground group-hover:text-foreground transition-transform duration-300 shrink-0',
+                              !isOpen && '-rotate-90'
+                            )}
+                          />
+                        </CollapsibleTrigger>
+
+                        <CollapsibleTrigger className="flex items-center gap-2 text-left group cursor-pointer select-none min-w-0 flex-1 py-1">
+                          <Store className="h-4 w-4 text-primary shrink-0" />
+                          <h3 className="text-sm sm:text-base font-semibold text-foreground truncate">
+                            {sName}
+                          </h3>
+                          <Badge
+                            variant="secondary"
+                            className="font-mono text-xs px-2 py-0.5 h-5 font-medium shrink-0 bg-background/60"
+                          >
+                            {checkedCount}/{storeItems.length}
+                          </Badge>
+                        </CollapsibleTrigger>
+                      </div>
+
+                      {/* Store Options Dropdown Menu */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon-lg"
+                                className="cursor-pointer text-muted-foreground hover:text-foreground"
+                                title="Store options"
+                              >
+                                <MoreHorizontal className="h-5 w-5" />
+                              </Button>
+                            }
+                          />
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setMoveDestinationStore('')
+                                setMoveModalState({ open: true, mode: 'store', fromStore: sName })
+                              }}
+                              className="cursor-pointer gap-2"
+                            >
+                              <MoveRight className="h-3.5 w-3.5" />
+                              <span>Move all items...</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => handleMassRemoveFromStore(sName)}
+                              className="cursor-pointer gap-2"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Remove from store</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+
+                    {/* Store Items List */}
+                    <CollapsibleContent className="p-2 sm:p-3 pt-1">
+                      {storeItems.map((item, idx) => {
+                        const isChecked = item.isChecked
+                        const isPartial = item.isPartial
+
+                        return (
+                          <div key={item.name}>
+                            {idx > 0 && <div className="border-t border-border/40 mx-3 sm:mx-4 my-0.5" />}
+                            <IngredientRow
+                              name={item.name}
+                              quantity={item.displayQuantity || undefined}
+                              isChecked={isChecked}
+                              isPartial={isPartial}
+                              onClick={() => handleToggleConsolidatedIngredient(item.name)}
+                              actions={
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger
+                                    render={
+                                      <Button
+                                        variant="ghost"
+                                        size="icon-lg"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="cursor-pointer text-muted-foreground/60 hover:text-foreground -mr-2"
+                                        title="Item options"
+                                      >
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    }
+                                  />
+                                  <DropdownMenuContent align="end" className="w-44">
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setMoveDestinationStore('')
+                                        setMoveModalState({
+                                          open: true,
+                                          mode: 'item',
+                                          itemName: item.name,
+                                        })
+                                      }}
+                                      className="cursor-pointer gap-2 text-xs"
+                                    >
+                                      <MoveRight className="h-3 w-3" />
+                                      <span>Move to store...</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      variant="destructive"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleUnassignSingleItem(item.name)
+                                      }}
+                                      className="cursor-pointer gap-2 text-xs"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                      <span>Remove from store</span>
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              }
+                              secondary={renderItemInstances(item)}
+                            />
+                          </div>
+                        )
+                      })}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )
+              })}
+
+              {/* Unassigned Accordion (if any items remain unassigned) */}
+              {unassigned.length > 0 && (() => {
+                const isUnassignedAllChecked = unassigned.every((i) => i.isChecked)
+                const isUnassignedOpen = openStoreMap['__unassigned'] ?? !isUnassignedAllChecked
+
+                return (
+                  <Collapsible
+                    open={isUnassignedOpen}
+                    onOpenChange={(openState) => {
+                      setOpenStoreMap((prev) => ({ ...prev, __unassigned: openState }))
+                    }}
+                    className={cn(
+                      'rounded-2xl border border-border bg-card shadow-xs overflow-hidden transition-all',
+                      isUnassignedAllChecked && 'opacity-75 border-border/60'
                     )}
                   >
                     <div
                       className={cn(
-                        'mt-0.5 h-5 w-5 rounded-md flex items-center justify-center shrink-0 transition-colors border',
-                        isChecked || isPartial
-                          ? 'bg-primary border-primary text-primary-foreground'
-                          : 'border-border bg-card hover:border-primary/50'
+                        'p-3 sm:p-3.5 bg-muted/20 flex items-center justify-between gap-3 border-b border-border/50 transition-colors',
+                        isUnassignedAllChecked && 'bg-muted/10'
                       )}
                     >
-                      {isChecked ? (
-                        <Check className="h-3.5 w-3.5 stroke-[3]" />
-                      ) : isPartial ? (
-                        <Minus className="h-3.5 w-3.5 stroke-[3]" />
-                      ) : null}
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <CollapsibleTrigger className="flex items-center text-left group cursor-pointer select-none py-1 shrink-0">
+                          <ChevronDown
+                            className={cn(
+                              'h-5 w-5 text-muted-foreground group-hover:text-foreground transition-transform duration-300 shrink-0',
+                              !isUnassignedOpen && '-rotate-90'
+                            )}
+                          />
+                        </CollapsibleTrigger>
+
+                        <CollapsibleTrigger className="flex items-center gap-2 text-left group cursor-pointer select-none min-w-0 flex-1 py-1">
+                          <ShoppingBag className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <h3 className="text-sm sm:text-base font-medium text-muted-foreground truncate">
+                            Other / Unassigned
+                          </h3>
+                          <Badge
+                            variant="secondary"
+                            className="font-mono text-xs px-2 py-0.5 h-5 font-medium shrink-0 bg-background/60"
+                          >
+                            {unassigned.filter((i) => i.isChecked).length}/{unassigned.length}
+                          </Badge>
+                        </CollapsibleTrigger>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsAssignMode(true)}
+                        className="cursor-pointer text-xs gap-1 text-primary hover:bg-primary/10 h-7"
+                      >
+                        <Plus className="h-3 w-3" />
+                        <span>Assign</span>
+                      </Button>
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span
-                          title={item.name}
-                          className={cn('text-sm sm:text-[15px] font-medium truncate', isChecked && 'line-through')}
-                        >
-                          {item.name}
-                        </span>
-                        {item.displayQuantity && (
-                          <span
-                            className={cn(
-                              'text-xs sm:text-sm font-mono font-medium shrink-0 ml-2',
-                              isChecked ? 'text-muted-foreground' : 'text-foreground'
-                            )}
+                    <CollapsibleContent className="p-2 sm:p-3 pt-1">
+                      {unassigned.map((item, idx) => {
+                        const isChecked = item.isChecked
+                        const isPartial = item.isPartial
+
+                        return (
+                          <div key={item.name}>
+                            {idx > 0 && <div className="border-t border-border/40 mx-3 sm:mx-4 my-0.5" />}
+                            <IngredientRow
+                              name={item.name}
+                              quantity={item.displayQuantity || undefined}
+                              isChecked={isChecked}
+                              isPartial={isPartial}
+                              onClick={() => handleToggleConsolidatedIngredient(item.name)}
+                              actions={
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger
+                                    render={
+                                      <Button
+                                        variant="ghost"
+                                        size="icon-lg"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="cursor-pointer text-muted-foreground/60 hover:text-foreground -mr-2"
+                                        title="Item options"
+                                      >
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    }
+                                  />
+                                  <DropdownMenuContent align="end" className="w-44">
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setMoveDestinationStore('')
+                                        setMoveModalState({
+                                          open: true,
+                                          mode: 'item',
+                                          itemName: item.name,
+                                        })
+                                      }}
+                                      className="cursor-pointer gap-2 text-xs"
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                      <span>Assign to store...</span>
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              }
+                              secondary={renderItemInstances(item)}
+                            />
+                          </div>
+                        )
+                      })}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )
+              })()}
+            </div>
+          ) : (
+            /* FLAT LIST (ALL ITEMS) VIEW */
+            <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden p-2 sm:p-3">
+              {consolidated.map((item, idx) => {
+                const isChecked = item.isChecked
+                const isPartial = item.isPartial
+                const stack = storeAssignments[item.name.toLowerCase()] || []
+                const assignedStore = stack.length > 0 ? stack[stack.length - 1] : undefined
+
+                return (
+                  <div key={item.name}>
+                    {idx > 0 && <div className="border-t border-border/40 mx-3 sm:mx-4 my-0.5" />}
+                    <IngredientRow
+                      name={item.name}
+                      quantity={item.displayQuantity || undefined}
+                      isChecked={isChecked}
+                      isPartial={isPartial}
+                      onClick={() => handleToggleConsolidatedIngredient(item.name)}
+                      badge={
+                        assignedStore ? (
+                          <Badge
+                            variant="secondary"
+                            className="text-[11px] font-normal py-0 px-1.5 h-4.5 text-muted-foreground shrink-0 gap-1"
                           >
-                            {item.displayQuantity}
-                          </span>
-                        )}
-                      </div>
-                      {item.instances.length > 1 && (
-                        <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1">
-                          <span className="opacity-80">From:</span>
-                          {item.instances.map((inst, idx) => (
-                            <span
-                              key={`${inst.recipeId}-${inst.itemKey}-${idx}`}
-                              className="inline-flex items-center gap-1"
-                            >
-                              <span
-                                className={cn(
-                                  inst.isChecked
-                                    ? 'line-through opacity-50'
-                                    : 'text-foreground/80 font-normal'
-                                )}
-                              >
-                                {inst.recipeTitle}
-                                {(inst.amount || inst.unit) && (
-                                  <span className="font-mono text-[11px] ml-1 opacity-75">
-                                    ({[inst.amount, inst.unit].filter(Boolean).join(' ')})
-                                  </span>
-                                )}
-                              </span>
-                              {idx < item.instances.length - 1 && <span className="opacity-40">,</span>}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                            <Store className="h-2.5 w-2.5 opacity-60" />
+                            <span>{assignedStore}</span>
+                          </Badge>
+                        ) : undefined
+                      }
+                      secondary={renderItemInstances(item)}
+                    />
                   </div>
-                </div>
-              )
-            })
+                )
+              })}
+            </div>
           )}
         </div>
       )}
@@ -782,6 +1398,73 @@ export function ShoppingListPage({
           setMultiplierModalRecipe(null)
         }}
       />
+
+      {/* Move Store Modal / Dialog */}
+      <Dialog
+        open={!!moveModalState}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMoveModalState(null)
+            setMoveDestinationStore('')
+          }
+        }}
+      >
+        <DialogContent className="max-w-md bg-card/85 backdrop-blur-md border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+              <ArrowRightLeft className="h-4 w-4 text-primary" />
+              {moveModalState?.mode === 'store'
+                ? `Move items from ${moveModalState.fromStore}`
+                : `Move "${moveModalState?.itemName}"`}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Select the destination store to move{' '}
+              {moveModalState?.mode === 'store' ? 'all items' : 'this ingredient'} to.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-1">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground">Destination store</label>
+              <StoreCombobox
+                value={moveDestinationStore}
+                onChange={setMoveDestinationStore}
+                placeholder="Select or create destination store..."
+                autoFocus
+              />
+            </div>
+
+            <DialogFooter className="pt-2 gap-2 flex-row justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={() => setMoveModalState(null)}
+                className="cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                onClick={() => {
+                  if (moveModalState?.mode === 'store' && moveModalState.fromStore) {
+                    handleMassMoveStore(moveModalState.fromStore, moveDestinationStore)
+                  } else if (moveModalState?.mode === 'item' && moveModalState.itemName) {
+                    handleMoveSingleItem(moveModalState.itemName, moveDestinationStore)
+                  }
+                  setMoveModalState(null)
+                  setMoveDestinationStore('')
+                }}
+                disabled={!moveDestinationStore.trim()}
+                className="cursor-pointer"
+              >
+                Move
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

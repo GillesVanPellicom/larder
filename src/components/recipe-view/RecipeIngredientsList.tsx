@@ -2,6 +2,7 @@ import { formatGracefulNumber } from '@/lib/recipeMath'
 import type { IngredientItem } from '@/shared/types'
 import { Check, ShoppingBag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { IngredientRow } from '@/components/ingredients/IngredientRow'
 import { cn } from 'cn'
 
 interface RecipeIngredientsListProps {
@@ -118,51 +119,24 @@ export function RecipeIngredientsList({
             return (
               <div key={itemKey}>
                 {index > 0 && <div className="border-t border-border/40 mx-3 sm:mx-4 my-0.5" />}
-                <div
+                <IngredientRow
+                  name={item.name}
+                  isChecked={isChecked}
                   onClick={() => onToggleIngredient(itemKey)}
-                  className={cn(
-                    'flex items-start gap-3.5 py-3.5 sm:py-3 px-3 sm:px-4 rounded-xl cursor-pointer transition-colors select-none hover:bg-muted/40 min-h-[3rem]',
-                    isChecked ? 'text-muted-foreground opacity-70' : 'text-foreground'
-                  )}
-                >
-                  <div
-                    className={cn(
-                      'mt-0.5 h-5 w-5 rounded-md flex items-center justify-center shrink-0 transition-colors border',
-                      isChecked
-                        ? 'bg-primary border-primary text-primary-foreground'
-                        : 'border-border bg-card hover:border-primary/50'
-                    )}
-                  >
-                    {isChecked && <Check className="h-3.5 w-3.5 stroke-[3]" />}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span
-                        title={item.name}
-                        className={cn('text-sm sm:text-[15px] font-medium truncate', isChecked && 'line-through')}
-                      >
-                        {item.name}
-                      </span>
-                      {hasQty && (
-                        <span
-                          className={cn(
-                            'text-xs sm:text-sm font-mono font-medium shrink-0 ml-2',
-                            isChecked ? 'text-muted-foreground' : 'text-foreground'
-                          )}
-                        >
-                          {item.amount && renderAmountValue(item.amount, isScaled, isChecked)}
-                          {item.amount && item.unit ? ' ' : ''}
-                          {item.unit && (
-                            <span className={isChecked ? 'text-muted-foreground' : 'text-foreground'}>
-                              {item.unit}
-                            </span>
-                          )}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  quantity={
+                    hasQty ? (
+                      <>
+                        {item.amount && renderAmountValue(item.amount, isScaled, isChecked)}
+                        {item.amount && item.unit ? ' ' : ''}
+                        {item.unit && (
+                          <span className={isChecked ? 'text-muted-foreground' : 'text-foreground'}>
+                            {item.unit}
+                          </span>
+                        )}
+                      </>
+                    ) : undefined
+                  }
+                />
               </div>
             )
           })

@@ -14,6 +14,7 @@ import conflictsRouter from './routes/conflicts'
 import ingredientsRouter from './routes/ingredients'
 import filterTemplatesRouter from './routes/filterTemplates'
 import shoppingListRouter from './routes/shoppingList'
+import storesRouter from './routes/stores'
 
 const app = express()
 
@@ -30,6 +31,7 @@ app.use('/api/config', configRouter)
 app.use('/api/tags', tagsRouter)
 app.use('/api/conflicts', conflictsRouter)
 app.use('/api/ingredients', ingredientsRouter)
+app.use('/api/stores', storesRouter)
 app.use('/api/filter-templates', filterTemplatesRouter)
 app.use('/api/shopping-list', shoppingListRouter)
 app.use('/api/recipes', recipesRouter)

@@ -6,6 +6,7 @@ import type { ShoppingListHistoryItem, ShoppingListItem } from '@/shared/types'
 export function useShoppingList() {
   const [items, setItems] = useState<ShoppingListItem[]>([])
   const [history, setHistory] = useState<ShoppingListHistoryItem[]>([])
+  const [storeAssignments, setStoreAssignments] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(true)
 
   const fetchShoppingList = useCallback(async () => {
@@ -14,6 +15,7 @@ export function useShoppingList() {
       const data = await shoppingListApi.get()
       setItems(data.items || [])
       setHistory(data.history || [])
+      setStoreAssignments(data.storeAssignments || {})
     } catch (err) {
       console.error('[useShoppingList] Failed to fetch shopping list:', err)
     } finally {
@@ -188,9 +190,27 @@ export function useShoppingList() {
     [consolidated, items, updateRecipeChecked]
   )
 
+  const updateStoreAssignments = useCallback(
+    async (
+      nextOrUpdater:
+        | Record<string, string[]>
+        | ((prev: Record<string, string[]>) => Record<string, string[]>)
+    ) => {
+      setStoreAssignments((prev) => {
+        const next = typeof nextOrUpdater === 'function' ? nextOrUpdater(prev) : nextOrUpdater
+        void shoppingListApi.updateStoreAssignments(next).catch((err) => {
+          console.error('[useShoppingList] Failed to sync store assignments:', err)
+        })
+        return next
+      })
+    },
+    []
+  )
+
   const clearShoppingList = useCallback(async () => {
     try {
       await shoppingListApi.clear()
+      setStoreAssignments({})
       await fetchShoppingList()
     } catch (err) {
       console.error('[useShoppingList] Failed to clear shopping list:', err)
@@ -224,6 +244,7 @@ export function useShoppingList() {
   return {
     items,
     history,
+    storeAssignments,
     loading,
     consolidated,
     uniqueIngredientsCount: uniqueCount,
@@ -235,6 +256,7 @@ export function useShoppingList() {
     toggleRecipeInShoppingList,
     updateRecipeChecked,
     updateRecipeMultiplier,
+    updateStoreAssignments,
     toggleIngredientInRecipe,
     toggleConsolidatedIngredient,
     clearShoppingList,

@@ -213,7 +213,7 @@ export function RecipeImageUpload({
                 onImageUrlChange(val)
                 onClearError?.()
               }}
-              className="pl-9 pr-4 font-mono text-xs"
+              className="pl-9.5 pr-4 font-mono text-xs"
             />
             <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           </div>

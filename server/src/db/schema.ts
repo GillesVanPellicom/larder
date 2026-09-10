@@ -93,6 +93,19 @@ export const shoppingListHistory = pgTable('shopping_list_history', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
+export const shoppingListStoreAssignments = pgTable('shopping_list_store_assignments', {
+  id: varchar('id', { length: 50 }).primaryKey(),
+  assignments: jsonb('assignments').$type<Record<string, string[]>>().default({}).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+export const stores = pgTable('stores', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull().unique(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
 export type IngredientRow = typeof ingredients.$inferSelect
 export type NewIngredientRow = typeof ingredients.$inferInsert
 export type RecipeRow = typeof recipes.$inferSelect
@@ -107,3 +120,5 @@ export type ShoppingListItemRow = typeof shoppingListItems.$inferSelect
 export type NewShoppingListItemRow = typeof shoppingListItems.$inferInsert
 export type ShoppingListHistoryRow = typeof shoppingListHistory.$inferSelect
 export type NewShoppingListHistoryRow = typeof shoppingListHistory.$inferInsert
+export type StoreRow = typeof stores.$inferSelect
+export type NewStoreRow = typeof stores.$inferInsert

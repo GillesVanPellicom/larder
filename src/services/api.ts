@@ -1,3 +1,5 @@
+export type { StoreRecord } from '@/shared/types'
+
 import type {
   CreateFilterTemplateDTO,
   CreateRecipeDTO,
@@ -12,6 +14,8 @@ import type {
   ShoppingListItem,
   StorageConfig,
   StorageConfigDTO,
+  StoresQueryParams,
+  StoresSearchResponse,
   TagCategory,
   UpdateFilterTemplateDTO,
   UploadImageResponse,
@@ -179,6 +183,57 @@ export const ingredientsApi = {
 
   async update(id: number, name: string): Promise<{ id: number; name: string; created_at?: string; updated_at?: string }> {
     const res = await fetch(`/api/ingredients/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    return handleResponse<{ id: number; name: string; created_at?: string; updated_at?: string }>(res)
+  },
+}
+
+export const storesApi = {
+  async search(q: string, limit = 10, offset = 0): Promise<StoresSearchResponse> {
+    const params = new URLSearchParams()
+    if (q) params.set('q', q)
+    if (limit) params.set('limit', String(limit))
+    if (offset) params.set('offset', String(offset))
+    const res = await fetch(`/api/stores?${params.toString()}`)
+    return handleResponse<StoresSearchResponse>(res)
+  },
+
+  async getPaginated(params?: StoresQueryParams): Promise<StoresSearchResponse> {
+    const searchParams = new URLSearchParams()
+    if (params) {
+      if (params.q) searchParams.set('q', params.q)
+      if (params.page !== undefined) searchParams.set('page', String(params.page))
+      if (params.pageSize !== undefined) searchParams.set('pageSize', String(params.pageSize))
+      if (params.limit !== undefined) searchParams.set('limit', String(params.limit))
+      if (params.offset !== undefined) searchParams.set('offset', String(params.offset))
+      if (params.sortBy) searchParams.set('sortBy', params.sortBy)
+      if (params.sortOrder) searchParams.set('sortOrder', params.sortOrder)
+    }
+    const qs = searchParams.toString()
+    const url = qs ? `/api/stores?${qs}` : '/api/stores'
+    const res = await fetch(url)
+    return handleResponse<StoresSearchResponse>(res)
+  },
+
+  async getAll(): Promise<{ id: number; name: string }[]> {
+    const res = await fetch('/api/stores/all')
+    return handleResponse<{ id: number; name: string }[]>(res)
+  },
+
+  async create(name: string): Promise<{ id: number; name: string; created_at?: string }> {
+    const res = await fetch('/api/stores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    return handleResponse<{ id: number; name: string; created_at?: string }>(res)
+  },
+
+  async update(id: number, name: string): Promise<{ id: number; name: string; created_at?: string; updated_at?: string }> {
+    const res = await fetch(`/api/stores/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
@@ -433,9 +488,26 @@ export const filterTemplatesApi = {
 }
 
 export const shoppingListApi = {
-  async get(): Promise<{ items: ShoppingListItem[]; history: ShoppingListHistoryItem[] }> {
+  async get(): Promise<{
+    items: ShoppingListItem[]
+    history: ShoppingListHistoryItem[]
+    storeAssignments?: Record<string, string[]>
+  }> {
     const res = await fetch('/api/shopping-list')
-    return handleResponse<{ items: ShoppingListItem[]; history: ShoppingListHistoryItem[] }>(res)
+    return handleResponse<{
+      items: ShoppingListItem[]
+      history: ShoppingListHistoryItem[]
+      storeAssignments?: Record<string, string[]>
+    }>(res)
+  },
+
+  async updateStoreAssignments(assignments: Record<string, string[]>): Promise<{ success: boolean; assignments: Record<string, string[]> }> {
+    const res = await fetch('/api/shopping-list/store-assignments', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignments }),
+    })
+    return handleResponse<{ success: boolean; assignments: Record<string, string[]> }>(res)
   },
 
   async add(recipeId: number, checkedIngredients?: string[], multiplier?: number): Promise<ShoppingListItem> {

@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { desc, eq, inArray } from 'drizzle-orm'
 import { db } from '../db'
-import { recipes, shoppingListItems, shoppingListHistory } from '../db/schema'
+import { recipes, shoppingListItems, shoppingListHistory, shoppingListStoreAssignments } from '../db/schema'
 import { attachIngredientsToRecipes } from '../services/recipeQueryService'
 import type { Recipe, ShoppingListHistoryItem, ShoppingListItem } from '../../../shared/types'
 
@@ -83,14 +83,59 @@ router.get('/', async (_req, res) => {
       }
     })
 
+    // 3. Fetch store assignments
+    const [assignmentRow] = await db
+      .select()
+      .from(shoppingListStoreAssignments)
+      .where(eq(shoppingListStoreAssignments.id, 'current'))
+
     res.json({
       items: formattedItems,
       history: formattedHistory,
+      storeAssignments: (assignmentRow?.assignments as Record<string, string[]>) || {},
     })
   } catch (err: unknown) {
     const details = err instanceof Error ? err.message : String(err)
     console.error('[API ERROR] Failed to fetch shopping list:', err)
     res.status(500).json({ error: 'Failed to retrieve shopping list', details })
+  }
+})
+
+// PUT /api/shopping-list/store-assignments - Update store assignments for items
+router.put('/store-assignments', async (req, res) => {
+  try {
+    const { assignments = {} } = req.body
+
+    if (typeof assignments !== 'object' || assignments === null || Array.isArray(assignments)) {
+      return res.status(400).json({ error: 'Valid assignments map object is required' })
+    }
+
+    const [existing] = await db
+      .select()
+      .from(shoppingListStoreAssignments)
+      .where(eq(shoppingListStoreAssignments.id, 'current'))
+
+    if (existing) {
+      await db
+        .update(shoppingListStoreAssignments)
+        .set({
+          assignments,
+          updatedAt: new Date(),
+        })
+        .where(eq(shoppingListStoreAssignments.id, 'current'))
+    } else {
+      await db.insert(shoppingListStoreAssignments).values({
+        id: 'current',
+        assignments,
+        updatedAt: new Date(),
+      })
+    }
+
+    res.json({ success: true, assignments })
+  } catch (err: unknown) {
+    const details = err instanceof Error ? err.message : String(err)
+    console.error('[API ERROR] Failed to update store assignments:', err)
+    res.status(500).json({ error: 'Failed to update store assignments', details })
   }
 })
 
@@ -293,6 +338,12 @@ router.post('/clear', async (_req, res) => {
 
       // 2. Delete all active items
       await db.delete(shoppingListItems)
+
+      // 3. Clear store assignments
+      await db
+        .update(shoppingListStoreAssignments)
+        .set({ assignments: {}, updatedAt: new Date() })
+        .where(eq(shoppingListStoreAssignments.id, 'current'))
     }
 
     res.json({ success: true })

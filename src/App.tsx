@@ -65,6 +65,7 @@ export function App() {
   const {
     items: shoppingListItems,
     history: shoppingListHistory,
+    storeAssignments,
     loading: shoppingListLoading,
     consolidated: consolidatedIngredients,
     uniqueIngredientsCount,
@@ -72,6 +73,7 @@ export function App() {
     getRecipeCheckedIngredients,
     getRecipeMultiplier,
     updateRecipeMultiplier,
+    updateStoreAssignments,
     toggleRecipeInShoppingList,
     toggleIngredientInRecipe,
     toggleConsolidatedIngredient,
@@ -294,6 +296,8 @@ export function App() {
               loading={shoppingListLoading}
               consolidated={consolidatedIngredients}
               uniqueIngredientsCount={uniqueIngredientsCount}
+              storeAssignments={storeAssignments}
+              onUpdateStoreAssignments={updateStoreAssignments}
               categories={categories}
               timeTrackingMode={metadataConfig?.timeTrackingMode}
               activeTab={shoppingListTab}
@@ -319,6 +323,18 @@ export function App() {
               metadataConfig={metadataConfig}
               categories={categories}
               activeTab="ingredients"
+              onTabChange={navigateToSettingsTab}
+              onSaveConfig={saveConfig}
+              onRefreshCategories={fetchCategories}
+            />
+          )}
+
+          {/* VIEW 7: Stores Table (redirected to Settings tab) */}
+          {currentView === 'stores' && (
+            <SettingsPage
+              metadataConfig={metadataConfig}
+              categories={categories}
+              activeTab="stores"
               onTabChange={navigateToSettingsTab}
               onSaveConfig={saveConfig}
               onRefreshCategories={fetchCategories}

@@ -184,6 +184,19 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
           created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
         ALTER TABLE shopping_list_history ADD COLUMN IF NOT EXISTS recipe_multipliers JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+        CREATE TABLE IF NOT EXISTS stores (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL UNIQUE,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS shopping_list_store_assignments (
+          id VARCHAR(50) PRIMARY KEY DEFAULT 'current',
+          assignments JSONB NOT NULL DEFAULT '{}'::jsonb,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
       `)
 
       if (isInitialDatabase) {
