@@ -51,6 +51,7 @@ if (fs.existsSync(config.clientDistPath)) {
 }
 
 // Global API error handler ensuring all errors are logged to server console
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   const msg = err instanceof Error ? err.stack || err.message : String(err)
   console.error(`[SERVER ERROR] ${req.method} ${req.originalUrl}:`, msg)

@@ -55,9 +55,10 @@ export async function attachIngredientsToRecipes(rows: RecipeRow[]): Promise<Rec
     name: string
     amount: string
     unit: string
+    notes?: string
     sort_order: number
   }>(
-    `SELECT ri.id, ri.recipe_id, ri.ingredient_id, ing.name, ri.amount, ri.unit, ri.sort_order
+    `SELECT ri.id, ri.recipe_id, ri.ingredient_id, ing.name, ri.amount, ri.unit, ri.notes, ri.sort_order
      FROM recipe_ingredients ri
      JOIN ingredients ing ON ing.id = ri.ingredient_id
      WHERE ri.recipe_id = ANY($1::int[])
@@ -76,6 +77,7 @@ export async function attachIngredientsToRecipes(rows: RecipeRow[]): Promise<Rec
       name: row.name,
       amount: row.amount || '',
       unit: row.unit || '',
+      notes: row.notes || '',
     })
   }
 
@@ -166,7 +168,7 @@ export class RecipeQueryService {
     // 3. Selected Tags per Category (ANY vs ALL vs NONE)
     if (params.selectedTags && typeof params.selectedTags === 'object') {
       const catEntries = Object.entries(params.selectedTags).filter(
-        ([_, tags]) => Array.isArray(tags) && tags.length > 0
+        ([, tags]) => Array.isArray(tags) && tags.length > 0
       )
 
       for (const [catId, tags] of catEntries) {

@@ -40,6 +40,7 @@ export const recipeIngredients = pgTable('recipe_ingredients', {
   ingredientId: integer('ingredient_id').notNull().references(() => ingredients.id, { onDelete: 'restrict' }),
   amount: varchar('amount', { length: 50 }).default('').notNull(),
   unit: varchar('unit', { length: 50 }).default('').notNull(),
+  notes: text('notes').default('').notNull(),
   sortOrder: integer('sort_order').default(0).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })

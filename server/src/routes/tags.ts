@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { eq } from 'drizzle-orm'
-import { db } from '../db'
+import { db, pool } from '../db'
 import { recipes, tagCategories } from '../db/schema'
 import { recipeViolationService } from '../services/recipeViolationService'
 import type { TagCategory } from '../../../shared/types'
@@ -182,10 +182,13 @@ router.put('/:categoryId/rename', async (req, res) => {
       .where(eq(tagCategories.id, categoryId))
 
     // 2. Cascade rename into all recipes using this tag
-    const allRecipes = await db.select().from(recipes)
+    const usingResult = await pool.query<{ id: number; tags: Record<string, string[]> }>(
+      `SELECT id, tags FROM recipes WHERE deleted_at IS NULL AND coalesce(tags->$1, '[]'::jsonb) ? $2`,
+      [categoryId, oldName]
+    )
     let affectedRecipesCount = 0
 
-    for (const r of allRecipes) {
+    for (const r of usingResult.rows) {
       const catTags = r.tags?.[categoryId]
       if (Array.isArray(catTags) && catTags.includes(oldName)) {
         const nextCatTags = catTags.map((t) => (t === oldName ? trimmedNew : t))
@@ -225,18 +228,16 @@ router.put('/:categoryId/rename', async (req, res) => {
 router.get('/:categoryId/:tag/usage', async (req, res) => {
   try {
     const { categoryId, tag } = req.params
-    const allRecipes = await db.select().from(recipes)
-
-    const usingRecipes = allRecipes.filter((r) => {
-      const catTags = r.tags?.[categoryId]
-      return Array.isArray(catTags) && catTags.includes(tag)
-    })
+    const usingResult = await pool.query<{ id: number; title: string }>(
+      `SELECT id, title FROM recipes WHERE deleted_at IS NULL AND coalesce(tags->$1, '[]'::jsonb) ? $2`,
+      [categoryId, tag]
+    )
 
     res.json({
       categoryId,
       tag,
-      count: usingRecipes.length,
-      recipes: usingRecipes.map((r) => ({ id: r.id, title: r.title })),
+      count: usingResult.rows.length,
+      recipes: usingResult.rows.map((r: { id: number; title: string }) => ({ id: r.id, title: r.title })),
     })
   } catch (err: unknown) {
     const details = err instanceof Error ? err.message : String(err)
@@ -263,19 +264,19 @@ router.delete('/:categoryId/:tag', async (req, res) => {
       return res.status(404).json({ error: 'Category not found' })
     }
 
-    const allRecipes = await db.select().from(recipes)
-    const usingRecipes = allRecipes.filter((r) => {
-      const catTags = r.tags?.[categoryId]
-      return Array.isArray(catTags) && catTags.includes(tag)
-    })
+    const usingResult = await pool.query<{ id: number; title: string; tags: Record<string, string[]> }>(
+      `SELECT id, title, tags FROM recipes WHERE deleted_at IS NULL AND coalesce(tags->$1, '[]'::jsonb) ? $2`,
+      [categoryId, tag]
+    )
+    const usingRecipes = usingResult.rows
 
     // If recipes use this tag and no resolution is provided, abort with 409 Conflict
     if (usingRecipes.length > 0 && !resolution) {
       return res.status(409).json({
         error: 'Tag is currently used by recipes',
         usageCount: usingRecipes.length,
-        recipes: usingRecipes.map((r) => ({ id: r.id, title: r.title })),
-        availableTags: (category.tags || []).filter((t) => t !== tag),
+        recipes: usingRecipes.map((r: { id: number; title: string }) => ({ id: r.id, title: r.title })),
+        availableTags: (category.tags || []).filter((t: string) => t !== tag),
       })
     }
 
@@ -286,12 +287,12 @@ router.delete('/:categoryId/:tag', async (req, res) => {
         let nextCatTags: string[]
 
         if (resolution === 'reassign' && reassignTo) {
-          nextCatTags = catTags.map((t) => (t === tag ? reassignTo : t))
+          nextCatTags = catTags.map((t: string) => (t === tag ? reassignTo : t))
           // Deduplicate if reassignTo already existed
           nextCatTags = Array.from(new Set(nextCatTags))
         } else {
           // 'strip'
-          nextCatTags = catTags.filter((t) => t !== tag)
+          nextCatTags = catTags.filter((t: string) => t !== tag)
         }
 
         const nextTags = {

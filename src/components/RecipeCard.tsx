@@ -40,7 +40,7 @@ interface RecipeCardProps {
 
 export function RecipeCard({
   recipe,
-  violations = [],
+  violations = recipe.violations || [],
   categories = [],
   timeTrackingMode = 'prep_and_cook',
   selectedTags,

@@ -50,7 +50,7 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
             SELECT 1 FROM information_schema.columns
             WHERE table_name = 'recipes' AND column_name = 'yield_amount' AND data_type = 'character varying'
           ) THEN
-            ALTER TABLE recipes ALTER COLUMN yield_amount TYPE INTEGER USING COALESCE(NULLIF(regexp_replace(yield_amount, '\D', '', 'g'), '')::INTEGER, 4);
+            ALTER TABLE recipes ALTER COLUMN yield_amount TYPE INTEGER USING COALESCE(NULLIF(regexp_replace(yield_amount, '\\D', '', 'g'), '')::INTEGER, 4);
             ALTER TABLE recipes ALTER COLUMN yield_amount SET DEFAULT 4;
           END IF;
         END $$;
@@ -78,9 +78,11 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
           ingredient_id INTEGER NOT NULL REFERENCES ingredients(id) ON DELETE RESTRICT,
           amount VARCHAR(50) NOT NULL DEFAULT '',
           unit VARCHAR(50) NOT NULL DEFAULT '',
+          notes TEXT NOT NULL DEFAULT '',
           sort_order INTEGER NOT NULL DEFAULT 0,
           created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+        ALTER TABLE recipe_ingredients ADD COLUMN IF NOT EXISTS notes TEXT NOT NULL DEFAULT '';
         CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe_id ON recipe_ingredients(recipe_id);
         CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_ingredient_id ON recipe_ingredients(ingredient_id);
 
@@ -202,12 +204,12 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
       if (isInitialDatabase) {
         console.log('[Database] Empty database detected. Seeding initial data...')
         // 1. Seed production schemas (metadata configuration and production tag categories)
-        await seedProduction(db, pool)
+        await seedProduction(db)
 
         // 2. Seed development mock recipes if non-production environment
         const isProductionEnv = process.env.NODE_ENV === 'production' && process.env.SEED_DEV !== 'true'
         if (!isProductionEnv) {
-          await seedDev(db, pool)
+          await seedDev(db)
         }
 
         // 3. Recalculate violations on newly seeded recipes
@@ -215,12 +217,6 @@ export async function migrateDb(retries = 5, delayMs = 2000): Promise<void> {
         await recipeViolationService.recalculateAllViolations()
       } else {
         console.log('[Database] Existing database detected. Migrated schema without re-seeding.')
-        const isProductionEnv = process.env.NODE_ENV === 'production' && process.env.SEED_DEV !== 'true'
-        if (!isProductionEnv) {
-          await seedDev(db, pool)
-        }
-        const { recipeViolationService } = await import('../services/recipeViolationService')
-        await recipeViolationService.recalculateAllViolations()
       }
 
       console.log('[Database] Database migration ready.')

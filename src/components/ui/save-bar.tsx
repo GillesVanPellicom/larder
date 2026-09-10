@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -38,7 +38,9 @@ export function SaveBar({
   const saveStartRef = useRef<number | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isDirtyRef = useRef(isDirty)
-  isDirtyRef.current = isDirty
+  useEffect(() => {
+    isDirtyRef.current = isDirty
+  }, [isDirty])
   const prevDirtyRef = useRef(isDirty)
 
   const prevSubmittingRef = useRef(submitting)
@@ -58,7 +60,7 @@ export function SaveBar({
     }
   }, [])
 
-  const triggerSavedSequence = () => {
+  const triggerSavedSequence = useCallback(() => {
     clearPendingTimers()
     const elapsed = saveStartRef.current ? Date.now() - saveStartRef.current : 600
     const delay = Math.max(0, 600 - elapsed)
@@ -76,7 +78,7 @@ export function SaveBar({
         setPhase('idle')
       }, 1400)
     }, delay)
-  }
+  }, [])
 
   // Trigger error phase when error prop is passed
   useEffect(() => {
@@ -94,21 +96,21 @@ export function SaveBar({
 
       return () => {
         clearTimeout(shakeTimer)
+        clearPendingTimers()
       }
     }
   }, [error])
 
-  // Track submitting state changes from parent
+  // Watch for submitting prop changes from parent
   useEffect(() => {
-    if (submitting) {
+    const wasSubmitting = prevSubmittingRef.current
+    if (submitting && !wasSubmitting) {
       submittingEverActiveRef.current = true
       clearPendingTimers()
-      if (!saveStartRef.current) {
-        saveStartRef.current = Date.now()
-      }
+      saveStartRef.current = Date.now()
       setPhase('saving')
-    } else if (prevSubmittingRef.current && !submitting) {
-      // Submitting just transitioned from true to false
+      setActiveError(null)
+    } else if (!submitting && wasSubmitting) {
       if (isDirtyRef.current) {
         clearPendingTimers()
         saveStartRef.current = null
@@ -119,7 +121,7 @@ export function SaveBar({
       }
     }
     prevSubmittingRef.current = submitting
-  }, [submitting])
+  }, [submitting, triggerSavedSequence])
 
   // React immediately when the form becomes dirty again during or after saving:
   // If the form transitions from clean to dirty while in 'saved', or if isDirty is true during 'saved' phase,
@@ -147,7 +149,7 @@ export function SaveBar({
     }
   }, [isDirty, phase])
 
-  const handleSaveClick = async () => {
+  const handleSaveClick = useCallback(async () => {
     if (phase === 'saving' || phase === 'saved' || submitting) return
 
     clearPendingTimers()
@@ -196,7 +198,7 @@ export function SaveBar({
         }, 2800)
       }
     }
-  }
+  }, [formId, onSave, phase, submitting, triggerSavedSequence])
 
   const isVisible = isDirty || phase === 'saving' || phase === 'saved' || phase === 'error'
   const isButtonsDisabled = submitting || phase === 'saving' || phase === 'saved'
@@ -211,10 +213,14 @@ export function SaveBar({
   }, [])
 
   const handleSaveClickRef = useRef(handleSaveClick)
-  handleSaveClickRef.current = handleSaveClick
+  useEffect(() => {
+    handleSaveClickRef.current = handleSaveClick
+  }, [handleSaveClick])
 
   const onDiscardRef = useRef(onDiscard)
-  onDiscardRef.current = onDiscard
+  useEffect(() => {
+    onDiscardRef.current = onDiscard
+  }, [onDiscard])
 
   // Global Ctrl+S / Cmd+S (save) and Esc (discard) shortcuts when SaveBar is active
   useEffect(() => {

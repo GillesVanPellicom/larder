@@ -45,8 +45,8 @@ export function SettingsPage({
   const { theme, setTheme } = useTheme()
 
   useEffect(() => {
-    if (activeTab && activeTab !== activeSubTab) {
-      setActiveSubTab(activeTab)
+    if (activeTab) {
+      setActiveSubTab((prev) => (activeTab !== prev ? activeTab : prev))
     }
   }, [activeTab])
 

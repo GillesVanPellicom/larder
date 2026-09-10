@@ -86,10 +86,10 @@ router.post(
   }
 )
 
-// GET /api/storage/images/:key or /api/images/:key
-router.get('/images/:key', async (req, res) => {
+async function handleGetImage(req: express.Request, res: express.Response) {
   try {
-    const key = req.params.key
+    const rawKey = req.params.key
+    const key = (Array.isArray(rawKey) ? rawKey[0] : rawKey) || ''
     if (!key || key.includes('..') || key.includes('/') || key.includes('\\')) {
       return res.status(400).json({ error: 'Invalid image key' })
     }
@@ -120,6 +120,17 @@ router.get('/images/:key', async (req, res) => {
     const details = err instanceof Error ? err.message : String(err)
     res.status(500).json({ error: details })
   }
+}
+
+// GET /api/storage/images/:key
+router.get('/images/:key', handleGetImage)
+
+// GET /api/images/:key (fallback when mounted at /api/images)
+router.get('/:key', (req, res, next) => {
+  if (['config', 'test', 'upload'].includes(req.params.key)) {
+    return next()
+  }
+  return handleGetImage(req, res)
 })
 
 export default router

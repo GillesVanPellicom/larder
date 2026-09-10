@@ -356,8 +356,8 @@ export function ShoppingListPage({
   }
 
   useEffect(() => {
-    if (controlledActiveTab && controlledActiveTab !== activeTab) {
-      setActiveTab(controlledActiveTab)
+    if (controlledActiveTab) {
+      setActiveTab((prev) => (controlledActiveTab !== prev ? controlledActiveTab : prev))
     }
   }, [controlledActiveTab])
 

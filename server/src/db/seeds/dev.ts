@@ -1,5 +1,4 @@
 import { count, eq } from 'drizzle-orm'
-import type { Pool } from 'pg'
 import { filterTemplates, ingredients, recipeIngredients, recipes } from '../schema'
 
 export const devRecipes = [
@@ -870,7 +869,7 @@ export const devFilterTemplates = [
 ]
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function seedDev(db: any, _pool: Pool): Promise<void> {
+export async function seedDev(db: any): Promise<void> {
   const [recipeCount] = await db.select({ value: count() }).from(recipes)
   if (Number(recipeCount.value) === 0) {
     console.log('[Seed:Dev] Seeding 23 realistic culinary recipes with relational ingredients...')

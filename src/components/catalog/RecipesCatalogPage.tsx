@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type {
   FilterCriteria,
   FilterTemplate,
@@ -32,7 +32,7 @@ interface RecipesCatalogPageProps {
   currentPage: number
   onPageChange: (page: number) => void
   categories: TagCategory[]
-  violationsMap: Map<number, RecipeViolation[]>
+  violationsMap?: Map<number, RecipeViolation[]>
   loading: boolean
   isDatabaseConnected?: boolean
   filterCriteria: FilterCriteria
@@ -59,7 +59,6 @@ export function RecipesCatalogPage({
   currentPage,
   onPageChange,
   categories,
-  violationsMap,
   loading,
   isDatabaseConnected = true,
   filterCriteria,
@@ -96,10 +95,10 @@ export function RecipesCatalogPage({
     }
   }
 
-  const handlePageChange = (newPage: number) => {
+  const handlePageChange = useCallback((newPage: number) => {
     onPageChange(newPage)
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  }, [onPageChange])
 
   const handlePageSizeChange = (newSize: number) => {
     setSetting('recipesPerPage', newSize)
@@ -156,7 +155,7 @@ export function RecipesCatalogPage({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentPage, totalPages])
+  }, [currentPage, totalPages, handlePageChange])
 
   // When no database is configured or connected, render isolated "No database connected" screen
   if (!isDatabaseConnected && !loading) {
@@ -283,7 +282,7 @@ export function RecipesCatalogPage({
               <RecipeCard
                 key={recipe.id}
                 recipe={recipe}
-                violations={violationsMap.get(recipe.id)}
+                violations={recipe.violations}
                 categories={categories}
                 timeTrackingMode={timeTrackingMode}
                 selectedTags={filterCriteria.selectedTags}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -222,14 +222,15 @@ export function CategoriesAndRulesTab({
   }
 
   // Create Category from search combobox
-  const handleCreateCategory = (categoryName: string) => {
+  const handleCreateCategory = useCallback((categoryName: string) => {
     const trimmed = categoryName.trim()
     if (!trimmed) return
 
-    const slug = trimmed
+    const baseSlug = trimmed
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '') || `category-${Date.now()}`
+      .replace(/^-|-$/g, '')
+    const slug = baseSlug || `category-${Date.now()}`
 
     if (localCategories.some((c) => c.id === slug)) {
       setSelectedCategoryId(slug)
@@ -254,7 +255,7 @@ export function CategoriesAndRulesTab({
     setSelectedCategoryId(slug)
     setIsSectionPickerOpen(false)
     setSectionSearch('')
-  }
+  }, [localCategories])
 
   // Delete category immediately on the server with alert confirmation
   const handleDeleteCategory = async (categoryId: string) => {

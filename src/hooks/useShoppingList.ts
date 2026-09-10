@@ -168,10 +168,10 @@ export function useShoppingList() {
         })
       }
 
-      // Update each recipe's checked ingredients
-      for (const [recipeId, changes] of byRecipe.entries()) {
+      // Update each recipe's checked ingredients concurrently
+      const updatePromises = Array.from(byRecipe.entries()).map(async ([recipeId, changes]) => {
         const item = items.find((i) => i.recipe_id === recipeId)
-        if (!item) continue
+        if (!item) return
 
         let currentChecked = [...(item.checked_ingredients || [])]
         for (const change of changes) {
@@ -185,7 +185,9 @@ export function useShoppingList() {
         }
 
         await updateRecipeChecked(recipeId, currentChecked)
-      }
+      })
+
+      await Promise.all(updatePromises)
     },
     [consolidated, items, updateRecipeChecked]
   )

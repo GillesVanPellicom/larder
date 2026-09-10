@@ -5,12 +5,11 @@ import type {
   FilterCriteria,
   MetadataConfig,
   Recipe,
-  RecipeConflict,
   RecipeQueryParams,
   RecipeSortOption,
   TagCategory,
 } from '@/shared/types'
-import { configApi, conflictsApi, databaseApi, recipesApi, tagsApi } from '@/services/api'
+import { configApi, databaseApi, recipesApi, tagsApi } from '@/services/api'
 import { DEFAULT_FILTER_CRITERIA, countActiveFilters } from '@/lib/recipeFilters'
 import { useDeviceSettings } from '@/lib/deviceSettings'
 
@@ -28,7 +27,6 @@ export function useRecipesData() {
   const [allIngredients, setAllIngredients] = useState<string[]>([])
   const [categories, setCategories] = useState<TagCategory[]>([])
   const [metadataConfig, setMetadataConfig] = useState<MetadataConfig | null>(null)
-  const [conflicts, setConflicts] = useState<RecipeConflict[]>([])
   const [dbConfig, setDbConfig] = useState<DatabaseConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [recipesLoading, setRecipesLoading] = useState(false)
@@ -133,15 +131,6 @@ export function useRecipesData() {
     }
   }, [])
 
-  const fetchConflicts = useCallback(async () => {
-    try {
-      const data = await conflictsApi.get()
-      setConflicts(data.conflicts || [])
-    } catch (err) {
-      console.error('Failed to load conflicts:', err)
-    }
-  }, [])
-
   const loadAll = useCallback(async () => {
     setLoading(true)
     const db = await fetchDatabaseConfig()
@@ -151,18 +140,16 @@ export function useRecipesData() {
         fetchIngredients(),
         fetchCategories(),
         fetchMetadataConfig(),
-        fetchConflicts(),
       ])
     } else {
       setRecipes([])
       setTotalCount(0)
       setTotalPages(1)
       setCategories([])
-      setConflicts([])
       setAllIngredients([])
     }
     setLoading(false)
-  }, [fetchDatabaseConfig, fetchRecipes, fetchIngredients, fetchCategories, fetchMetadataConfig, fetchConflicts])
+  }, [fetchDatabaseConfig, fetchRecipes, fetchIngredients, fetchCategories, fetchMetadataConfig])
 
   // Initial load
   useEffect(() => {
@@ -201,36 +188,27 @@ export function useRecipesData() {
   const saveRecipe = useCallback(
     async (data: CreateRecipeDTO, id?: number): Promise<Recipe> => {
       const saved = id ? await recipesApi.update(id, data) : await recipesApi.create(data)
-      await Promise.all([fetchRecipes(), fetchIngredients(), fetchConflicts()])
+      await Promise.all([fetchRecipes(), fetchIngredients()])
       return saved
     },
-    [fetchRecipes, fetchIngredients, fetchConflicts]
+    [fetchRecipes, fetchIngredients]
   )
 
   const deleteRecipe = useCallback(
     async (id: number): Promise<void> => {
       await recipesApi.delete(id)
-      await Promise.all([fetchRecipes(), fetchIngredients(), fetchConflicts()])
+      await Promise.all([fetchRecipes(), fetchIngredients()])
     },
-    [fetchRecipes, fetchIngredients, fetchConflicts]
+    [fetchRecipes, fetchIngredients]
   )
 
   const saveConfig = useCallback(
     async (newConfig: MetadataConfig): Promise<void> => {
       const updated = await configApi.update(newConfig)
       setMetadataConfig(updated)
-      await fetchConflicts()
     },
-    [fetchConflicts]
+    []
   )
-
-  const violationsMap = useMemo(() => {
-    const map = new Map<number, RecipeConflict['violations']>()
-    for (const c of conflicts) {
-      map.set(c.recipe.id, c.violations)
-    }
-    return map
-  }, [conflicts])
 
   const activeFiltersCount = useMemo(() => {
     return countActiveFilters(filterCriteria)
@@ -253,8 +231,6 @@ export function useRecipesData() {
     allIngredients,
     categories,
     metadataConfig,
-    conflicts,
-    violationsMap,
     dbConfig,
     isDatabaseConnected,
     loading: loading || recipesLoading,
@@ -264,7 +240,6 @@ export function useRecipesData() {
     fetchIngredients,
     fetchCategories,
     fetchMetadataConfig,
-    fetchConflicts,
     saveRecipe,
     deleteRecipe,
     saveConfig,

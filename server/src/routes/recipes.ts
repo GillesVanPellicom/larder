@@ -29,9 +29,10 @@ async function getRecipeWithIngredients(id: number): Promise<{ row: RecipeRow; i
     name: string
     amount: string
     unit: string
+    notes?: string
     sort_order: number
   }>(
-    `SELECT ri.id, ri.ingredient_id, ing.name, ri.amount, ri.unit, ri.sort_order
+    `SELECT ri.id, ri.ingredient_id, ing.name, ri.amount, ri.unit, ri.notes, ri.sort_order
      FROM recipe_ingredients ri
      JOIN ingredients ing ON ing.id = ri.ingredient_id
      WHERE ri.recipe_id = $1
@@ -45,6 +46,7 @@ async function getRecipeWithIngredients(id: number): Promise<{ row: RecipeRow; i
     name: r.name,
     amount: r.amount || '',
     unit: r.unit || '',
+    notes: r.notes || '',
   }))
 
   return { row, ingredients }
@@ -218,39 +220,49 @@ interface ValidatedIngredient {
   sort_order: number
 }
 
+interface ValidatedIngredient {
+  ingredient_id: number
+  name: string
+  amount: string
+  unit: string
+  notes?: string
+  sort_order: number
+}
+
 async function validateAndResolveIngredients(
   rawIngredients: IngredientItem[] | undefined
 ): Promise<ValidatedIngredient[]> {
   if (!rawIngredients || !Array.isArray(rawIngredients)) return []
 
   const activeItems = rawIngredients.filter((i) => i && i.name && i.name.trim().length > 0)
-  const validated: ValidatedIngredient[] = []
+  if (activeItems.length === 0) return []
 
+  // Extract all IDs and lowercased names for single batch query
+  const targetIds = activeItems.map((i) => i.ingredient_id).filter((id): id is number => typeof id === 'number')
+  const targetNames = activeItems.map((i) => i.name.trim().toLowerCase())
+
+  const dbIngredients = await pool.query<{ id: number; name: string }>(
+    `SELECT id, name FROM ingredients WHERE id = ANY($1::int[]) OR lower(name) = ANY($2::text[])`,
+    [targetIds, targetNames]
+  )
+
+  const byId = new Map<number, { id: number; name: string }>()
+  const byLowerName = new Map<string, { id: number; name: string }>()
+  for (const row of dbIngredients.rows) {
+    byId.set(row.id, row)
+    byLowerName.set(row.name.toLowerCase(), row)
+  }
+
+  const validated: ValidatedIngredient[] = []
   for (let sort_order = 0; sort_order < activeItems.length; sort_order++) {
     const item = activeItems[sort_order]
     const trimmedName = item.name.trim()
 
-    // 1. Check by ID if provided, or by exact name match
-    let dbMatch: { id: number; name: string } | null = null
-
-    if (item.ingredient_id) {
-      const byId = await pool.query<{ id: number; name: string }>(
-        `SELECT id, name FROM ingredients WHERE id = $1 LIMIT 1`,
-        [item.ingredient_id]
-      )
-      if (byId.rows.length > 0) {
-        dbMatch = byId.rows[0]
-      }
-    }
-
-    if (!dbMatch) {
-      const byName = await pool.query<{ id: number; name: string }>(
-        `SELECT id, name FROM ingredients WHERE lower(name) = lower($1) LIMIT 1`,
-        [trimmedName]
-      )
-      if (byName.rows.length > 0) {
-        dbMatch = byName.rows[0]
-      }
+    let dbMatch: { id: number; name: string } | undefined
+    if (item.ingredient_id && byId.has(item.ingredient_id)) {
+      dbMatch = byId.get(item.ingredient_id)
+    } else {
+      dbMatch = byLowerName.get(trimmedName.toLowerCase())
     }
 
     if (!dbMatch) {
@@ -264,6 +276,7 @@ async function validateAndResolveIngredients(
       name: dbMatch.name,
       amount: item.amount ? String(item.amount).trim() : '',
       unit: item.unit ? String(item.unit).trim() : '',
+      notes: item.notes ? String(item.notes).trim() : '',
       sort_order,
     })
   }
@@ -299,12 +312,21 @@ router.post('/', async (req, res) => {
       })
       .returning()
 
-    // Insert relational ingredient rows
-    for (const ing of validatedIngredients) {
+    // Batch insert relational ingredient rows
+    if (validatedIngredients.length > 0) {
+      const values: unknown[] = []
+      const placeholders = validatedIngredients
+        .map((ing, idx) => {
+          const base = idx * 6
+          values.push(created.id, ing.ingredient_id, ing.amount, ing.unit, ing.notes || '', ing.sort_order)
+          return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`
+        })
+        .join(', ')
+
       await pool.query(
-        `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, amount, unit, sort_order)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [created.id, ing.ingredient_id, ing.amount, ing.unit, ing.sort_order]
+        `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, amount, unit, notes, sort_order)
+         VALUES ${placeholders}`,
+        values
       )
     }
 
@@ -359,11 +381,20 @@ router.put('/:id', async (req, res) => {
     // If ingredients were updated, replace recipe_ingredients records
     if (validatedIngredients !== null) {
       await pool.query(`DELETE FROM recipe_ingredients WHERE recipe_id = $1`, [id])
-      for (const ing of validatedIngredients) {
+      if (validatedIngredients.length > 0) {
+        const values: unknown[] = []
+        const placeholders = validatedIngredients
+          .map((ing, idx) => {
+            const base = idx * 6
+            values.push(id, ing.ingredient_id, ing.amount, ing.unit, ing.notes || '', ing.sort_order)
+            return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`
+          })
+          .join(', ')
+
         await pool.query(
-          `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, amount, unit, sort_order)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [id, ing.ingredient_id, ing.amount, ing.unit, ing.sort_order]
+          `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, amount, unit, notes, sort_order)
+           VALUES ${placeholders}`,
+          values
         )
       }
     }

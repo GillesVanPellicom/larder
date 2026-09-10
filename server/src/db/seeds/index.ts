@@ -7,16 +7,16 @@ export async function runSeeds(options: { productionOnly?: boolean; reset?: bool
     if (options.reset) {
       console.log('[Seed] Resetting database tables...')
       await pool.query(
-        'TRUNCATE recipes, tag_categories, template_versions, templates, metadata_config RESTART IDENTITY CASCADE;'
+        'TRUNCATE recipes, tag_categories, filter_templates, metadata_config, ingredients, recipe_ingredients, stores, shopping_list_items, shopping_list_history, shopping_list_store_assignments RESTART IDENTITY CASCADE;'
       )
     }
 
     console.log('[Seed] Seeding production data (categories, configuration, templates)...')
-    await seedProduction(db, pool)
+    await seedProduction(db)
 
     if (!options.productionOnly) {
       console.log('[Seed] Seeding development data (placeholder recipes)...')
-      await seedDev(db, pool)
+      await seedDev(db)
     }
 
     console.log('[Seed] Seeding process completed successfully.')

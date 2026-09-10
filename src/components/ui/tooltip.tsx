@@ -1,5 +1,4 @@
-import * as React from "react"
-import { useLayoutEffect, useRef, useState, useEffect, useContext, createContext, useMemo } from "react"
+import { useLayoutEffect, useRef, useState, useEffect, useContext, createContext, useMemo, useCallback } from "react"
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "cn"
@@ -58,7 +57,7 @@ interface TooltipContextValue {
   isOpen: boolean
   setIsOpen: (open: boolean) => void
   isMobile: boolean
-  triggerRef: React.MutableRefObject<HTMLElement | null>
+  onTriggerClick: (el: HTMLElement | null) => void
 }
 
 const TooltipContext = createContext<TooltipContextValue | null>(null)
@@ -99,12 +98,17 @@ function Tooltip({
     onOpenChange?.(nextOpen, details)
   }
 
-  const setOpen = (next: boolean) => {
+  const setOpen = useCallback((next: boolean) => {
     if (!isControlled) {
       setUncontrolledOpen(next)
     }
-    onOpenChange?.(next, { reason: 'triggerPress', preventUnmountOnClose: () => {} } as any)
-  }
+    onOpenChange?.(next, { reason: 'triggerPress' } as unknown as TooltipPrimitive.Root.ChangeEventDetails)
+  }, [isControlled, onOpenChange])
+
+  const onTriggerClick = useCallback((el: HTMLElement | null) => {
+    triggerRef.current = el
+    setOpen(!isOpen)
+  }, [isOpen, setOpen])
 
   useEffect(() => {
     if (isMobile && isOpen) {
@@ -112,7 +116,7 @@ function Tooltip({
         if (!isControlled) {
           setUncontrolledOpen(false)
         }
-        onOpenChange?.(false, { reason: 'outsidePress', preventUnmountOnClose: () => {} } as any)
+        onOpenChange?.(false, { reason: 'outsidePress' } as unknown as TooltipPrimitive.Root.ChangeEventDetails)
       }
       registerActiveMobileTooltip(closeFn, triggerRef.current)
 
@@ -127,9 +131,9 @@ function Tooltip({
       isOpen,
       setIsOpen: setOpen,
       isMobile,
-      triggerRef,
+      onTriggerClick,
     }),
-    [isOpen, isMobile]
+    [isOpen, isMobile, setOpen, onTriggerClick]
   )
 
   return (
@@ -154,10 +158,7 @@ function TooltipTrigger({
   const handleClick: TooltipPrimitive.Trigger.Props['onClick'] = (e) => {
     onClick?.(e)
     if (ctx?.isMobile) {
-      if (e.currentTarget) {
-        ctx.triggerRef.current = e.currentTarget as HTMLElement
-      }
-      ctx.setIsOpen(!ctx.isOpen)
+      ctx.onTriggerClick(e.currentTarget ? (e.currentTarget as HTMLElement) : null)
     }
   }
 
@@ -197,11 +198,9 @@ function TooltipContent({
     const el = contentRef.current
     if (el) {
       const isOverflowing = el.scrollHeight > maxHeight
-      if (isOverflowing !== needsScroll) {
-        setNeedsScroll(isOverflowing)
-      }
+      setNeedsScroll(isOverflowing)
     }
-  }, [children, maxHeight, needsScroll])
+  }, [children, maxHeight])
 
   return (
     <TooltipPrimitive.Portal>

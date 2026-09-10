@@ -13,12 +13,12 @@ export function useTheme() {
   const [theme, setThemeState] = useState<Theme>(() => getDeviceSetting('theme'))
 
   useEffect(() => {
-    applyDeviceSettings({ theme })
+    applyDeviceSettings({ theme: getDeviceSetting('theme') })
     return subscribeDeviceSettings((settings) => {
       setThemeState(settings.theme)
       applyDeviceSettings(settings)
     })
-  }, [theme])
+  }, [])
 
   const toggleTheme = () => {
     const nextTheme: Theme = theme === 'dark' ? 'light' : 'dark'

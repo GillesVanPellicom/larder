@@ -6,6 +6,7 @@ import type {
   MetadataConfig,
   RecipeViolation,
   TagCategory,
+  TimeTrackingMode,
 } from '../../../shared/types'
 
 export interface RecipeFieldsForValidation {
@@ -205,7 +206,7 @@ export class RecipeViolationService {
         source_url: false,
       },
       mandatoryCategories: configRow?.mandatoryCategories || [],
-      timeTrackingMode: (configRow?.timeTrackingMode as any) || 'prep_and_cook',
+      timeTrackingMode: (configRow?.timeTrackingMode as TimeTrackingMode) || 'prep_and_cook',
     }
 
     const catRows = await db.select().from(tagCategories)

@@ -26,8 +26,10 @@ export type PageView =
   | 'settings'
   | 'shopping-list'
   | 'ingredients'
+  | 'stores'
 
-export type SettingsTabId = 'info' | 'rules' | 'ingredients' | 'appearance' | 'integrations'
+export type SettingsTabId = 'info' | 'rules' | 'appearance' | 'ingredients' | 'stores' | 'integrations'
+export type ShoppingListTabId = 'per_recipe' | 'consolidated' | 'history'
 
 // Category ID -> Array of tag values (e.g. { season: ['Winter', 'Spring'], course: ['Main'] })
 export type RecipeTags = Record<string, string[]>
@@ -228,8 +230,10 @@ export interface ShoppingListHistoryItem {
   id: number
   recipe_ids: number[]
   recipe_titles: string[]
+  recipe_multipliers?: Record<string, number>
   ingredient_count: number
   created_at: string
+  recipes?: Recipe[]
 }
 
 export interface ConsolidatedIngredient {
@@ -247,4 +251,27 @@ export interface ConsolidatedIngredient {
   isPartial: boolean
 }
 
+export interface StoreRecord {
+  id: number
+  name: string
+  created_at?: string
+  updated_at?: string
+}
 
+export interface StoresSearchResponse {
+  items: StoreRecord[]
+  totalCount: number
+  totalPages?: number
+  currentPage?: number
+  hasMore: boolean
+}
+
+export interface StoresQueryParams {
+  q?: string
+  page?: number
+  pageSize?: number
+  limit?: number
+  offset?: number
+  sortBy?: 'name' | 'created_at'
+  sortOrder?: 'asc' | 'desc'
+}

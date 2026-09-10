@@ -45,7 +45,6 @@ export function App() {
     allIngredients,
     categories,
     metadataConfig,
-    violationsMap,
     isDatabaseConnected,
     loading,
     saveRecipe,
@@ -204,7 +203,6 @@ export function App() {
               currentPage={currentPage}
               onPageChange={setCurrentPage}
               categories={categories}
-              violationsMap={violationsMap}
               loading={loading}
               isDatabaseConnected={isDatabaseConnected}
               filterCriteria={filterCriteria}

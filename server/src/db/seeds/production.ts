@@ -1,5 +1,4 @@
 import { eq } from 'drizzle-orm'
-import type { Pool } from 'pg'
 import { metadataConfigTable, tagCategories } from '../schema'
 
 export const productionCuisines = [
@@ -330,7 +329,7 @@ export const productionTagCategories = [
 ]
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function seedProduction(db: any, _pool: Pool): Promise<void> {
+export async function seedProduction(db: any): Promise<void> {
   // 1. Seed global metadata configuration if missing
   const existingConfig = await db
     .select()
