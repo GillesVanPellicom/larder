@@ -86,8 +86,8 @@ function createS3Client(config: StorageConfigDTO): S3Client {
     endpoint: config.endpoint,
     region: config.region || 'auto',
     credentials: {
-      accessKeyId: config.accessKeyId,
-      secretAccessKey: config.secretAccessKey,
+      accessKeyId: config.accessKeyId || '',
+      secretAccessKey: config.secretAccessKey || '',
     },
     forcePathStyle: config.forcePathStyle ?? false,
   })
@@ -272,7 +272,7 @@ export class StorageService {
     )
 
     let publicUrl: string
-    if (isS3ApiEndpoint) {
+    if (isS3ApiEndpoint || !conf.publicUrlPrefix) {
       publicUrl = `/api/storage/images/${filename}`
     } else {
       const prefix = conf.publicUrlPrefix.replace(/\/$/, '')

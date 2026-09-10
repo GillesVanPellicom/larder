@@ -2,39 +2,30 @@ import fs from 'node:fs'
 import path from 'node:path'
 import express from 'express'
 import cors from 'cors'
+import * as trpcExpress from '@trpc/server/adapters/express'
 import { config } from './config'
 import { migrateDb } from './db/migrate'
-import healthRouter from './routes/health'
-import databaseRouter from './routes/database'
-import storageRouter from './routes/storage'
-import recipesRouter from './routes/recipes'
-import configRouter from './routes/config'
-import tagsRouter from './routes/tags'
-import conflictsRouter from './routes/conflicts'
-import ingredientsRouter from './routes/ingredients'
-import filterTemplatesRouter from './routes/filterTemplates'
-import shoppingListRouter from './routes/shoppingList'
-import storesRouter from './routes/stores'
+import { appRouter, createContext } from './trpc'
+import imagesRouter from './routes/images'
 
 const app = express()
 
 // Global middleware
 app.use(cors())
-app.use(express.json())
+app.use(express.json({ limit: '25mb' }))
 
-// API routes
-app.use('/api/health', healthRouter)
-app.use('/api/database', databaseRouter)
-app.use('/api/storage', storageRouter)
-app.use('/api/images', storageRouter)
-app.use('/api/config', configRouter)
-app.use('/api/tags', tagsRouter)
-app.use('/api/conflicts', conflictsRouter)
-app.use('/api/ingredients', ingredientsRouter)
-app.use('/api/stores', storesRouter)
-app.use('/api/filter-templates', filterTemplatesRouter)
-app.use('/api/shopping-list', shoppingListRouter)
-app.use('/api/recipes', recipesRouter)
+// tRPC API endpoint
+app.use(
+  '/api/trpc',
+  trpcExpress.createExpressMiddleware({
+    router: appRouter,
+    createContext,
+  })
+)
+
+// Binary Image Streaming routes for browser <img src="..."> tags
+app.use('/api/storage', imagesRouter)
+app.use('/api/images', imagesRouter)
 
 // In production or when client build exists, serve static React frontend
 if (fs.existsSync(config.clientDistPath)) {

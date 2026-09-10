@@ -179,12 +179,12 @@ export interface StorageConfig {
 }
 
 export interface StorageConfigDTO {
-  endpoint: string
+  endpoint?: string
   region?: string
-  bucket: string
-  accessKeyId: string
-  secretAccessKey: string
-  publicUrlPrefix: string
+  bucket?: string
+  accessKeyId?: string
+  secretAccessKey?: string
+  publicUrlPrefix?: string
   forcePathStyle?: boolean
 }
 

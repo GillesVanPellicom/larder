@@ -79,10 +79,10 @@ const THIRD_PARTY_LICENSES: LicenseEntry[] = [
     url: 'https://github.com/colinhacks/zod/blob/master/LICENSE',
   },
   {
-    name: 'Geist Font',
-    description: 'Modern variable typeface designed for readability',
-    license: 'OFL-1.1',
-    url: 'https://github.com/vercel/geist-font/blob/main/LICENSE.txt',
+    name: 'Roboto Font',
+    description: 'Modern neo-grotesque geometric typeface developed by Google',
+    license: 'Apache-2.0',
+    url: 'https://fonts.google.com/specimen/Roboto',
   },
   {
     name: 'Electron',

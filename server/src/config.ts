@@ -86,22 +86,30 @@ export function getStorageConfig(): StorageConfigDTO | null {
 }
 
 export function setPersistentStorageConfig(storage: StorageConfigDTO): void {
-  process.env.S3_ENDPOINT = storage.endpoint
-  process.env.S3_REGION = storage.region || 'auto'
-  process.env.S3_BUCKET = storage.bucket
-  process.env.S3_ACCESS_KEY_ID = storage.accessKeyId
-  process.env.S3_SECRET_ACCESS_KEY = storage.secretAccessKey
-  process.env.S3_PUBLIC_URL_PREFIX = storage.publicUrlPrefix || ''
-  process.env.S3_FORCE_PATH_STYLE = String(storage.forcePathStyle ?? false)
+  const endpoint = storage.endpoint || ''
+  const region = storage.region || 'auto'
+  const bucket = storage.bucket || ''
+  const accessKeyId = storage.accessKeyId || ''
+  const secretAccessKey = storage.secretAccessKey || ''
+  const publicUrlPrefix = storage.publicUrlPrefix || ''
+  const forcePathStyle = String(storage.forcePathStyle ?? false)
+
+  process.env.S3_ENDPOINT = endpoint
+  process.env.S3_REGION = region
+  process.env.S3_BUCKET = bucket
+  process.env.S3_ACCESS_KEY_ID = accessKeyId
+  process.env.S3_SECRET_ACCESS_KEY = secretAccessKey
+  process.env.S3_PUBLIC_URL_PREFIX = publicUrlPrefix
+  process.env.S3_FORCE_PATH_STYLE = forcePathStyle
 
   updateEnvFile({
-    S3_ENDPOINT: storage.endpoint,
-    S3_REGION: storage.region || 'auto',
-    S3_BUCKET: storage.bucket,
-    S3_ACCESS_KEY_ID: storage.accessKeyId,
-    S3_SECRET_ACCESS_KEY: storage.secretAccessKey,
-    S3_PUBLIC_URL_PREFIX: storage.publicUrlPrefix || '',
-    S3_FORCE_PATH_STYLE: String(storage.forcePathStyle ?? false),
+    S3_ENDPOINT: endpoint,
+    S3_REGION: region,
+    S3_BUCKET: bucket,
+    S3_ACCESS_KEY_ID: accessKeyId,
+    S3_SECRET_ACCESS_KEY: secretAccessKey,
+    S3_PUBLIC_URL_PREFIX: publicUrlPrefix,
+    S3_FORCE_PATH_STYLE: forcePathStyle,
   })
 }
 
